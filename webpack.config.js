@@ -4,7 +4,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const pkg = require('./package.json');
 
 const banner = `/*!
- * ${pkg.title} ${pkg.version} <${pkg.homepage}>
+ * ${pkg.title} ${pkg.version}
  * Copyright (c) ${new Date().getFullYear()} ${pkg.author.name} <${pkg.author.url}>
  * Released under ${pkg.license} License
  */`;
@@ -13,7 +13,7 @@ const commonConfig = {
     mode: 'production',
     entry: './src/index.ts',
     output: {
-        path: path.resolve(__dirname, 'dist'),
+        path: path.resolve(__dirname, 'dist/html2canvas'),
         library: {
             name: 'html2canvas',
             type: 'umd',
@@ -51,7 +51,14 @@ const nonMinifiedConfig = {
     ...commonConfig,
     output: {
         ...commonConfig.output,
-        filename: 'html2canvas.js'
+        filename: 'html2canvas.js',
+        library :{
+            ...commonConfig.output.library,
+            type: 'commonjs-static',
+        }
+    },
+    optimization: {
+        minimize: false,
     }
 };
 
@@ -68,7 +75,11 @@ const minifiedConfig = {
     ...commonConfig,
     output: {
         ...commonConfig.output,
-        filename: 'html2canvas.min.js'
+        filename: 'html2canvas.min.js',
+        library :{
+            ...commonConfig.output.library,
+            type: 'commonjs-static',
+        }
     },
     optimization: {
         minimize: true,

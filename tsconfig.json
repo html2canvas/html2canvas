@@ -10,13 +10,13 @@
         "target": "es5",
         "lib": ["es2015", "dom"],
         "sourceMap": true,
-        "outDir": "dist/lib",
+        "outDir": "dist/html2canvas/lib",
         "declaration": true,
         "skipLibCheck": true,
-        "declarationDir": "dist/types",
+        "declarationDir": "dist/html2canvas/types",
         "esModuleInterop": true,
         "resolveJsonModule": true
     },
     "include": ["src", "scripts/**/*.ts", "tests/**/*.ts"],
-    "exclude": ["dist", "build", "node_modules"]
+    "exclude": ["dist", "build", "node_modules"],
 }

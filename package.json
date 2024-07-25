@@ -103,11 +103,12 @@
     },
     "scripts": {
         "prebuild": "rimraf dist/ && rimraf build/ && mkdirp dist && mkdirp build",
-        "build": "tsc --module commonjs && webpack --config webpack.config.js && npm run build:create-reftest-list && npm run build:testrunner",
+        "build": "tsc --module commonjs && webpack --config webpack.config.js && npm run build:create-reftest-list && npm run build:testrunner && npm run build:copy",
         "build:testrunner": "webpack --config tests/webpack.config.js",
         "build:reftest-result-list": "ts-node scripts/create-reftest-result-list.ts",
         "build:create-reftest-list": "ts-node scripts/create-reftest-list.ts tests/reftests/ignore.txt build/reftests.ts",
         "build:reftest-preview": "webpack --config www/webpack.config.js",
+        "build:copy": "cp LICENSE README.md package.json release-it.json ./dist/html2canvas",
         "release": "npm run build && release-it",
         "format": "prettier --write \"{src,www/src,tests,scripts}/**/*.ts\"",
         "lint": "eslint src/**/*.ts --max-warnings 0",
@@ -117,10 +118,13 @@
         "karma": "karma start",
         "watch": "webpack --config webpack.config.js --watch",
         "watch:unittest": "jest --watch src/**/__tests__/*.ts",
-        "start": "ts-node tests/server --port=8080 --cors=8081"
+        "start": "ts-node tests/server --port=8080 --cors=8081",
+        "publish:lib": "npm publish ./dist/html2canvas",
+        "pack:lib": "npm pack ./dist/html2canvas"
     },
     "license": "MIT",
     "dependencies": {
+        "colorjs.io": "^0.5.2",
         "css-line-break": "^2.1.0",
         "text-segmentation": "^1.0.3"
     }
