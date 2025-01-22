@@ -27,8 +27,7 @@ export class ImageElementContainer extends ElementContainer {
             if (this.isSvg()) {
                 resolve();
             } else if (this.isInlinedSvg()) {
-                const [, inlinedSvg] = this.src.split(',');
-                const svgElement = deserializeSvg(inlinedSvg);
+                const svgElement = deserializeSvg(this.src);
                 const {
                     width: {baseVal: widthBaseVal},
                     height: {baseVal: heightBaseVal}
@@ -50,6 +49,7 @@ export class ImageElementContainer extends ElementContainer {
                 if (this.intrinsicWidth && this.intrinsicHeight) {
                     resolve();
                 } else {
+                    //This might never happen, as the image is already loaded after the cache is awaited in canvas-renderer.ts/renderNodeContent, cache-storage.ts/Cache.loadImage does it
                     img.addEventListener('load', (_event) => {
                         this.intrinsicWidth = img.naturalWidth;
                         this.intrinsicHeight = img.naturalHeight;
