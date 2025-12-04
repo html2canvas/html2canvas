@@ -166,6 +166,157 @@ const lch = (_context: Context, args: CSSValue[]): number => {
     return pack(255, 255, 255, 1);
 };
 
+const oklch = (context: Context, args: CSSValue[]): number => {
+    const tokens = args.filter(nonFunctionArgSeparator);
+
+    if (tokens.length === 4) {
+        const lightnessToken = tokens[0];
+        const chromaToken = tokens[1];
+        const hueToken = tokens[2];
+        const alphaToken = tokens[3];
+
+        // Lightness can be a percentage (0-100%) or number (0-1)
+        const l =
+            lightnessToken.type === TokenType.NUMBER_TOKEN
+                ? lightnessToken.number
+                : isLengthPercentage(lightnessToken)
+                ? lightnessToken.number / 100
+                : 0;
+
+        // Chroma can be a percentage or number
+        const c =
+            chromaToken.type === TokenType.NUMBER_TOKEN
+                ? chromaToken.number
+                : isLengthPercentage(chromaToken)
+                ? chromaToken.number / 100
+                : 0;
+
+        // Hue can be an angle or number (degrees)
+        const h =
+            hueToken.type === TokenType.NUMBER_TOKEN
+                ? deg(hueToken.number)
+                : angle.parse(context, hueToken);
+
+        // Alpha can be a percentage or number
+        const a =
+            typeof alphaToken !== 'undefined' && alphaToken.type === TokenType.NUMBER_TOKEN
+                ? alphaToken.number
+                : typeof alphaToken !== 'undefined' && isLengthPercentage(alphaToken)
+                ? getAbsoluteValue(alphaToken, 1)
+                : 1;
+
+        const [r, g, b] = oklchToRgb(l, c, h);
+        return pack(r, g, b, a);
+    }
+
+    if (tokens.length === 3) {
+        const lightnessToken = tokens[0];
+        const chromaToken = tokens[1];
+        const hueToken = tokens[2];
+
+        const l =
+            lightnessToken.type === TokenType.NUMBER_TOKEN
+                ? lightnessToken.number
+                : isLengthPercentage(lightnessToken)
+                ? lightnessToken.number / 100
+                : 0;
+
+        const c =
+            chromaToken.type === TokenType.NUMBER_TOKEN
+                ? chromaToken.number
+                : isLengthPercentage(chromaToken)
+                ? chromaToken.number / 100
+                : 0;
+
+        const h =
+            hueToken.type === TokenType.NUMBER_TOKEN
+                ? deg(hueToken.number)
+                : angle.parse(context, hueToken);
+
+        const [r, g, b] = oklchToRgb(l, c, h);
+        return pack(r, g, b, 1);
+    }
+
+    return pack(255, 255, 255, 1);
+};
+
+const oklab = (_context: Context, args: CSSValue[]): number => {
+    const tokens = args.filter(nonFunctionArgSeparator);
+
+    if (tokens.length === 4) {
+        const lightnessToken = tokens[0];
+        const aToken = tokens[1];
+        const bToken = tokens[2];
+        const alphaToken = tokens[3];
+
+        // Lightness can be a percentage (0-100%) or number (0-1)
+        const l =
+            lightnessToken.type === TokenType.NUMBER_TOKEN
+                ? lightnessToken.number
+                : isLengthPercentage(lightnessToken)
+                ? lightnessToken.number / 100
+                : 0;
+
+        // a and b can be percentages or numbers
+        const a =
+            aToken.type === TokenType.NUMBER_TOKEN
+                ? aToken.number
+                : isLengthPercentage(aToken)
+                ? aToken.number / 100
+                : 0;
+
+        const b =
+            bToken.type === TokenType.NUMBER_TOKEN
+                ? bToken.number
+                : isLengthPercentage(bToken)
+                ? bToken.number / 100
+                : 0;
+
+        // Alpha can be a percentage or number
+        const alpha =
+            typeof alphaToken !== 'undefined' && alphaToken.type === TokenType.NUMBER_TOKEN
+                ? alphaToken.number
+                : typeof alphaToken !== 'undefined' && isLengthPercentage(alphaToken)
+                ? getAbsoluteValue(alphaToken, 1)
+                : 1;
+
+        const [r, g, bVal] = oklabToRgb(l, a, b);
+        return pack(r, g, bVal, alpha);
+    }
+
+    if (tokens.length === 3) {
+        const lightnessToken = tokens[0];
+        const aToken = tokens[1];
+        const bToken = tokens[2];
+
+        const l =
+            lightnessToken.type === TokenType.NUMBER_TOKEN
+                ? lightnessToken.number
+                : isLengthPercentage(lightnessToken)
+                ? lightnessToken.number / 100
+                : 0;
+
+        const a =
+            aToken.type === TokenType.NUMBER_TOKEN
+                ? aToken.number
+                : isLengthPercentage(aToken)
+                ? aToken.number / 100
+                : 0;
+
+        const b =
+            bToken.type === TokenType.NUMBER_TOKEN
+                ? bToken.number
+                : isLengthPercentage(bToken)
+                ? bToken.number / 100
+                : 0;
+
+        const [r, g, bVal] = oklabToRgb(l, a, b);
+        return pack(r, g, bVal, 1);
+    }
+
+    return pack(255, 255, 255, 1);
+};
+
 function lchToRgb(l: number, c: number, h: number): [number, number, number] {
     // Convert degrees to radians for hue
     const rad = (h * Math.PI) / 180;
@@ -207,6 +358,54 @@ function pivotRgb(value: number): number {
     return value > 0.206893034 ? Math.pow(value, 3) : (value - 4 / 29) / 7.787037;
 }
 
+function oklabToRgb(l: number, a: number, b: number): [number, number, number] {
+    // Convert OKLab to Linear LMS
+    // Based on colorizr implementation: https://github.com/gilbarbara/colorizr
+    // LAB_TO_LMS coefficients
+    const lms_l = (l + 0.3963377773761749 * a + 0.2158037573099136 * b) ** 3;
+    const lms_m = (l + -0.1055613458156586 * a + -0.0638541728258133 * b) ** 3;
+    const lms_s = (l + -0.0894841775298119 * a + -1.2914855480194092 * b) ** 3;
+
+    // Convert Linear LMS to Linear RGB
+    // LSM_TO_RGB coefficients from colorizr
+    const linearR = 4.0767416360759583 * lms_l + -3.3077115392580629 * lms_m + 0.2309699031821043 * lms_s;
+    const linearG = -1.2684379732850315 * lms_l + 2.6097573492876882 * lms_m + -0.341319376002657 * lms_s;
+    const linearB = -0.0041960761386756 * lms_l + -0.7034186179359362 * lms_m + 1.7076146940746117 * lms_s;
+
+    // Convert Linear RGB to sRGB (gamma correction)
+    const sRgbR =
+        linearR > 0.0031308 ? 1.055 * Math.pow(linearR, 1 / 2.4) - 0.055 : 12.92 * linearR;
+    const sRgbG =
+        linearG > 0.0031308 ? 1.055 * Math.pow(linearG, 1 / 2.4) - 0.055 : 12.92 * linearG;
+    const sRgbB =
+        linearB > 0.0031308 ? 1.055 * Math.pow(linearB, 1 / 2.4) - 0.055 : 12.92 * linearB;
+
+    // Clamp RGB values to [0, 1] range
+    const rgbR = Math.min(Math.max(0, sRgbR), 1);
+    const rgbG = Math.min(Math.max(0, sRgbG), 1);
+    const rgbB = Math.min(Math.max(0, sRgbB), 1);
+
+    // Scale to [0, 255] range and round to integers
+    const finalR = Math.round(rgbR * 255);
+    const finalG = Math.round(rgbG * 255);
+    const finalB = Math.round(rgbB * 255);
+
+    return [finalR, finalG, finalB];
+}
+
+function oklchToRgb(l: number, c: number, h: number): [number, number, number] {
+    // Convert hue from radians to degrees if needed, then to radians for OKLab
+    // h is already in radians from angle.parse or deg()
+    const hRad = h;
+
+    // Convert OKLCH to OKLab
+    const a = c * Math.cos(hRad);
+    const b = c * Math.sin(hRad);
+
+    // Use oklabToRgb for conversion
+    return oklabToRgb(l, a, b);
+}
+
 const SUPPORTED_COLOR_FUNCTIONS: {
     [key: string]: (context: Context, args: CSSValue[]) => number;
 } = {
@@ -214,7 +413,9 @@ const SUPPORTED_COLOR_FUNCTIONS: {
     hsla: hsl,
     rgb: rgb,
     rgba: rgb,
-    lch: lch
+    lch: lch,
+    oklch: oklch,
+    oklab: oklab
 };
 
 export const parseColor = (context: Context, value: string): Color =>

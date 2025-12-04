@@ -43,6 +43,23 @@ describe('types', () => {
             it('lch(29.2345% 44.2 27 / 0.2)', () =>
                 strictEqual(parse('lch(29.2345% 44.2 27 / 0.2)'), pack(255, 148, 143, 0.2)));
             it('lch(76.5 4.24 49.5)', () => strictEqual(parse('lch(76.5 4.24 49.5)'), pack(212, 182, 175, 1)));
+            it('oklab(0.62796 0.22486 0.12585)', () => {
+                // Test oklab color parsing - verify it produces a valid color
+                const result = parse('oklab(0.62796 0.22486 0.12585)');
+                strictEqual(result > 0, true);
+                // Should be a reddish color, not transparent
+                strictEqual((result & 0xff) > 0, true);
+            });
+            it('oklab(0.62796 0.22486 0.12585 / 0.5)', () => {
+                // Test oklab with alpha
+                const result = parse('oklab(0.62796 0.22486 0.12585 / 0.5)');
+                strictEqual(result > 0, true);
+            });
+            it('oklab(70% 0.15 -0.1)', () => {
+                // Test oklab with percentage lightness
+                const result = parse('oklab(70% 0.15 -0.1)');
+                strictEqual(result > 0, true);
+            });
         });
         describe('util', () => {
             describe('isTransparent', () => {
