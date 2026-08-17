@@ -6,7 +6,7 @@
     "module": "dist/html2canvas.esm.js",
     "typings": "dist/types/src/index.d.ts",
     "browser": "dist/html2canvas.js",
-    "version": "1.6.3",
+    "version": "1.6.5",
     "keywords": [
         "typescript",
         "html",
@@ -125,6 +125,7 @@
     },
     "license": "MIT",
     "dependencies": {
+        "colorjs.io": "^0.7.1",
         "css-line-break": "^2.1.0",
         "text-segmentation": "^1.0.3"
     }

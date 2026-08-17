@@ -17,7 +17,7 @@ import {isDimensionToken} from '../../css/syntax/parser';
 import {asString, Color, isTransparent} from '../../css/types/color';
 import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
 import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
-import {FIFTY_PERCENT, getAbsoluteValue} from '../../css/types/length-percentage';
+import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
 import {ElementContainer, FLAGS} from '../../dom/element-container';
 import {SelectElementContainer} from '../../dom/elements/select-element-container';
 import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
@@ -147,7 +147,7 @@ export class CanvasRenderer extends Renderer {
         if (letterSpacing === 0) {
             // Fixed an issue with characters moving up in non-Firefox.
             // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-            if (navigator.userAgent.indexOf('Firefox') === -1){
+            if (navigator.userAgent.indexOf('Firefox') === -1) {
                 this.ctx.textBaseline = 'ideographic';
                 this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
             } else {
@@ -169,8 +169,8 @@ export class CanvasRenderer extends Renderer {
             .join('');
         const fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
         const fontSize = isDimensionToken(styles.fontSize)
-            ? `${styles.fontSize.number}${styles.fontSize.unit}`
-            : `${styles.fontSize.number}px`;
+            ? `${getNumber(styles.fontSize)}${styles.fontSize.unit}`
+            : `${getNumber(styles.fontSize)}px`;
 
         return [
             [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
@@ -195,7 +195,7 @@ export class CanvasRenderer extends Renderer {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
                         this.ctx.fillStyle = asString(styles.color);
-                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, styles.fontSize.number);
+                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, getNumber(styles.fontSize));
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
@@ -211,7 +211,7 @@ export class CanvasRenderer extends Renderer {
                                     this.renderTextWithLetterSpacing(
                                         text,
                                         styles.letterSpacing,
-                                        styles.fontSize.number
+                                        getNumber(styles.fontSize)
                                     );
                                 });
 
@@ -228,13 +228,28 @@ export class CanvasRenderer extends Renderer {
                                 var decorationLineHeight = 1;
                                 switch (textDecorationLine) {
                                     case TEXT_DECORATION_LINE.UNDERLINE:
-                                        this.ctx.fillRect(text.bounds.left, text.bounds.top + text.bounds.height - decorationLineHeight, text.bounds.width, decorationLineHeight);
+                                        this.ctx.fillRect(
+                                            text.bounds.left,
+                                            text.bounds.top + text.bounds.height - decorationLineHeight,
+                                            text.bounds.width,
+                                            decorationLineHeight
+                                        );
                                         break;
                                     case TEXT_DECORATION_LINE.OVERLINE:
-                                        this.ctx.fillRect(text.bounds.left, text.bounds.top , text.bounds.width, decorationLineHeight);
+                                        this.ctx.fillRect(
+                                            text.bounds.left,
+                                            text.bounds.top,
+                                            text.bounds.width,
+                                            decorationLineHeight
+                                        );
                                         break;
                                     case TEXT_DECORATION_LINE.LINE_THROUGH:
-                                        this.ctx.fillRect(text.bounds.left, text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2), text.bounds.width, decorationLineHeight);
+                                        this.ctx.fillRect(
+                                            text.bounds.left,
+                                            text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
+                                            text.bounds.width,
+                                            decorationLineHeight
+                                        );
                                         break;
                                 }
                             });
@@ -475,13 +490,13 @@ export class CanvasRenderer extends Renderer {
                     container.bounds.left,
                     container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width),
                     container.bounds.width,
-                    computeLineHeight(styles.lineHeight, styles.fontSize.number) / 2 + 1
+                    computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 1
                 );
 
                 this.renderTextWithLetterSpacing(
                     new TextBounds(paint.listValue, bounds),
                     styles.letterSpacing,
-                    computeLineHeight(styles.lineHeight, styles.fontSize.number) / 2 + 2
+                    computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 2
                 );
                 this.ctx.textBaseline = 'bottom';
                 this.ctx.textAlign = 'left';

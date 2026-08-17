@@ -166,7 +166,8 @@ export const serializeSvg = (svg: SVGSVGElement | SVGForeignObjectElement, encod
 
 const INLINE_BASE64 = /^data:image\/.*;base64,/i;
 export const deserializeSvg = (svg: string): SVGSVGElement | SVGForeignObjectElement => {
-    const encodedSvg = INLINE_BASE64.test(svg) ? atob(svg) : decodeURIComponent(svg);
+    const [, inlinedSvg] = svg.split(',');
+    const encodedSvg = INLINE_BASE64.test(svg) ? atob(inlinedSvg) : decodeURIComponent(inlinedSvg);
     const domParser = new DOMParser();
     const document = domParser.parseFromString(encodedSvg, 'image/svg+xml');
     const parserError = document.querySelector('parsererror');

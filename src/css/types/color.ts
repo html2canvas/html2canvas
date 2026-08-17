@@ -1,19 +1,24 @@
+import {Context} from '../../core/context';
+import {ITypeDescriptor} from '../ITypeDescriptor';
 import {CSSValue, nonFunctionArgSeparator, Parser} from '../syntax/parser';
 import {TokenType} from '../syntax/tokenizer';
-import {ITypeDescriptor} from '../ITypeDescriptor';
-import {angle, deg} from './angle';
-import {getAbsoluteValue, isLengthPercentage} from './length-percentage';
-import {Context} from '../../core/context';
 
-export type Color = number;
+import Color from 'colorjs.io';
 
-export const color: ITypeDescriptor<Color> = {
+export type PackedColor = number;
+
+// Keep backward-compatible type alias
+export type {PackedColor as Color};
+
+export const color: ITypeDescriptor<PackedColor> = {
     name: 'color',
-    parse: (context: Context, value: CSSValue): Color => {
+    parse: (context: Context, value: CSSValue): PackedColor => {
         if (value.type === TokenType.FUNCTION) {
             const colorFunction = SUPPORTED_COLOR_FUNCTIONS[value.name];
             if (typeof colorFunction === 'undefined') {
-                throw new Error(`Attempting to parse an unsupported color function "${value.name}"`);
+                // Fallback to colorjs.io for unsupported color functions
+                const raw = reconstructFunctionString(value);
+                return parseWithColorJs(raw);
             }
             return colorFunction(context, value.values);
         }
@@ -61,9 +66,9 @@ export const color: ITypeDescriptor<Color> = {
     }
 };
 
-export const isTransparent = (color: Color): boolean => (0xff & color) === 0;
+export const isTransparent = (color: PackedColor): boolean => (0xff & color) === 0;
 
-export const asString = (color: Color): string => {
+export const asString = (color: PackedColor): string => {
     const alpha = 0xff & color;
     const blue = 0xff & (color >> 8);
     const green = 0xff & (color >> 16);
@@ -71,8 +76,70 @@ export const asString = (color: Color): string => {
     return alpha < 255 ? `rgba(${red},${green},${blue},${alpha / 255})` : `rgb(${red},${green},${blue})`;
 };
 
-export const pack = (r: number, g: number, b: number, a: number): Color =>
+export const pack = (r: number, g: number, b: number, a: number): PackedColor =>
     ((r << 24) | (g << 16) | (b << 8) | (Math.round(a * 255) << 0)) >>> 0;
+
+/**
+ * Converts a colorjs.io Color instance to a packed uint32 color.
+ * The color is gamut-mapped to sRGB before packing.
+ */
+const colorJsToPacked = (c: Color): PackedColor => {
+    const srgb = c.toGamut({space: 'srgb'}).to('srgb');
+    const r = Math.round(Math.min(255, Math.max(0, (srgb.coords[0] || 0) * 255)));
+    const g = Math.round(Math.min(255, Math.max(0, (srgb.coords[1] || 0) * 255)));
+    const b = Math.round(Math.min(255, Math.max(0, (srgb.coords[2] || 0) * 255)));
+    const a = srgb.alpha;
+    return pack(r, g, b, a);
+};
+
+/**
+ * Parses a raw CSS color string using colorjs.io and returns the packed uint32 representation.
+ */
+const parseWithColorJs = (raw: string): PackedColor => {
+    try {
+        const c = new Color(raw);
+        return colorJsToPacked(c);
+    } catch {
+        return COLORS.TRANSPARENT;
+    }
+};
+
+/**
+ * Reconstructs a CSS function string from parsed CSSValue tokens.
+ * Used to pass unsupported color functions to colorjs.io.
+ */
+const reconstructFunctionString = (value: CSSValue): string => {
+    if (value.type === TokenType.FUNCTION) {
+        const args = value.values.map((v: CSSValue) => reconstructToken(v)).join('');
+        return `${value.name}(${args})`;
+    }
+    return reconstructToken(value);
+};
+
+const reconstructToken = (token: CSSValue): string => {
+    switch (token.type) {
+        case TokenType.NUMBER_TOKEN:
+            return String(token.number);
+        case TokenType.PERCENTAGE_TOKEN:
+            return `${token.number}%`;
+        case TokenType.DIMENSION_TOKEN:
+            return `${token.number}${token.unit}`;
+        case TokenType.HASH_TOKEN:
+            return `#${token.value}`;
+        case TokenType.IDENT_TOKEN:
+        case TokenType.STRING_TOKEN:
+        case TokenType.DELIM_TOKEN:
+            return token.value;
+        case TokenType.WHITESPACE_TOKEN:
+            return ' ';
+        case TokenType.COMMA_TOKEN:
+            return ', ';
+        case TokenType.FUNCTION:
+            return reconstructFunctionString(token);
+        default:
+            return '';
+    }
+};
 
 const getTokenColorValue = (token: CSSValue, i: number): number => {
     if (token.type === TokenType.NUMBER_TOKEN) {
@@ -103,308 +170,99 @@ const rgb = (_context: Context, args: CSSValue[]): number => {
     return 0;
 };
 
-function hue2rgb(t1: number, t2: number, hue: number): number {
-    if (hue < 0) {
-        hue += 1;
-    }
-    if (hue >= 1) {
-        hue -= 1;
-    }
-
-    if (hue < 1 / 6) {
-        return (t2 - t1) * hue * 6 + t1;
-    } else if (hue < 1 / 2) {
-        return t2;
-    } else if (hue < 2 / 3) {
-        return (t2 - t1) * 6 * (2 / 3 - hue) + t1;
-    } else {
-        return t1;
-    }
-}
-
-function hsl2rgb(h: number, s: number, l: number, a: number): number {
-    if (s === 0) {
-        return pack(l * 255, l * 255, l * 255, 1);
-    }
-
-    const t2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
-
-    const t1 = l * 2 - t2;
-    const r = hue2rgb(t1, t2, h + 1 / 3);
-    const g = hue2rgb(t1, t2, h);
-    const b = hue2rgb(t1, t2, h - 1 / 3);
-    return pack(r * 255, g * 255, b * 255, a);
-}
-
-const hsl = (context: Context, args: CSSValue[]): number => {
-    const tokens = args.filter(nonFunctionArgSeparator);
-    const [hue, saturation, lightness, alpha] = tokens;
-
-    const h = (hue.type === TokenType.NUMBER_TOKEN ? deg(hue.number) : angle.parse(context, hue)) / (Math.PI * 2);
-    const s = isLengthPercentage(saturation) ? saturation.number / 100 : 0;
-    const l = isLengthPercentage(lightness) ? lightness.number / 100 : 0;
-    const a = typeof alpha !== 'undefined' && isLengthPercentage(alpha) ? getAbsoluteValue(alpha, 1) : 1;
-
-    return hsl2rgb(h, s, l, a);
+/**
+ * Delegates color function parsing to colorjs.io by reconstructing the CSS string from tokens.
+ * Preserves all tokens (including '/' delimiters for alpha) to maintain correct CSS syntax.
+ */
+const delegateToColorJs = (functionName: string, args: CSSValue[]): number => {
+    const raw = functionName + '(' + args.map((t: CSSValue) => reconstructToken(t)).join('') + ')';
+    return parseWithColorJs(raw);
 };
 
-const lch = (_context: Context, args: CSSValue[]): number => {
-    const tokens = args.filter(nonFunctionArgSeparator);
+const hsl = (_context: Context, args: CSSValue[]): number => delegateToColorJs('hsl', args);
+const lch = (_context: Context, args: CSSValue[]): number => delegateToColorJs('lch', args);
+const lab = (_context: Context, args: CSSValue[]): number => delegateToColorJs('lab', args);
+const oklch = (_context: Context, args: CSSValue[]): number => delegateToColorJs('oklch', args);
+const oklab = (_context: Context, args: CSSValue[]): number => delegateToColorJs('oklab', args);
+const hwb = (_context: Context, args: CSSValue[]): number => delegateToColorJs('hwb', args);
+const colorFunction = (_context: Context, args: CSSValue[]): number => delegateToColorJs('color', args);
 
-    if (tokens.length === 4) {
-        const [lightness, chroma, hue, alpha] = tokens.map(getTokenColorValue);
-        const [r, g, b] = lchToRgb(lightness, chroma, hue);
-        return pack(r, g, b, alpha);
+/**
+ * Parses `color-mix(in <space>, <color1> <pct1>%, <color2> <pct2>%)`.
+ * colorjs.io doesn't support parsing color-mix as a string, so we parse the arguments
+ * manually and use Color.mix().
+ */
+const colorMix = (_context: Context, args: CSSValue[]): number => {
+    // color-mix args structure: in <space> , <color1-tokens> <pct>% , <color2-tokens> <pct>%
+    // After tokenization, commas are COMMA_TOKEN. We split by commas.
+    const groups: CSSValue[][] = [[]];
+    for (const token of args) {
+        if (token.type === TokenType.COMMA_TOKEN) {
+            groups.push([]);
+        } else {
+            groups[groups.length - 1].push(token);
+        }
     }
 
-    if (tokens.length === 3) {
-        const [lightness, chroma, hue] = tokens.map(getTokenColorValue);
-        const [r, g, b] = lchToRgb(lightness, chroma, hue);
-        return pack(r, g, b, 1);
+    // We expect 3 groups: [in <space>], [<color1> <pct>%], [<color2> <pct>%?]
+    if (groups.length < 3) {
+        return COLORS.TRANSPARENT;
     }
 
-    return pack(255, 255, 255, 1);
+    try {
+        // Parse interpolation space from first group (skip "in" keyword)
+        const spaceTokens = groups[0].filter((t: CSSValue) => t.type !== TokenType.WHITESPACE_TOKEN);
+        const inKeyword = spaceTokens[0];
+        if (!inKeyword || inKeyword.type !== TokenType.IDENT_TOKEN || inKeyword.value !== 'in') {
+            return COLORS.TRANSPARENT;
+        }
+        const spaceToken = spaceTokens[1];
+        if (!spaceToken || spaceToken.type !== TokenType.IDENT_TOKEN) {
+            return COLORS.TRANSPARENT;
+        }
+        const space = spaceToken.value;
+
+        // Parse color1 + percentage from second group
+        const {colorStr: color1Str, percentage: pct1} = extractColorAndPercentage(groups[1]);
+        // Parse color2 + percentage from third group
+        const {colorStr: color2Str, percentage: pct2} = extractColorAndPercentage(groups[2]);
+
+        const p1 = pct1 !== null ? pct1 / 100 : pct2 !== null ? 1 - pct2 / 100 : 0.5;
+
+        const c1 = new Color(color1Str);
+        const c2 = new Color(color2Str);
+        const mixed = Color.mix(c1, c2, 1 - p1, {space});
+        return colorJsToPacked(mixed);
+    } catch {
+        return COLORS.TRANSPARENT;
+    }
 };
 
-const oklch = (context: Context, args: CSSValue[]): number => {
-    const tokens = args.filter(nonFunctionArgSeparator);
+/**
+ * Extracts a color string and an optional trailing percentage from a group of tokens.
+ * e.g. tokens for "hsl(120 100% 50%) 25%" → { colorStr: "hsl(120 100% 50%)", percentage: 25 }
+ */
+const extractColorAndPercentage = (tokens: CSSValue[]): {colorStr: string; percentage: number | null} => {
+    // Check if the last non-whitespace token is a percentage
+    const nonWs = tokens.filter((t: CSSValue) => t.type !== TokenType.WHITESPACE_TOKEN);
+    const lastToken = nonWs[nonWs.length - 1];
+    let percentage: number | null = null;
+    let colorTokens = tokens;
 
-    if (tokens.length === 4) {
-        const lightnessToken = tokens[0];
-        const chromaToken = tokens[1];
-        const hueToken = tokens[2];
-        const alphaToken = tokens[3];
-
-        // Lightness can be a percentage (0-100%) or number (0-1)
-        const l =
-            lightnessToken.type === TokenType.NUMBER_TOKEN
-                ? lightnessToken.number
-                : isLengthPercentage(lightnessToken)
-                ? lightnessToken.number / 100
-                : 0;
-
-        // Chroma can be a percentage or number
-        const c =
-            chromaToken.type === TokenType.NUMBER_TOKEN
-                ? chromaToken.number
-                : isLengthPercentage(chromaToken)
-                ? chromaToken.number / 100
-                : 0;
-
-        // Hue can be an angle or number (degrees)
-        const h =
-            hueToken.type === TokenType.NUMBER_TOKEN
-                ? deg(hueToken.number)
-                : angle.parse(context, hueToken);
-
-        // Alpha can be a percentage or number
-        const a =
-            typeof alphaToken !== 'undefined' && alphaToken.type === TokenType.NUMBER_TOKEN
-                ? alphaToken.number
-                : typeof alphaToken !== 'undefined' && isLengthPercentage(alphaToken)
-                ? getAbsoluteValue(alphaToken, 1)
-                : 1;
-
-        const [r, g, b] = oklchToRgb(l, c, h);
-        return pack(r, g, b, a);
+    if (lastToken && lastToken.type === TokenType.PERCENTAGE_TOKEN) {
+        percentage = lastToken.number;
+        // Remove the trailing percentage (and any whitespace before it) from the color tokens
+        const lastIndex = tokens.lastIndexOf(lastToken);
+        colorTokens = tokens.slice(0, lastIndex);
     }
 
-    if (tokens.length === 3) {
-        const lightnessToken = tokens[0];
-        const chromaToken = tokens[1];
-        const hueToken = tokens[2];
-
-        const l =
-            lightnessToken.type === TokenType.NUMBER_TOKEN
-                ? lightnessToken.number
-                : isLengthPercentage(lightnessToken)
-                ? lightnessToken.number / 100
-                : 0;
-
-        const c =
-            chromaToken.type === TokenType.NUMBER_TOKEN
-                ? chromaToken.number
-                : isLengthPercentage(chromaToken)
-                ? chromaToken.number / 100
-                : 0;
-
-        const h =
-            hueToken.type === TokenType.NUMBER_TOKEN
-                ? deg(hueToken.number)
-                : angle.parse(context, hueToken);
-
-        const [r, g, b] = oklchToRgb(l, c, h);
-        return pack(r, g, b, 1);
-    }
-
-    return pack(255, 255, 255, 1);
+    const colorStr = colorTokens
+        .map((t: CSSValue) => reconstructToken(t))
+        .join('')
+        .trim();
+    return {colorStr, percentage};
 };
 
-const oklab = (_context: Context, args: CSSValue[]): number => {
-    const tokens = args.filter(nonFunctionArgSeparator);
-
-    if (tokens.length === 4) {
-        const lightnessToken = tokens[0];
-        const aToken = tokens[1];
-        const bToken = tokens[2];
-        const alphaToken = tokens[3];
-
-        // Lightness can be a percentage (0-100%) or number (0-1)
-        const l =
-            lightnessToken.type === TokenType.NUMBER_TOKEN
-                ? lightnessToken.number
-                : isLengthPercentage(lightnessToken)
-                ? lightnessToken.number / 100
-                : 0;
-
-        // a and b can be percentages or numbers
-        const a =
-            aToken.type === TokenType.NUMBER_TOKEN
-                ? aToken.number
-                : isLengthPercentage(aToken)
-                ? aToken.number / 100
-                : 0;
-
-        const b =
-            bToken.type === TokenType.NUMBER_TOKEN
-                ? bToken.number
-                : isLengthPercentage(bToken)
-                ? bToken.number / 100
-                : 0;
-
-        // Alpha can be a percentage or number
-        const alpha =
-            typeof alphaToken !== 'undefined' && alphaToken.type === TokenType.NUMBER_TOKEN
-                ? alphaToken.number
-                : typeof alphaToken !== 'undefined' && isLengthPercentage(alphaToken)
-                ? getAbsoluteValue(alphaToken, 1)
-                : 1;
-
-        const [r, g, bVal] = oklabToRgb(l, a, b);
-        return pack(r, g, bVal, alpha);
-    }
-
-    if (tokens.length === 3) {
-        const lightnessToken = tokens[0];
-        const aToken = tokens[1];
-        const bToken = tokens[2];
-
-        const l =
-            lightnessToken.type === TokenType.NUMBER_TOKEN
-                ? lightnessToken.number
-                : isLengthPercentage(lightnessToken)
-                ? lightnessToken.number / 100
-                : 0;
-
-        const a =
-            aToken.type === TokenType.NUMBER_TOKEN
-                ? aToken.number
-                : isLengthPercentage(aToken)
-                ? aToken.number / 100
-                : 0;
-
-        const b =
-            bToken.type === TokenType.NUMBER_TOKEN
-                ? bToken.number
-                : isLengthPercentage(bToken)
-                ? bToken.number / 100
-                : 0;
-
-        const [r, g, bVal] = oklabToRgb(l, a, b);
-        return pack(r, g, bVal, 1);
-    }
-
-    return pack(255, 255, 255, 1);
-};
-
-function lchToRgb(l: number, c: number, h: number): [number, number, number] {
-    // Convert degrees to radians for hue
-    const rad = (h * Math.PI) / 180;
-
-    // Convert LCH to LAB
-    const a = c * Math.cos(rad);
-    const b = c * Math.sin(rad);
-
-    // Convert LAB to XYZ
-    const y = (l + 16) / 116;
-    const x = a / 500 + y;
-    const z = y - b / 200;
-
-    // Convert XYZ to RGB
-    const red = pivotRgb(x) * 3.2406 + pivotRgb(y) * -1.5372 + pivotRgb(z) * -0.4986;
-    const green = pivotRgb(x) * -0.9689 + pivotRgb(y) * 1.8758 + pivotRgb(z) * 0.0415;
-    const blue = pivotRgb(x) * 0.0557 + pivotRgb(y) * -0.204 + pivotRgb(z) * 1.057;
-
-    // Convert to sRGB
-    const sRgbR = red > 0.0031308 ? 1.055 * Math.pow(red, 1 / 2.4) - 0.055 : 12.92 * red;
-    const sRgbG = green > 0.0031308 ? 1.055 * Math.pow(green, 1 / 2.4) - 0.055 : 12.92 * green;
-    const sRgbB = blue > 0.0031308 ? 1.055 * Math.pow(blue, 1 / 2.4) - 0.055 : 12.92 * blue;
-
-    // Clamp RGB values to [0, 1] range
-    const rgbR = Math.min(Math.max(0, sRgbR), 1);
-    const rgbG = Math.min(Math.max(0, sRgbG), 1);
-    const rgbB = Math.min(Math.max(0, sRgbB), 1);
-
-    // Scale to [0, 255] range and round to integers
-    const finalR = Math.round(rgbR * 255);
-    const finalG = Math.round(rgbG * 255);
-    const finalB = Math.round(rgbB * 255);
-
-    // Return RGB values as an array
-    return [finalR, finalG, finalB];
-}
-
-function pivotRgb(value: number): number {
-    return value > 0.206893034 ? Math.pow(value, 3) : (value - 4 / 29) / 7.787037;
-}
-
-function oklabToRgb(l: number, a: number, b: number): [number, number, number] {
-    // Convert OKLab to Linear LMS
-    // Based on colorizr implementation: https://github.com/gilbarbara/colorizr
-    // LAB_TO_LMS coefficients
-    const lms_l = (l + 0.3963377773761749 * a + 0.2158037573099136 * b) ** 3;
-    const lms_m = (l + -0.1055613458156586 * a + -0.0638541728258133 * b) ** 3;
-    const lms_s = (l + -0.0894841775298119 * a + -1.2914855480194092 * b) ** 3;
-
-    // Convert Linear LMS to Linear RGB
-    // LSM_TO_RGB coefficients from colorizr
-    const linearR = 4.0767416360759583 * lms_l + -3.3077115392580629 * lms_m + 0.2309699031821043 * lms_s;
-    const linearG = -1.2684379732850315 * lms_l + 2.6097573492876882 * lms_m + -0.341319376002657 * lms_s;
-    const linearB = -0.0041960761386756 * lms_l + -0.7034186179359362 * lms_m + 1.7076146940746117 * lms_s;
-
-    // Convert Linear RGB to sRGB (gamma correction)
-    const sRgbR =
-        linearR > 0.0031308 ? 1.055 * Math.pow(linearR, 1 / 2.4) - 0.055 : 12.92 * linearR;
-    const sRgbG =
-        linearG > 0.0031308 ? 1.055 * Math.pow(linearG, 1 / 2.4) - 0.055 : 12.92 * linearG;
-    const sRgbB =
-        linearB > 0.0031308 ? 1.055 * Math.pow(linearB, 1 / 2.4) - 0.055 : 12.92 * linearB;
-
-    // Clamp RGB values to [0, 1] range
-    const rgbR = Math.min(Math.max(0, sRgbR), 1);
-    const rgbG = Math.min(Math.max(0, sRgbG), 1);
-    const rgbB = Math.min(Math.max(0, sRgbB), 1);
-
-    // Scale to [0, 255] range and round to integers
-    const finalR = Math.round(rgbR * 255);
-    const finalG = Math.round(rgbG * 255);
-    const finalB = Math.round(rgbB * 255);
-
-    return [finalR, finalG, finalB];
-}
-
-function oklchToRgb(l: number, c: number, h: number): [number, number, number] {
-    // Convert hue from radians to degrees if needed, then to radians for OKLab
-    // h is already in radians from angle.parse or deg()
-    const hRad = h;
-
-    // Convert OKLCH to OKLab
-    const a = c * Math.cos(hRad);
-    const b = c * Math.sin(hRad);
-
-    // Use oklabToRgb for conversion
-    return oklabToRgb(l, a, b);
-}
 
 const SUPPORTED_COLOR_FUNCTIONS: {
     [key: string]: (context: Context, args: CSSValue[]) => number;
@@ -414,14 +272,18 @@ const SUPPORTED_COLOR_FUNCTIONS: {
     rgb: rgb,
     rgba: rgb,
     lch: lch,
+    lab: lab,
     oklch: oklch,
-    oklab: oklab
+    oklab: oklab,
+    hwb: hwb,
+    color: colorFunction,
+    'color-mix': colorMix
 };
 
-export const parseColor = (context: Context, value: string): Color =>
+export const parseColor = (context: Context, value: string): PackedColor =>
     color.parse(context, Parser.create(value).parseComponentValue());
 
-export const COLORS: {[key: string]: Color} = {
+export const COLORS: {[key: string]: PackedColor} = {
     ALICEBLUE: 0xf0f8ffff,
     ANTIQUEWHITE: 0xfaebd7ff,
     AQUA: 0x00ffffff,
