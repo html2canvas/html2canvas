@@ -1,8 +1,8 @@
 import {deepStrictEqual, fail} from 'assert';
-import {FEATURES} from '../features';
+import {Bounds} from '../../css/layout/bounds';
 import {CacheStorage, cache} from '../cache-storage';
 import {Context} from '../context';
-import {Bounds} from '../../css/layout/bounds';
+import {FEATURES} from '../features';
 
 const proxy = 'http://example.com/proxy';
 
@@ -55,11 +55,22 @@ const xhr: XMLHttpRequestMock[] = [];
 const sleep = async (timeout: number) => await new Promise((resolve) => setTimeout(resolve, timeout));
 
 class ImageMock {
-    src?: string;
+    private _src?: string;
     crossOrigin?: string;
     onload?: () => void;
     constructor() {
         images.push(this);
+    }
+    get src(): string | undefined {
+        return this._src;
+    }
+    set src(value: string | undefined) {
+        this._src = value;
+        // Automatically trigger onload for data URIs (inline images), since jsdom
+        // does not fire load events for data: URLs in a test environment.
+        if (value && value.startsWith('data:') && this.onload) {
+            setTimeout(() => this.onload && this.onload(), 0);
+        }
     }
 }
 
