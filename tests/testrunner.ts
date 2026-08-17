@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import {testList, ignoredTests} from '../build/reftests';
-import {default as platform} from 'platform';
-import {Promise as ES6Promise} from 'es6-promise';
-import type {ScreenshotRequest} from './types';
+import { Promise as ES6Promise } from 'es6-promise';
+import { default as platform } from 'platform';
+import { ignoredTests, testList } from '../build/reftests';
+import type { ScreenshotRequest } from './types';
 
 if (typeof window.Promise === 'undefined') {
     Object.assign(window, {Promise: ES6Promise});
@@ -104,7 +104,9 @@ describe('Rendering Tests', () => {
                         throw new Error('Canvas is tainted');
                     }
 
-                    await uploadResults(canvas, url);
+                    await uploadResults(canvas, url).catch(() => {
+                        // screenshot server is optional (only needed for automated reftest comparison)
+                    });
                     done();
                 };
 

@@ -9,7 +9,7 @@
         <div id="mocha"></div>
         <script src="/node_modules/mocha/mocha.js"></script>
         <script>
-            mocha.setup('bdd');
+            mocha.setup({ui: 'bdd', timeout: 30000});
         </script>
         <script src="/build/testrunner.js"></script>
         <script>

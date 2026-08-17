@@ -89,11 +89,39 @@ Install dependencies:
 npm install
 ```
 
-Build browser bundle
+Build browser bundle:
 
 ```shell
 npm run build
 ```
+
+### Testing
+
+**Unit tests** (no browser required):
+
+```shell
+npm run unittest
+```
+
+**Visual reftests** (requires a browser):
+
+1. Build the project first (only needed once, or after source changes):
+    ```shell
+    npm run build
+    ```
+
+2. Start the local dev server:
+    ```shell
+    npm start
+    ```
+
+3. Open the test runner in your browser:
+    ```
+    http://localhost:8080/tests/testrunner.html
+    ```
+    Each reftest renders a page through html2canvas and compares the output against a reference PNG stored in `tests/reftests/`. Results are shown inline with pass/fail status.
+
+    Individual reftest pages (e.g. `tests/reftests/background/box-shadow.html`) can also be opened directly to inspect a specific feature.
 
 ### Examples
 

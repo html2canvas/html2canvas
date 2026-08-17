@@ -1,20 +1,69 @@
+/// <reference path="./declarations.d.ts" />
 import cors from 'cors';
 import express from 'express';
 import filenamifyUrl from 'filenamify-url';
 import fs from 'fs';
-import proxy from 'html2canvas-proxy';
-import mkdirp from 'mkdirp';
+import http from 'http';
+import https from 'https';
 import path from 'path';
 import serveIndex from 'serve-index';
+import { URL } from 'url';
 import yargs from 'yargs';
-import {ScreenshotRequest} from './types';
+import { ScreenshotRequest } from './types';
+
+// Inline proxy middleware — replaces the html2canvas-proxy package.
+// Fetches a remote URL (passed as ?url=) and returns its content as a base64 data URI.
+const proxyMiddleware = (): express.Router => {
+    const router = express.Router();
+    router.get(
+        '/',
+        cors(),
+        (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            const rawUrl = req.query.url;
+            if (!rawUrl || typeof rawUrl !== 'string') {
+                return next(new Error('No url specified'));
+            }
+            let parsed: URL;
+            try {
+                parsed = new URL(rawUrl);
+            } catch {
+                return next(new Error(`Invalid url specified: ${rawUrl}`));
+            }
+            if (!parsed.host) {
+                return next(new Error(`Invalid url specified: ${rawUrl}`));
+            }
+
+            const transport = parsed.protocol === 'https:' ? https : http;
+            transport.get(rawUrl, (upstream) => {
+                const contentType = upstream.headers['content-type'] ?? 'application/octet-stream';
+                const chunks: Uint8Array[] = [];
+                upstream.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+                upstream.on('end', () => {
+                    const body = Buffer.concat(chunks as Uint8Array[]);
+                    const responseType = req.query.responseType;
+                    if (responseType === 'blob') {
+                        res.set('Content-Type', contentType);
+                        res.send(body);
+                    } else {
+                        res.send(`data:${contentType};base64,${body.toString('base64')}`);
+                    }
+                });
+                upstream.on('error', next);
+            }).on('error', next);
+        }
+    );
+    return router;
+};
 
 export const app = express();
+// static files must be served before serveIndex so that actual files
+// (node_modules, src, build, etc.) are returned with the correct MIME type
+// rather than being intercepted by the directory listing middleware.
+app.use('/', express.static(path.resolve(__dirname, '../')));
 app.use('/', serveIndex(path.resolve(__dirname, '../'), {icons: true}));
-app.use([/^\/src($|\/)/, '/'], express.static(path.resolve(__dirname, '../')));
 
 export const corsApp = express();
-corsApp.use('/proxy', proxy());
+corsApp.use('/proxy', proxyMiddleware());
 corsApp.use('/cors', cors(), express.static(path.resolve(__dirname, '../')));
 corsApp.use('/', express.static(path.resolve(__dirname, '.')));
 
@@ -38,15 +87,15 @@ const prefix = 'data:image/png;base64,';
 const screenshotFolder = '../tmp/reftests';
 const metadataFolder = '../tmp/reftests/metadata';
 
-mkdirp.sync(path.resolve(__dirname, screenshotFolder));
-mkdirp.sync(path.resolve(__dirname, metadataFolder));
+fs.mkdirSync(path.resolve(__dirname, screenshotFolder), {recursive: true});
+fs.mkdirSync(path.resolve(__dirname, metadataFolder), {recursive: true});
 
 const writeScreenshot = (buffer: Buffer, body: ScreenshotRequest) => {
     const filename = `${filenamifyUrl(body.test.replace(/^\/tests\/reftests\//, '').replace(/\.html$/, ''), {
         replacement: '-'
     })}!${[process.env.TARGET_BROWSER, body.platform.name, body.platform.version].join('-')}`;
 
-    fs.writeFileSync(path.resolve(__dirname, screenshotFolder, `${filename}.png`), buffer);
+    fs.writeFileSync(path.resolve(__dirname, screenshotFolder, `${filename}.png`), buffer as unknown as Uint8Array);
     return filename;
 };
 
