@@ -263,6 +263,7 @@ const extractColorAndPercentage = (tokens: CSSValue[]): {colorStr: string; perce
     return {colorStr, percentage};
 };
 
+
 const SUPPORTED_COLOR_FUNCTIONS: {
     [key: string]: (context: Context, args: CSSValue[]) => number;
 } = {
