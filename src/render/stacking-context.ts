@@ -3,6 +3,7 @@ import {DISPLAY} from '../css/property-descriptors/display';
 import {OVERFLOW} from '../css/property-descriptors/overflow';
 import {POSITION} from '../css/property-descriptors/position';
 import {createCounterText} from '../css/types/functions/counter';
+import {getNumber} from '../css/types/length-percentage';
 import {ElementContainer, FLAGS} from '../dom/element-container';
 import {LIElementContainer} from '../dom/elements/li-element-container';
 import {OLElementContainer} from '../dom/elements/ol-element-container';
@@ -47,8 +48,8 @@ export class ElementPaint {
         }
 
         if (this.container.styles.transform !== null) {
-            const offsetX = this.container.bounds.left + this.container.styles.transformOrigin[0].number;
-            const offsetY = this.container.bounds.top + this.container.styles.transformOrigin[1].number;
+            const offsetX = this.container.bounds.left + getNumber(this.container.styles.transformOrigin[0]);
+            const offsetY = this.container.bounds.top + getNumber(this.container.styles.transformOrigin[1]);
             const matrix = this.container.styles.transform;
             this.effects.push(new TransformEffect(offsetX, offsetY, matrix));
         }
