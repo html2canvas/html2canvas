@@ -1,4 +1,12 @@
+import {Context} from '../core/context';
+import {DebuggerType, isDebugging} from '../core/debugger';
+import {CSSParsedCounterDeclaration, CSSParsedPseudoDeclaration} from '../css/index';
 import {Bounds} from '../css/layout/bounds';
+import {LIST_STYLE_TYPE, listStyleType} from '../css/property-descriptors/list-style-type';
+import {getQuote} from '../css/property-descriptors/quotes';
+import {isIdentToken, nonFunctionArgSeparator} from '../css/syntax/parser';
+import {TokenType} from '../css/syntax/tokenizer';
+import {CounterState, createCounterText} from '../css/types/functions/counter';
 import {
     isBodyElement,
     isCanvasElement,
@@ -16,19 +24,26 @@ import {
     isTextNode,
     isVideoElement
 } from './node-parser';
-import {isIdentToken, nonFunctionArgSeparator} from '../css/syntax/parser';
-import {TokenType} from '../css/syntax/tokenizer';
-import {CounterState, createCounterText} from '../css/types/functions/counter';
-import {LIST_STYLE_TYPE, listStyleType} from '../css/property-descriptors/list-style-type';
-import {CSSParsedCounterDeclaration, CSSParsedPseudoDeclaration} from '../css/index';
-import {getQuote} from '../css/property-descriptors/quotes';
-import {Context} from '../core/context';
-import {DebuggerType, isDebugging} from '../core/debugger';
 
 export interface CloneOptions {
     ignoreElements?: (element: Element) => boolean;
     onclone?: (document: Document, element: HTMLElement) => void;
     allowTaint?: boolean;
+    /**
+     * Callback invoked for each CSS property during cloning. Return `true` to mark the property
+     * as handled (html2canvas will skip its default copy), or `false`/`undefined` to let
+     * html2canvas apply the default behaviour.
+     *
+     * Use this to skip or override specific properties, e.g. CSS custom properties (`--*`)
+     * that make cloning significantly slower in Firefox when many variables are present.
+     *
+     * @example
+     * // Skip all CSS custom properties
+     * html2canvas(el, {
+     *   onCopyProperty: (property) => property.startsWith('--')
+     * });
+     */
+    onCopyProperty?: (property: string, style: CSSStyleDeclaration, target: HTMLElement | SVGElement) => boolean | void;
 }
 
 export interface WindowOptions {
@@ -190,7 +205,7 @@ export class DocumentCloner {
 
     createCustomElementClone(node: HTMLElement): HTMLElement {
         const clone = document.createElement('html2canvascustomelement');
-        copyCSSStyles(node.style, clone);
+        copyCSSStyles(node.style, clone, this.options.onCopyProperty);
 
         return clone;
     }
@@ -371,7 +386,7 @@ export class DocumentCloner {
                 (style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
                 copyStyles
             ) {
-                copyCSSStyles(style, clone);
+                copyCSSStyles(style, clone, this.options.onCopyProperty);
             }
 
             if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
@@ -418,7 +433,7 @@ export class DocumentCloner {
         const declaration = new CSSParsedPseudoDeclaration(this.context, style);
 
         const anonymousReplacedElement = document.createElement('html2canvaspseudoelement');
-        copyCSSStyles(style, anonymousReplacedElement);
+        copyCSSStyles(style, anonymousReplacedElement, this.options.onCopyProperty);
 
         declaration.content.forEach((token) => {
             if (token.type === TokenType.STRING_TOKEN) {
@@ -606,11 +621,24 @@ const ignoredStyleProperties = [
     'content' // Safari shows pseudoelements if content is set
 ];
 
-export const copyCSSStyles = <T extends HTMLElement | SVGElement>(style: CSSStyleDeclaration, target: T): T => {
-    // Edge does not provide value for cssText
-    for (let i = style.length - 1; i >= 0; i--) {
+export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
+    style: CSSStyleDeclaration,
+    target: T,
+    onCopyProperty?: (property: string, style: CSSStyleDeclaration, target: T) => boolean | void
+): T => {
+    // Edge does not provide value for cssText.
+    // Iterate forward so we can break early when reaching CSS custom properties (--*)
+    // which browsers like Firefox report first and in large numbers, causing significant
+    // slowdowns when copied unnecessarily. See https://github.com/niklasvh/html2canvas/issues/3191
+    for (let i = 0; i < style.length; i++) {
         const property = style.item(i);
         if (ignoredStyleProperties.indexOf(property) === -1) {
+            if (onCopyProperty) {
+                // If the callback returns true the caller has handled this property; skip default copy.
+                if (onCopyProperty(property, style, target)) {
+                    continue;
+                }
+            }
             target.style.setProperty(property, style.getPropertyValue(property));
         }
     }

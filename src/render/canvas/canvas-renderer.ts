@@ -1,50 +1,50 @@
-import {contains} from '../../core/bitwise';
-import {Context} from '../../core/context';
-import {CSSParsedDeclaration} from '../../css';
-import {Bounds} from '../../css/layout/bounds';
-import {segmentGraphemes, TextBounds} from '../../css/layout/text';
-import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
-import {DIRECTION} from '../../css/property-descriptors/direction';
-import {DISPLAY} from '../../css/property-descriptors/display';
-import {computeLineHeight} from '../../css/property-descriptors/line-height';
-import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
-import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
-import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
-import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
-import {TextShadow} from '../../css/property-descriptors/text-shadow';
-import {isDimensionToken} from '../../css/syntax/parser';
-import {asString, Color, isTransparent} from '../../css/types/color';
-import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
-import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
-import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
-import {ElementContainer, FLAGS} from '../../dom/element-container';
-import {SelectElementContainer} from '../../dom/elements/select-element-container';
-import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
-import {ReplacedElementContainer} from '../../dom/replaced-elements';
-import {CanvasElementContainer} from '../../dom/replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from '../../dom/replaced-elements/iframe-element-container';
-import {ImageElementContainer} from '../../dom/replaced-elements/image-element-container';
-import {CHECKBOX, INPUT_COLOR, InputElementContainer, RADIO} from '../../dom/replaced-elements/input-element-container';
-import {SVGElementContainer} from '../../dom/replaced-elements/svg-element-container';
-import {TextContainer} from '../../dom/text-container';
-import {calculateBackgroundRendering, getBackgroundValueForIndex} from '../background';
-import {BezierCurve, isBezierCurve} from '../bezier-curve';
+import { contains } from '../../core/bitwise';
+import { Context } from '../../core/context';
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { segmentGraphemes, TextBounds } from '../../css/layout/text';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { computeLineHeight } from '../../css/property-descriptors/line-height';
+import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
+import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { isDimensionToken } from '../../css/syntax/parser';
+import { asString, Color, isTransparent } from '../../css/types/color';
+import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
+import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
+import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
+import { ElementContainer, FLAGS } from '../../dom/element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
+import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
+import { ReplacedElementContainer } from '../../dom/replaced-elements';
+import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
+import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
+import { CHECKBOX, INPUT_COLOR, InputElementContainer, RADIO } from '../../dom/replaced-elements/input-element-container';
+import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
+import { TextContainer } from '../../dom/text-container';
+import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
+import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
     parsePathForBorderDoubleOuter,
     parsePathForBorderStroke
 } from '../border';
-import {BoundCurves, calculateBorderBoxPath, calculateContentBoxPath, calculatePaddingBoxPath} from '../bound-curves';
-import {contentBox} from '../box-sizing';
-import {EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect} from '../effects';
-import {FontMetrics} from '../font-metrics';
-import {calculateObjectFitBounds} from '../object-fit';
-import {Path, reversePath, transformPath} from '../path';
-import {Renderer} from '../renderer';
-import {ElementPaint, parseStackingContexts, StackingContext} from '../stacking-context';
-import {Vector} from '../vector';
+import { BoundCurves, calculateBorderBoxPath, calculateContentBoxPath, calculatePaddingBoxPath } from '../bound-curves';
+import { contentBox } from '../box-sizing';
+import { EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect } from '../effects';
+import { FontMetrics } from '../font-metrics';
+import { calculateObjectFitBounds } from '../object-fit';
+import { Path, reversePath, transformPath } from '../path';
+import { Renderer } from '../renderer';
+import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
+import { Vector } from '../vector';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: Color | null;
@@ -777,13 +777,19 @@ export class CanvasRenderer extends Renderer {
                 .forEach((shadow) => {
                     this.ctx.save();
                     const borderBoxArea = calculateBorderBoxPath(paint.curves);
-                    const maskOffset = shadow.inset ? 0 : 1;
+                    // Build the painting area by applying offset and spread.
+                    // For inset shadows the painted shape shrinks inward; for outset it expands outward.
+                    // No maskOffset trick here — offsets are applied directly to the path so that
+                    // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur that
+                    // occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
+                    // See https://github.com/html2canvas/html2canvas/issues/21
+                    const spreadSign = shadow.inset ? -1 : 1;
                     const shadowPaintingArea = transformPath(
                         borderBoxArea,
-                        shadow.offsetX.number - maskOffset + (shadow.inset ? 1 : -1) * shadow.spread.number,
-                        shadow.offsetY.number + (shadow.inset ? 1 : -1) * shadow.spread.number,
-                        shadow.spread.number * (shadow.inset ? -2 : 2),
-                        shadow.spread.number * (shadow.inset ? -2 : 2)
+                        shadow.offsetX.number + spreadSign * -shadow.spread.number,
+                        shadow.offsetY.number + spreadSign * -shadow.spread.number,
+                        shadow.spread.number * spreadSign * 2,
+                        shadow.spread.number * spreadSign * 2
                     );
                     if (shadow.inset) {
                         this.path(borderBoxArea);
@@ -794,13 +800,9 @@ export class CanvasRenderer extends Renderer {
                         this.ctx.clip();
                         this.path(shadowPaintingArea);
                     }
-                    this.ctx.shadowOffsetX = maskOffset;
-                    this.ctx.shadowOffsetY = 0;
-                    this.ctx.shadowColor = asString(shadow.color);
-                    this.ctx.shadowBlur = shadow.blur.number;
                     this.ctx.fillStyle = asString(shadow.color);
                     if (shadow.blur.number) {
-                        this.ctx.filter = `blur(${shadow.blur.number}px)`;
+                        this.ctx.filter = `blur(${shadow.blur.number / 2}px)`;
                     }
                     this.ctx.fill();
                     this.ctx.restore();

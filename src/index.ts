@@ -1,11 +1,11 @@
+import {CacheStorage} from './core/cache-storage';
+import {Context, ContextOptions} from './core/context';
 import {Bounds, parseBounds, parseDocumentSize} from './css/layout/bounds';
 import {COLORS, isTransparent, parseColor} from './css/types/color';
 import {CloneConfigurations, CloneOptions, DocumentCloner, WindowOptions} from './dom/document-cloner';
 import {isBodyElement, isHTMLElement, parseTree} from './dom/node-parser';
-import {CacheStorage} from './core/cache-storage';
 import {CanvasRenderer, RenderConfigurations, RenderOptions} from './render/canvas/canvas-renderer';
 import {ForeignObjectRenderer} from './render/canvas/foreignobject-renderer';
-import {Context, ContextOptions} from './core/context';
 
 export type Options = CloneOptions &
     WindowOptions &
@@ -77,6 +77,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         allowTaint: opts.allowTaint ?? false,
         onclone: opts.onclone,
         ignoreElements: opts.ignoreElements,
+        onCopyProperty: opts.onCopyProperty,
         inlineImages: foreignObjectRendering,
         copyStyles: foreignObjectRendering
     };
