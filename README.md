@@ -25,11 +25,11 @@ The script is still in a **very experimental state**, so I don't recommend using
 
 The library should work fine on the following browsers (with `Promise` polyfill):
 
--   Firefox 3.5+
--   Google Chrome
--   Opera 12+
--   IE9+
--   Safari 6+
+- Firefox 3.5+
+- Google Chrome
+- Opera 12+
+- IE9+
+- Safari 6+
 
 As each CSS property needs to be manually built to be supported, there are a number of properties that are not yet supported.
 
@@ -106,19 +106,23 @@ npm run unittest
 **Visual reftests** (requires a browser):
 
 1. Build the project first (only needed once, or after source changes):
+
     ```shell
     npm run build
     ```
 
 2. Start the local dev server:
+
     ```shell
     npm start
     ```
 
 3. Open the test runner in your browser:
+
     ```
     http://localhost:8080/tests/testrunner.html
     ```
+
     Each reftest renders a page through html2canvas and compares the output against a reference PNG stored in `tests/reftests/`. Results are shown inline with pass/fail status.
 
     Individual reftest pages (e.g. `tests/reftests/background/box-shadow.html`) can also be opened directly to inspect a specific feature.

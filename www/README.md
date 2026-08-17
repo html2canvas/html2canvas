@@ -70,11 +70,11 @@ npx webpack --config webpack.config.js
 
 Doc pages are automatically generated from Markdown files in `../docs/`. Each `.md` file produces a `/{slug}` route. The frontmatter supports:
 
-| Field           | Description                        |
-|-----------------|------------------------------------|
-| `title`         | Page title                         |
-| `description`   | Subtitle / meta description        |
-| `previousUrl`   | URL of the previous page           |
-| `previousTitle` | Title of the previous page         |
-| `nextUrl`       | URL of the next page               |
-| `nextTitle`     | Title of the next page             |
+| Field           | Description                 |
+| --------------- | --------------------------- |
+| `title`         | Page title                  |
+| `description`   | Subtitle / meta description |
+| `previousUrl`   | URL of the previous page    |
+| `previousTitle` | Title of the previous page  |
+| `nextUrl`       | URL of the next page        |
+| `nextTitle`     | Title of the next page      |

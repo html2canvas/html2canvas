@@ -14,6 +14,6 @@ Please replace this line with a brief summary of your issue **AND** if possible 
 
 ### Specifications:
 
- * html2canvas version tested with:
- * Browser & version:
- * Operating system:
+- html2canvas version tested with:
+- Browser & version:
+- Operating system:

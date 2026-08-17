@@ -11,11 +11,11 @@ Before opening a pull request, please make sure all the tests pass locally by ru
 
 This PR fixes/implements the following **bugs/features**
 
-* [ ] Bug 1
-* [ ] Bug 2
-* [ ] Feature 1
-* [ ] Feature 2
-* [ ] Breaking changes
+- [ ] Bug 1
+- [ ] Bug 2
+- [ ] Feature 1
+- [ ] Feature 2
+- [ ] Breaking changes
 
 <!-- You can skip this if you're fixing a typo or adding an app to the Showcase. -->
 
@@ -34,4 +34,5 @@ Please make sure that code adheres to the project code formatting. Running `npm 
 **Closing issues**
 
 <!-- Put `closes #XXXX` in your comment to auto-close the issue that your PR fixes (if such). -->
+
 Fixes #

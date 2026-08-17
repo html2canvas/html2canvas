@@ -13,6 +13,7 @@ import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
 import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
 import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
 import {TextShadow} from '../../css/property-descriptors/text-shadow';
+import {WRITING_MODE} from '../../css/property-descriptors/writing-mode';
 import {isDimensionToken} from '../../css/syntax/parser';
 import {asString, Color, isTransparent} from '../../css/types/color';
 import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
@@ -143,23 +144,81 @@ export class CanvasRenderer extends Renderer {
         }
     }
 
-    renderTextWithLetterSpacing(text: TextBounds, letterSpacing: number, baseline: number): void {
-        if (letterSpacing === 0) {
-            // Fixed an issue with characters moving up in non-Firefox.
-            // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-            if (navigator.userAgent.indexOf('Firefox') === -1) {
-                this.ctx.textBaseline = 'ideographic';
-                this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
-            } else {
-                this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + baseline);
-            }
-        } else {
-            const letters = segmentGraphemes(text.text);
-            letters.reduce((left, letter) => {
-                this.ctx.fillText(letter, left, text.bounds.top + baseline);
+    renderTextWithLetterSpacing(
+        text: TextBounds,
+        letterSpacing: number,
+        baseline: number,
+        writingMode: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB
+    ): void {
+        const isVertical =
+            writingMode === WRITING_MODE.VERTICAL_RL ||
+            writingMode === WRITING_MODE.VERTICAL_LR ||
+            writingMode === WRITING_MODE.SIDEWAYS_RL ||
+            writingMode === WRITING_MODE.SIDEWAYS_LR;
 
-                return left + this.ctx.measureText(letter).width;
-            }, text.bounds.left);
+        if (isVertical) {
+            // For vertical writing modes the browser already positions the text bounds correctly.
+            // We rotate the canvas ±90° around the centre of the text bounds so that fillText
+            // draws along the right axis, then restore.
+            const isSidewaysLR = writingMode === WRITING_MODE.SIDEWAYS_LR;
+            // sideways-lr rotates -90°; all other vertical modes rotate +90°
+            const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+            const cx = text.bounds.left + text.bounds.width / 2;
+            const cy = text.bounds.top + text.bounds.height / 2;
+
+            this.ctx.save();
+            this.ctx.translate(cx, cy);
+            this.ctx.rotate(angle);
+            this.ctx.translate(-cx, -cy);
+
+            // After rotation the "visual" width and height swap, so we need to
+            // paint as if the text was horizontal with swapped bounds.
+            const rotatedBounds = new Bounds(
+                cx - text.bounds.height / 2,
+                cy - text.bounds.width / 2,
+                text.bounds.height,
+                text.bounds.width
+            );
+            const rotatedText = new TextBounds(text.text, rotatedBounds);
+
+            if (letterSpacing === 0) {
+                if (navigator.userAgent.indexOf('Firefox') === -1) {
+                    this.ctx.textBaseline = 'ideographic';
+                    this.ctx.fillText(
+                        rotatedText.text,
+                        rotatedText.bounds.left,
+                        rotatedText.bounds.top + rotatedText.bounds.height
+                    );
+                } else {
+                    this.ctx.fillText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + baseline);
+                }
+            } else {
+                const letters = segmentGraphemes(rotatedText.text);
+                letters.reduce((left, letter) => {
+                    this.ctx.fillText(letter, left, rotatedText.bounds.top + baseline);
+                    return left + this.ctx.measureText(letter).width;
+                }, rotatedText.bounds.left);
+            }
+
+            this.ctx.restore();
+        } else {
+            if (letterSpacing === 0) {
+                // Fixed an issue with characters moving up in non-Firefox.
+                // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
+                if (navigator.userAgent.indexOf('Firefox') === -1) {
+                    this.ctx.textBaseline = 'ideographic';
+                    this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+                } else {
+                    this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + baseline);
+                }
+            } else {
+                const letters = segmentGraphemes(text.text);
+                letters.reduce((left, letter) => {
+                    this.ctx.fillText(letter, left, text.bounds.top + baseline);
+
+                    return left + this.ctx.measureText(letter).width;
+                }, text.bounds.left);
+            }
         }
     }
 
@@ -189,13 +248,19 @@ export class CanvasRenderer extends Renderer {
         this.ctx.textBaseline = 'alphabetic';
         const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
         const paintOrder = styles.paintOrder;
+        const wm = styles.writingMode;
+        const isVertical =
+            wm === WRITING_MODE.VERTICAL_RL ||
+            wm === WRITING_MODE.VERTICAL_LR ||
+            wm === WRITING_MODE.SIDEWAYS_RL ||
+            wm === WRITING_MODE.SIDEWAYS_LR;
 
         text.textBounds.forEach((text) => {
             paintOrder.forEach((paintOrderLayer) => {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
                         this.ctx.fillStyle = asString(styles.color);
-                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, getNumber(styles.fontSize));
+                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, getNumber(styles.fontSize), wm);
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
@@ -211,7 +276,8 @@ export class CanvasRenderer extends Renderer {
                                     this.renderTextWithLetterSpacing(
                                         text,
                                         styles.letterSpacing,
-                                        getNumber(styles.fontSize)
+                                        getNumber(styles.fontSize),
+                                        wm
                                     );
                                 });
 
@@ -226,31 +292,82 @@ export class CanvasRenderer extends Renderer {
                             styles.textDecorationLine.forEach((textDecorationLine) => {
                                 // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
                                 const decorationLineHeight = 1;
-                                switch (textDecorationLine) {
-                                    case TEXT_DECORATION_LINE.UNDERLINE:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top + text.bounds.height - decorationLineHeight,
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
-                                    case TEXT_DECORATION_LINE.OVERLINE:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top,
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
-                                    case TEXT_DECORATION_LINE.LINE_THROUGH:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
+                                if (isVertical) {
+                                    // In vertical writing modes underline/overline become vertical bars
+                                    // on the inline-end/inline-start side respectively.
+                                    switch (textDecorationLine) {
+                                        case TEXT_DECORATION_LINE.UNDERLINE:
+                                            // inline-end side (right for vertical-rl/sideways-rl, left for vertical-lr/sideways-lr)
+                                            if (wm === WRITING_MODE.VERTICAL_LR || wm === WRITING_MODE.SIDEWAYS_LR) {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            } else {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            }
+                                            break;
+                                        case TEXT_DECORATION_LINE.OVERLINE:
+                                            // inline-start side
+                                            if (wm === WRITING_MODE.VERTICAL_LR || wm === WRITING_MODE.SIDEWAYS_LR) {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            } else {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            }
+                                            break;
+                                        case TEXT_DECORATION_LINE.LINE_THROUGH:
+                                            this.ctx.fillRect(
+                                                text.bounds.left + (text.bounds.width / 2 - decorationLineHeight / 2),
+                                                text.bounds.top,
+                                                decorationLineHeight,
+                                                text.bounds.height
+                                            );
+                                            break;
+                                    }
+                                } else {
+                                    switch (textDecorationLine) {
+                                        case TEXT_DECORATION_LINE.UNDERLINE:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top + text.bounds.height - decorationLineHeight,
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                        case TEXT_DECORATION_LINE.OVERLINE:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top,
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                        case TEXT_DECORATION_LINE.LINE_THROUGH:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                    }
                                 }
                             });
                         }
@@ -261,7 +378,23 @@ export class CanvasRenderer extends Renderer {
                             this.ctx.lineWidth = styles.webkitTextStrokeWidth;
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             this.ctx.lineJoin = !!(window as any).chrome ? 'miter' : 'round';
-                            this.ctx.strokeText(text.text, text.bounds.left, text.bounds.top + baseline);
+                            if (isVertical) {
+                                // Apply the same rotation used in renderTextWithLetterSpacing
+                                const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+                                const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+                                const cx = text.bounds.left + text.bounds.width / 2;
+                                const cy = text.bounds.top + text.bounds.height / 2;
+                                this.ctx.save();
+                                this.ctx.translate(cx, cy);
+                                this.ctx.rotate(angle);
+                                this.ctx.translate(-cx, -cy);
+                                const strokeX = cx - text.bounds.height / 2;
+                                const strokeY = cy - text.bounds.width / 2;
+                                this.ctx.strokeText(text.text, strokeX, strokeY + baseline);
+                                this.ctx.restore();
+                            } else {
+                                this.ctx.strokeText(text.text, text.bounds.left, text.bounds.top + baseline);
+                            }
                         }
                         this.ctx.strokeStyle = '';
                         this.ctx.lineWidth = 0;

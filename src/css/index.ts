@@ -72,6 +72,7 @@ import {VISIBILITY, visibility} from './property-descriptors/visibility';
 import {webkitTextStrokeColor} from './property-descriptors/webkit-text-stroke-color';
 import {webkitTextStrokeWidth} from './property-descriptors/webkit-text-stroke-width';
 import {wordBreak} from './property-descriptors/word-break';
+import {writingMode} from './property-descriptors/writing-mode';
 import {zIndex} from './property-descriptors/z-index';
 import {CSSValue, Parser, isIdentToken} from './syntax/parser';
 import {Tokenizer} from './syntax/tokenizer';
@@ -149,6 +150,7 @@ export class CSSParsedDeclaration {
     webkitTextStrokeColor: Color;
     webkitTextStrokeWidth: ReturnType<typeof webkitTextStrokeWidth.parse>;
     wordBreak: ReturnType<typeof wordBreak.parse>;
+    writingMode: ReturnType<typeof writingMode.parse>;
     zIndex: ReturnType<typeof zIndex.parse>;
 
     constructor(context: Context, declaration: CSSStyleDeclaration) {
@@ -227,6 +229,7 @@ export class CSSParsedDeclaration {
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
         this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
+        this.writingMode = parse(context, writingMode, declaration.writingMode);
         this.zIndex = parse(context, zIndex, declaration.zIndex);
         this.objectFit = parse(context, objectFit, declaration.objectFit);
     }

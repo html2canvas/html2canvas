@@ -1,8 +1,8 @@
 import typescript from '@rollup/plugin-typescript';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
+import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
-import { readFileSync } from 'fs';
+import {readFileSync} from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
@@ -94,4 +94,3 @@ export default [
         // Note: css-line-break and text-segmentation are bundled for importmap compatibility
     }
 ];
-
