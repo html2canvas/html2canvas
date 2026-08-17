@@ -1,7 +1,7 @@
 import {strictEqual} from 'assert';
-import {asString, color, isTransparent, pack} from '../color';
-import {Parser} from '../../syntax/parser';
 import {Context} from '../../../core/context';
+import {Parser} from '../../syntax/parser';
+import {asString, color, isTransparent, pack} from '../color';
 
 const parse = (value: string) => color.parse({} as Context, Parser.parseValue(value));
 
@@ -31,18 +31,33 @@ describe('types', () => {
             it('rgba(222, 111, 50, 0.22)', () =>
                 strictEqual(parse('rgba(222, 111, 50, 0.22)'), pack(222, 111, 50, 0.22)));
             it('rgba(222 111 50 0.123)', () => strictEqual(parse('rgba(222 111 50 0.123)'), pack(222, 111, 50, 0.123)));
-            it('hsl(270,60%,70%)', () => strictEqual(parse('hsl(270,60%,70%)'), parse('rgb(178,132,224)')));
-            it('hsl(270, 60%, 70%)', () => strictEqual(parse('hsl(270, 60%, 70%)'), parse('rgb(178,132,224)')));
-            it('hsl(270 60% 70%)', () => strictEqual(parse('hsl(270 60% 70%)'), parse('rgb(178,132,224)')));
-            it('hsl(270deg, 60%, 70%)', () => strictEqual(parse('hsl(270deg, 60%, 70%)'), parse('rgb(178,132,224)')));
+            it('hsl(270,60%,70%)', () => strictEqual(parse('hsl(270,60%,70%)'), parse('rgb(179,133,224)')));
+            it('hsl(270, 60%, 70%)', () => strictEqual(parse('hsl(270, 60%, 70%)'), parse('rgb(179,133,224)')));
+            it('hsl(270 60% 70%)', () => strictEqual(parse('hsl(270 60% 70%)'), parse('rgb(179,133,224)')));
+            it('hsl(270deg, 60%, 70%)', () => strictEqual(parse('hsl(270deg, 60%, 70%)'), parse('rgb(179,133,224)')));
             it('hsl(4.71239rad, 60%, 70%)', () =>
-                strictEqual(parse('hsl(4.71239rad, 60%, 70%)'), parse('rgb(178,132,224)')));
-            it('hsl(.75turn, 60%, 70%)', () => strictEqual(parse('hsl(.75turn, 60%, 70%)'), parse('rgb(178,132,224)')));
+                strictEqual(parse('hsl(4.71239rad, 60%, 70%)'), parse('rgb(179,133,224)')));
+            it('hsl(.75turn, 60%, 70%)', () => strictEqual(parse('hsl(.75turn, 60%, 70%)'), parse('rgb(179,133,224)')));
             it('hsla(.75turn, 60%, 70%, 50%)', () =>
-                strictEqual(parse('hsl(.75turn, 60%, 70%, 50%)'), parse('rgba(178,132,224, 0.5)')));
+                strictEqual(parse('hsl(.75turn, 60%, 70%, 50%)'), parse('rgba(179,133,224, 0.5)')));
             it('lch(29.2345% 44.2 27 / 0.2)', () =>
-                strictEqual(parse('lch(29.2345% 44.2 27 / 0.2)'), pack(255, 148, 143, 0.2)));
-            it('lch(76.5 4.24 49.5)', () => strictEqual(parse('lch(76.5 4.24 49.5)'), pack(212, 182, 175, 1)));
+                strictEqual(parse('lch(29.2345% 44.2 27 / 0.2)'), pack(125, 35, 41, 0.2)));
+            it('lch(76.5 4.24 49.5)', () => strictEqual(parse('lch(76.5 4.24 49.5)'), pack(196, 187, 183, 1)));
+            it('oklch(0.7 0.15 180)', () => strictEqual(parse('oklch(0.7 0.15 180)'), pack(0, 187, 162, 1)));
+            it('oklab(0.7 -0.1 0.1)', () => strictEqual(parse('oklab(0.7 -0.1 0.1)'), pack(119, 178, 83, 1)));
+            it('lab(50 30 -20)', () => strictEqual(parse('lab(50 30 -20)'), pack(156, 100, 154, 1)));
+            it('color(display-p3 1 0 0)', () => strictEqual(parse('color(display-p3 1 0 0)'), pack(255, 11, 12, 1)));
+            it('color(srgb 0.5 0.5 0.5)', () => strictEqual(parse('color(srgb 0.5 0.5 0.5)'), pack(128, 128, 128, 1)));
+            it('hwb(270 20% 10%)', () => strictEqual(parse('hwb(270 20% 10%)'), pack(140, 51, 230, 1)));
+            it('color-mix(in srgb, red 50%, blue 50%)', () =>
+                strictEqual(parse('color-mix(in srgb, red 50%, blue 50%)'), pack(128, 0, 128, 1)));
+            it('color-mix(in oklch, #34c9eb 80%, white 20%)', () =>
+                strictEqual(parse('color-mix(in oklch, #34c9eb 80%, white 20%)'), pack(111, 212, 240, 1)));
+            it('color-mix(in hsl, hsl(120 100% 50%) 25%, hsl(30 100% 50%) 75%)', () =>
+                strictEqual(
+                    parse('color-mix(in hsl, hsl(120 100% 50%) 25%, hsl(30 100% 50%) 75%)'),
+                    pack(255, 223, 0, 1)
+                ));
         });
         describe('util', () => {
             describe('isTransparent', () => {
