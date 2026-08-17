@@ -7,34 +7,32 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import serveIndex from 'serve-index';
-import { URL } from 'url';
+import {URL} from 'url';
 import yargs from 'yargs';
-import { ScreenshotRequest } from './types';
+import {ScreenshotRequest} from './types';
 
 // Inline proxy middleware — replaces the html2canvas-proxy package.
 // Fetches a remote URL (passed as ?url=) and returns its content as a base64 data URI.
 const proxyMiddleware = (): express.Router => {
     const router = express.Router();
-    router.get(
-        '/',
-        cors(),
-        (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            const rawUrl = req.query.url;
-            if (!rawUrl || typeof rawUrl !== 'string') {
-                return next(new Error('No url specified'));
-            }
-            let parsed: URL;
-            try {
-                parsed = new URL(rawUrl);
-            } catch {
-                return next(new Error(`Invalid url specified: ${rawUrl}`));
-            }
-            if (!parsed.host) {
-                return next(new Error(`Invalid url specified: ${rawUrl}`));
-            }
+    router.get('/', cors(), (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        const rawUrl = req.query.url;
+        if (!rawUrl || typeof rawUrl !== 'string') {
+            return next(new Error('No url specified'));
+        }
+        let parsed: URL;
+        try {
+            parsed = new URL(rawUrl);
+        } catch {
+            return next(new Error(`Invalid url specified: ${rawUrl}`));
+        }
+        if (!parsed.host) {
+            return next(new Error(`Invalid url specified: ${rawUrl}`));
+        }
 
-            const transport = parsed.protocol === 'https:' ? https : http;
-            transport.get(rawUrl, (upstream) => {
+        const transport = parsed.protocol === 'https:' ? https : http;
+        transport
+            .get(rawUrl, (upstream) => {
                 const contentType = upstream.headers['content-type'] ?? 'application/octet-stream';
                 const chunks: Uint8Array[] = [];
                 upstream.on('data', (chunk: Uint8Array) => chunks.push(chunk));
@@ -49,9 +47,9 @@ const proxyMiddleware = (): express.Router => {
                     }
                 });
                 upstream.on('error', next);
-            }).on('error', next);
-        }
-    );
+            })
+            .on('error', next);
+    });
     return router;
 };
 

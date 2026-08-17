@@ -123,6 +123,18 @@ npm run unittest
 
     Individual reftest pages (e.g. `tests/reftests/background/box-shadow.html`) can also be opened directly to inspect a specific feature.
 
+### Website
+
+The website source lives in the `www/` directory and is built with [Astro](https://astro.build). Documentation pages are Markdown files in `docs/`.
+
+To run the website locally:
+
+```shell
+cd www
+npm install
+npm run dev
+```
+
 ### Examples
 
 For more information and examples, please visit the [homepage](https://html2canvas.github.io/html2canvas) or try the [test console](https://html2canvas.github.io/html2canvas/tests/).

@@ -50,53 +50,52 @@ describe('OKLab color conversion (colorizr test cases)', () => {
         it(`${name}: oklab(${oklab.l} ${oklab.a} ${oklab.b}) should equal rgb(${expectedRgb.r}, ${expectedRgb.g}, ${expectedRgb.b})`, () => {
             const oklabStr = `oklab(${oklab.l} ${oklab.a} ${oklab.b})`;
             const result = parse(oklabStr);
-            
+
             // Extract RGB values from packed color
             const alpha = 0xff & result;
             const blue = 0xff & (result >> 8);
             const green = 0xff & (result >> 16);
             const red = 0xff & (result >> 24);
-            
+
             // Allow small tolerance for rounding differences (within 1 RGB unit)
             const tolerance = 1;
             const rDiff = Math.abs(red - expectedRgb.r);
             const gDiff = Math.abs(green - expectedRgb.g);
             const bDiff = Math.abs(blue - expectedRgb.b);
-            
+
             if (rDiff > tolerance || gDiff > tolerance || bDiff > tolerance) {
                 throw new Error(
                     `Expected rgb(${expectedRgb.r}, ${expectedRgb.g}, ${expectedRgb.b}), ` +
-                    `got rgb(${red}, ${green}, ${blue}). ` +
-                    `Differences: R=${rDiff}, G=${gDiff}, B=${bDiff}`
+                        `got rgb(${red}, ${green}, ${blue}). ` +
+                        `Differences: R=${rDiff}, G=${gDiff}, B=${bDiff}`
                 );
             }
-            
+
             strictEqual(alpha, 255, 'Alpha should be 1 (255)');
         });
     });
-    
+
     // Test with percentage values
     it('brightPink with percentage: oklab(63.269% 0.23887 0.08648)', () => {
         const result = parse('oklab(63.269% 0.23887 0.08648)');
-        
+
         const alpha = 0xff & result;
         const blue = 0xff & (result >> 8);
         const green = 0xff & (result >> 16);
         const red = 0xff & (result >> 24);
-        
+
         const tolerance = 1;
         const rDiff = Math.abs(red - 255);
         const gDiff = Math.abs(green - 0);
         const bDiff = Math.abs(blue - 68);
-        
+
         if (rDiff > tolerance || gDiff > tolerance || bDiff > tolerance) {
             throw new Error(
                 `Expected rgb(255, 0, 68), got rgb(${red}, ${green}, ${blue}). ` +
-                `Differences: R=${rDiff}, G=${gDiff}, B=${bDiff}`
+                    `Differences: R=${rDiff}, G=${gDiff}, B=${bDiff}`
             );
         }
-        
+
         strictEqual(alpha, 255);
     });
 });
-

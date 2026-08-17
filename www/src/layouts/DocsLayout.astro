@@ -1,0 +1,131 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Carbon from '../components/carbon.jsx';
+import Footer from '../components/footer.jsx';
+import Navigation from '../components/navigation.jsx';
+import back from '../images/ic_arrow_back_black_24px.svg?raw';
+import next from '../images/ic_arrow_forward_black_24px.svg?raw';
+
+interface Props {
+    title: string;
+    description?: string;
+    previousUrl?: string;
+    previousTitle?: string;
+    nextUrl?: string;
+    nextTitle?: string;
+}
+
+const {title, description = '', previousUrl, previousTitle, nextUrl, nextTitle} = Astro.props;
+
+const hasPrev = previousUrl && previousTitle;
+const hasNext = nextUrl && nextTitle;
+const hasPagination = hasPrev || hasNext;
+---
+
+<BaseLayout title={`${title} - html2canvas`} description={description}>
+    <Navigation client:load />
+    <div
+        style="margin-left: 0; display: flex; min-height: 100vh; flex-direction: column;"
+        class="docs-wrapper"
+    >
+        <!-- Page header -->
+        <div
+            style="background: #7cb342; margin-bottom: 1.45rem; color: #fff; padding-top: 1rem; padding-bottom: 1rem;"
+        >
+            <div style="max-width: 960px;">
+                <div style="width: 85%; margin: 0 auto; display: flex;">
+                    <div style="flex: 1;">
+                        <h1
+                            style="padding: 20px 0; font-size: 2.8rem; margin: 0;"
+                            class="docs-title"
+                        >
+                            {title}
+                        </h1>
+                        <h4
+                            style="font-weight: 300; color: rgba(255,255,255,0.6); font-size: 1.8rem;"
+                            class="docs-desc"
+                        >
+                            {description}
+                        </h4>
+                    </div>
+                    <Carbon client:load style={{width: '150px', marginLeft: '20px'}} />
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div style="max-width: 960px; padding-top: 0; flex-grow: 1;">
+            <div style="width: 85%; margin: 0 auto;" class="docs-content">
+                <slot />
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {
+            hasPagination && (
+                <div style="background-color: #7cb342; margin-top: 30px;">
+                    <div style="width: 85%; display: flex; margin: 0 auto; align-items: center; height: 96px;">
+                        {hasPrev && (
+                            <a
+                                href={previousUrl}
+                                style="flex: 1; color: #fff; display: flex; align-items: flex-end; text-decoration: none;"
+                            >
+                                <div
+                                    style="height: 24px; width: 24px;"
+                                    set:html={back}
+                                />
+                                <div>
+                                    <span
+                                        style="display: block; color: rgba(255,255,255,.55); font-size: 15px; line-height: 18px; margin-bottom: 1px;"
+                                    >
+                                        Previous
+                                    </span>
+                                    <div style="color: rgba(255,255,255,.87); font-size: 20px;">
+                                        {previousTitle}
+                                    </div>
+                                </div>
+                            </a>
+                        )}
+                        {hasNext && (
+                            <a
+                                href={nextUrl}
+                                style="flex: 1; color: #fff; justify-content: flex-end; display: flex; align-items: flex-end; text-decoration: none;"
+                            >
+                                <div>
+                                    <span
+                                        style="display: block; color: rgba(255,255,255,.55); font-size: 15px; line-height: 18px; margin-bottom: 1px;"
+                                    >
+                                        Next
+                                    </span>
+                                    <div style="color: rgba(255,255,255,.87); font-size: 20px;">
+                                        {nextTitle}
+                                    </div>
+                                </div>
+                                <div
+                                    style="height: 24px; width: 24px;"
+                                    set:html={next}
+                                />
+                            </a>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        <Footer />
+    </div>
+</BaseLayout>
+
+<style>
+    @media (min-width: 1000px) {
+        .docs-wrapper {
+            margin-left: 300px !important;
+        }
+        .docs-title {
+            font-size: 4.2rem !important;
+        }
+        .docs-desc {
+            font-size: 2.28rem !important;
+        }
+    }
+</style>

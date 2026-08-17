@@ -1,16 +1,16 @@
-import {Context} from '../core/context';
-import {CSSParsedDeclaration} from '../css';
-import {ElementContainer, FLAGS} from './element-container';
-import {LIElementContainer} from './elements/li-element-container';
-import {OLElementContainer} from './elements/ol-element-container';
-import {SelectElementContainer} from './elements/select-element-container';
-import {TextareaElementContainer} from './elements/textarea-element-container';
-import {CanvasElementContainer} from './replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from './replaced-elements/iframe-element-container';
-import {ImageElementContainer} from './replaced-elements/image-element-container';
-import {InputElementContainer} from './replaced-elements/input-element-container';
-import {SVGElementContainer} from './replaced-elements/svg-element-container';
-import {TextContainer} from './text-container';
+import { Context } from '../core/context';
+import { CSSParsedDeclaration } from '../css';
+import { ElementContainer, FLAGS } from './element-container';
+import { LIElementContainer } from './elements/li-element-container';
+import { OLElementContainer } from './elements/ol-element-container';
+import { SelectElementContainer } from './elements/select-element-container';
+import { TextareaElementContainer } from './elements/textarea-element-container';
+import { CanvasElementContainer } from './replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from './replaced-elements/iframe-element-container';
+import { ImageElementContainer } from './replaced-elements/image-element-container';
+import { InputElementContainer } from './replaced-elements/input-element-container';
+import { SVGElementContainer } from './replaced-elements/svg-element-container';
+import { TextContainer } from './text-container';
 
 const LIST_OWNERS = ['OL', 'UL', 'MENU'];
 
@@ -58,7 +58,6 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                     }
 
                     parent.elements.push(container);
-                    childNode.slot;
                     if (childNode.shadowRoot) {
                         parseNodeTree(context, childNode.shadowRoot, container, root);
                     } else if (

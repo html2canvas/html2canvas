@@ -1,0 +1,29 @@
+---
+import '../styles/global.css';
+import Example from '../components/example.jsx';
+
+interface Props {
+    title?: string;
+    description?: string;
+}
+
+const {
+    title = 'html2canvas - Screenshots with JavaScript',
+    description = 'Take screenshots with JavaScript using html2canvas'
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content={description} />
+        <title>{title}</title>
+        <link rel="icon" type="image/svg+xml" href="/logo_icon.svg" />
+    </head>
+    <body>
+        <slot />
+        <Example client:load />
+    </body>
+</html>
