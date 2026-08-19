@@ -6,22 +6,26 @@
         <script type="text/javascript" src="../../test.js"></script>
         <style>
             body {
-                font-family: Arial;
+                font-family:
+                    Arial,
+                    Helvetica,
+                    Liberation Sans,
+                    sans-serif;
             }
 
             .small {
                 font-size: 14px;
-                line-height: 1vw;
+                line-height: 8px;
             }
 
             .medium {
                 font-size: 18px;
-                line-height: 2vw;
+                line-height: 16px;
             }
 
             .large {
                 font-size: 24px;
-                line-height: 3vw;
+                line-height: 24px;
             }
 
             div {
@@ -34,17 +38,17 @@
 
             h1 {
                 font-size: 36px;
-                line-height: 4vw;
+                line-height: 32px;
             }
 
             h2 {
                 font-size: 24px;
-                line-height: 3vw;
+                line-height: 24px;
             }
 
             h3 {
                 font-size: 16px;
-                line-height: 2vw;
+                line-height: 16px;
             }
 
             .raw {
@@ -55,8 +59,8 @@
     </head>
     <body>
         <h1>&lt;h1&gt; text-decoration</h1>
-        <div style="font-family: Arial">
-            <h2>Arial</h2>
+        <div style="font-family: Arial, Helvetica, 'Liberation Sans', sans-serif">
+            <h2>Arial / Helvetica</h2>
             <ol class="small">
                 <li style="text-decoration: none">text-decoration:none;</li>
                 <li style="text-decoration: underline">text-decoration:underline;</li>
@@ -78,8 +82,8 @@
             </ol>
         </div>
 
-        <div style="font-family: Verdana">
-            <h2>Verdana</h2>
+        <div style="font-family: Verdana, 'DejaVu Sans', Geneva, sans-serif">
+            <h2>Verdana / DejaVu Sans</h2>
             <ol class="small">
                 <li style="text-decoration: none">text-decoration:none;</li>
                 <li style="text-decoration: underline">text-decoration:underline;</li>
@@ -99,8 +103,8 @@
                 <li style="text-decoration: line-through">text-decoration:line-through;</li>
             </ol>
         </div>
-        <div style="font-family: Tahoma">
-            <h2>Tahoma</h2>
+        <div style="font-family: Tahoma, 'DejaVu Sans Condensed', Geneva, sans-serif">
+            <h2>Tahoma / DejaVu Sans Condensed</h2>
             <ol class="small">
                 <li style="text-decoration: none">text-decoration:none;</li>
                 <li style="text-decoration: underline">text-decoration:underline;</li>
