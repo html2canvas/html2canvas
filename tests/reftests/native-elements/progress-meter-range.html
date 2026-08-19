@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Native Elements: progress, meter, input[type=range]</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Arial;
+                font-size: 14px;
+                margin: 10px;
+                background: #f5f5f5;
+            }
+            h3 {
+                font-size: 12px;
+                margin: 8px 0 4px;
+                color: #333;
+            }
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 10px;
+                align-items: center;
+            }
+            label {
+                font-size: 11px;
+                color: #666;
+            }
+            progress,
+            meter,
+            input[type='range'] {
+                width: 200px;
+                height: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <h3>progress</h3>
+        <div class="row">
+            <div><label>0%</label><br /><progress value="0" max="100"></progress></div>
+            <div><label>25%</label><br /><progress value="25" max="100"></progress></div>
+            <div><label>50%</label><br /><progress value="50" max="100"></progress></div>
+            <div><label>75%</label><br /><progress value="75" max="100"></progress></div>
+            <div><label>100%</label><br /><progress value="100" max="100"></progress></div>
+        </div>
+
+        <h3>meter</h3>
+        <div class="row">
+            <div>
+                <label>optimum (green)</label><br />
+                <meter min="0" max="100" low="25" high="75" optimum="50" value="50"></meter>
+            </div>
+            <div>
+                <label>suboptimum (yellow)</label><br />
+                <meter min="0" max="100" low="25" high="75" optimum="50" value="20"></meter>
+            </div>
+            <div>
+                <label>critical (red)</label><br />
+                <meter min="0" max="100" low="25" high="75" optimum="10" value="90"></meter>
+            </div>
+        </div>
+
+        <h3>input[type=range]</h3>
+        <div class="row">
+            <div><label>0%</label><br /><input type="range" min="0" max="100" value="0" /></div>
+            <div><label>50%</label><br /><input type="range" min="0" max="100" value="50" /></div>
+            <div><label>100%</label><br /><input type="range" min="0" max="100" value="100" /></div>
+        </div>
+    </body>
+</html>

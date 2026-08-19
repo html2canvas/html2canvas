@@ -9,6 +9,8 @@ import {CanvasElementContainer} from './replaced-elements/canvas-element-contain
 import {IFrameElementContainer} from './replaced-elements/iframe-element-container';
 import {ImageElementContainer} from './replaced-elements/image-element-container';
 import {InputElementContainer} from './replaced-elements/input-element-container';
+import {MeterElementContainer} from './replaced-elements/meter-element-container';
+import {ProgressElementContainer} from './replaced-elements/progress-element-container';
 import {SVGElementContainer} from './replaced-elements/svg-element-container';
 import {TextContainer} from './text-container';
 
@@ -110,6 +112,14 @@ const createContainer = (context: Context, element: Element): ElementContainer =
         return new IFrameElementContainer(context, element);
     }
 
+    if (isProgressElement(element)) {
+        return new ProgressElementContainer(context, element);
+    }
+
+    if (isMeterElement(element)) {
+        return new MeterElementContainer(context, element);
+    }
+
     return new ElementContainer(context, element);
 };
 
@@ -153,5 +163,7 @@ export const isScriptElement = (node: Element): node is HTMLScriptElement => nod
 export const isTextareaElement = (node: Element): node is HTMLTextAreaElement => node.tagName === 'TEXTAREA';
 export const isSelectElement = (node: Element): node is HTMLSelectElement => node.tagName === 'SELECT';
 export const isSlotElement = (node: Element): node is HTMLSlotElement => node.tagName === 'SLOT';
+export const isProgressElement = (node: Element): node is HTMLProgressElement => node.tagName === 'PROGRESS';
+export const isMeterElement = (node: Element): node is HTMLMeterElement => node.tagName === 'METER';
 // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
 export const isCustomElement = (node: Element): node is HTMLElement => node.tagName.indexOf('-') > 0;

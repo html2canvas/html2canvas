@@ -1,11 +1,11 @@
-import {ElementContainer} from '../element-container';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
+import {Context} from '../../core/context';
+import {Bounds} from '../../css/layout/bounds';
 import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
 import {BACKGROUND_ORIGIN} from '../../css/property-descriptors/background-origin';
+import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
 import {TokenType} from '../../css/syntax/tokenizer';
 import {LengthPercentageTuple} from '../../css/types/length-percentage';
-import {Bounds} from '../../css/layout/bounds';
-import {Context} from '../../core/context';
+import {ElementContainer} from '../element-container';
 
 const CHECKBOX_BORDER_RADIUS: LengthPercentageTuple = [
     {
@@ -42,18 +42,25 @@ const getInputValue = (node: HTMLInputElement): string => {
 export const CHECKBOX = 'checkbox';
 export const RADIO = 'radio';
 export const PASSWORD = 'password';
+export const RANGE = 'range';
 export const INPUT_COLOR = 0x2a2a2aff;
 
 export class InputElementContainer extends ElementContainer {
     readonly type: string;
     readonly checked: boolean;
     readonly value: string;
+    readonly min: number;
+    readonly max: number;
+    readonly valueAsNumber: number;
 
     constructor(context: Context, input: HTMLInputElement) {
         super(context, input);
         this.type = input.type.toLowerCase();
         this.checked = input.checked;
         this.value = getInputValue(input);
+        this.min = parseFloat(input.min) || 0;
+        this.max = parseFloat(input.max) || 100;
+        this.valueAsNumber = isNaN(input.valueAsNumber) ? (this.min + this.max) / 2 : input.valueAsNumber;
 
         if (this.type === CHECKBOX || this.type === RADIO) {
             this.styles.backgroundColor = 0xdededeff;
