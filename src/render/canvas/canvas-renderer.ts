@@ -219,9 +219,10 @@ export class CanvasRenderer extends Renderer {
                 }
             } else {
                 const letters = segmentGraphemes(rotatedText.text);
-                letters.reduce((left, letter) => {
+                letters.reduce((left, letter, index) => {
                     drawText(letter, left, rotatedText.bounds.top + baseline);
-                    return left + this.ctx.measureText(letter).width;
+                    const isLast = index === letters.length - 1;
+                    return left + this.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
                 }, rotatedText.bounds.left);
             }
 
@@ -238,10 +239,10 @@ export class CanvasRenderer extends Renderer {
                 }
             } else {
                 const letters = segmentGraphemes(text.text);
-                letters.reduce((left, letter) => {
+                letters.reduce((left, letter, index) => {
                     drawText(letter, left, text.bounds.top + baseline);
-
-                    return left + this.ctx.measureText(letter).width;
+                    const isLast = index === letters.length - 1;
+                    return left + this.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
                 }, text.bounds.left);
             }
         }
@@ -678,29 +679,16 @@ export class CanvasRenderer extends Renderer {
         }
 
         if (isTextInputElement(container) && container.value.length) {
-            const [fontFamily, fontSize] = this.createFontStyle(styles);
+            const [font, fontFamily, fontSize] = this.createFontStyle(styles);
             const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
 
-            this.ctx.font = fontFamily;
+            this.ctx.font = font;
             this.ctx.fillStyle = asString(styles.color);
 
             this.ctx.textBaseline = 'alphabetic';
             this.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
 
             const bounds = contentBox(container);
-
-            let x = 0;
-
-            switch (container.styles.textAlign) {
-                case TEXT_ALIGN.CENTER:
-                    x += bounds.width / 2;
-                    break;
-                case TEXT_ALIGN.RIGHT:
-                    x += bounds.width;
-                    break;
-            }
-
-            const textBounds = bounds.add(x, 0, 0, -bounds.height / 2 + 1);
 
             this.ctx.save();
             this.path([
@@ -709,13 +697,164 @@ export class CanvasRenderer extends Renderer {
                 new Vector(bounds.left + bounds.width, bounds.top + bounds.height),
                 new Vector(bounds.left, bounds.top + bounds.height)
             ]);
-
             this.ctx.clip();
-            this.renderTextWithLetterSpacing(
-                new TextBounds(container.value, textBounds),
-                styles.letterSpacing,
-                baseline
-            );
+
+            if (container instanceof TextareaElementContainer) {
+                // Multi-line rendering for <textarea>
+                // Use the browser-computed line height so that spacing exactly
+                // matches the reference rendering.
+                const fontSizeNumber = getNumber(styles.fontSize);
+                const lineHeight = computeLineHeight(styles.lineHeight, fontSizeNumber);
+
+                // Honour scrollTop so that a scrolled textarea clips correctly.
+                const scrollTop = container.scrollTop ?? 0;
+
+                // Align the x origin with the textAlign setting (same as input below).
+                let xOffset = 0;
+                switch (container.styles.textAlign) {
+                    case TEXT_ALIGN.CENTER:
+                        xOffset = bounds.width / 2;
+                        break;
+                    case TEXT_ALIGN.RIGHT:
+                        xOffset = bounds.width;
+                        break;
+                }
+                const originX = bounds.left + xOffset;
+
+                // Measure the rendered width of a string in CSS pixels.
+                //
+                // ctx has an active scale transform, so measureText returns widths in
+                // physical pixels — divide by scale to get CSS pixels comparable to
+                // bounds.width.
+                //
+                // When letterSpacing !== 0, renderTextWithLetterSpacing draws each
+                // grapheme individually and advances by ctx.measureText(g).width +
+                // letterSpacing per grapheme.  We mirror that here so the wrap budget
+                // matches the actual painted width.  The division by scale applies only
+                // to the measureText part; letterSpacing is already in CSS pixels.
+                const letterSpacing = styles.letterSpacing;
+                const measureWidth = (text: string): number => {
+                    if (letterSpacing !== 0 && text.length > 0) {
+                        const graphemeCount = segmentGraphemes(text).length;
+                        // Measure the full string at once so that kerning between
+                        // character pairs is accounted for (ctx.measureText on a single
+                        // glyph misses kerning with its neighbours).  Then add
+                        // letter-spacing gaps: (n-1) gaps because the browser does not
+                        // count trailing letter-spacing in the wrap budget.
+                        const glyphsWidth = this.ctx.measureText(text).width / this.options.scale;
+                        return glyphsWidth + (letterSpacing - 1) * (graphemeCount - 1);
+                    }
+                    return this.ctx.measureText(text).width / this.options.scale;
+                };
+
+                // Wrap a single paragraph into lines that fit within maxWidth.
+                // 1. First try to break on whitespace / after hyphens (normal wrap).
+                // 2. If a single token still exceeds maxWidth, fall back to breaking
+                //    it character by character (browser behaviour for long words /
+                //    overflow-wrap: break-word equivalent in textarea).
+                const wrapParagraph = (paragraph: string, maxWidth: number): string[] => {
+                    const lines: string[] = [];
+
+                    // Helper: break a single unsplittable chunk character-by-character.
+                    const breakChunk = (chunk: string): void => {
+                        const graphemes = segmentGraphemes(chunk);
+                        let current = '';
+                        for (const g of graphemes) {
+                            const candidate = current + g;
+                            if (current.length > 0 && measureWidth(candidate) > maxWidth) {
+                                lines.push(current);
+                                current = g;
+                            } else {
+                                current = candidate;
+                            }
+                        }
+                        if (current.length > 0) {
+                            lines.push(current);
+                        }
+                    };
+
+                    // Tokenise on whitespace AND after hyphens so that hyphenated
+                    // compounds ("many-manymany") can break after the dash, matching
+                    // the browser's default line-breaking behaviour for textareas.
+                    const tokens = paragraph.split(/(\s+|(?<=-+))/);
+                    let currentLine = '';
+                    for (const token of tokens) {
+                        if (token === '') continue;
+                        const candidate = currentLine + token;
+                        if (currentLine.length > 0 && measureWidth(candidate) > maxWidth) {
+                            // Flush the current line.
+                            lines.push(currentLine);
+                            const trimmed = token.trimStart();
+                            // If the token itself is wider than the box, break it
+                            // character by character rather than leaving it on one line.
+                            if (trimmed.length > 0 && measureWidth(trimmed) > maxWidth) {
+                                breakChunk(trimmed);
+                                currentLine = lines.pop() ?? '';
+                            } else {
+                                currentLine = trimmed;
+                            }
+                        } else {
+                            // First token on a new line: if it alone exceeds the width,
+                            // break it character by character right away.
+                            if (currentLine.length === 0 && measureWidth(token.trimStart()) > maxWidth) {
+                                const trimmed = token.trimStart();
+                                breakChunk(trimmed);
+                                currentLine = lines.pop() ?? '';
+                            } else {
+                                currentLine = candidate;
+                            }
+                        }
+                    }
+                    if (currentLine.length > 0) {
+                        lines.push(currentLine);
+                    }
+                    return lines;
+                };
+
+                // Split on explicit newlines first, then word-wrap each paragraph.
+                const paragraphs = container.value.split('\n');
+                const wrappedLines: string[] = [];
+                for (const paragraph of paragraphs) {
+                    if (paragraph.length === 0) {
+                        // Preserve blank lines produced by consecutive newlines.
+                        wrappedLines.push('');
+                        continue;
+                    }
+                    for (const line of wrapParagraph(paragraph, bounds.width)) {
+                        wrappedLines.push(line);
+                    }
+                }
+
+                // Render each wrapped line at the appropriate vertical position,
+                // accounting for scrollTop so only visible lines are painted.
+                wrappedLines.forEach((line, index) => {
+                    const lineTop = index * lineHeight - scrollTop;
+                    // Skip lines that are completely outside the content box.
+                    if (lineTop + lineHeight < 0 || lineTop > bounds.height) {
+                        return;
+                    }
+                    const lineBounds = new Bounds(originX, bounds.top + lineTop, bounds.width, lineHeight);
+                    this.renderTextWithLetterSpacing(new TextBounds(line, lineBounds), styles.letterSpacing, baseline);
+                });
+            } else {
+                // Single-line rendering for <input> and <select>.
+                let x = 0;
+                switch (container.styles.textAlign) {
+                    case TEXT_ALIGN.CENTER:
+                        x += bounds.width / 2;
+                        break;
+                    case TEXT_ALIGN.RIGHT:
+                        x += bounds.width;
+                        break;
+                }
+                const textBounds = bounds.add(x, 0, 0, -bounds.height / 2 + 1);
+                this.renderTextWithLetterSpacing(
+                    new TextBounds(container.value, textBounds),
+                    styles.letterSpacing,
+                    baseline
+                );
+            }
+
             this.ctx.restore();
             this.ctx.textBaseline = 'alphabetic';
             this.ctx.textAlign = 'left';
