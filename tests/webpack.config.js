@@ -9,7 +9,8 @@ const banner = `/*
  */`;
 
 module.exports = {
-    mode: 'production', // or 'development'
+    mode: 'development',
+    devtool: 'source-map',
     entry: './tests/testrunner.ts',
     output: {
         path: path.resolve(__dirname, '../build'),
@@ -32,10 +33,5 @@ module.exports = {
             }
         ]
     },
-    plugins: [
-        new webpack.BannerPlugin(banner),
-        new webpack.SourceMapDevToolPlugin({
-            filename: '[name].js.map'
-        })
-    ]
+    plugins: [new webpack.BannerPlugin(banner)]
 };
