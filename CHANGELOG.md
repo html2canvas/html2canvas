@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.0](https://github.com/html2canvas/html2canvas/compare/v1.6.3...v1.7.0) (2026-08-20)
+
+### feat
+
+- **writing-mode**: add support for `writing-mode: vertical-rl`, `vertical-lr`, `sideways-rl` and `sideways-lr` on text and list markers
+- **input**: add rendering support for `<input type="range">`, `<meter>` and `<progress>` elements
+- **color**: add support for `oklab()`, `oklch()`, `lch()`, `lab()`, `hwb()`, `hsl()`, `color()` and `color-mix()` CSS color functions via color.io ([4cb3d76](https://github.com/html2canvas/html2canvas/commit/4cb3d76))
+- **css**: add `calc()` support in CSS values ([64d5b2a](https://github.com/html2canvas/html2canvas/commit/64d5b2a))
+
+### fix
+
+- **textarea**: implement proper multi-line rendering — text now wraps on word boundaries, respects explicit newlines, `padding`, `line-height`, `letter-spacing` and `scrollTop` ([2773452](https://github.com/html2canvas/html2canvas/commit/2773452))
+- **textarea**: long words that exceed the box width now break character by character, matching browser behaviour
+- **textarea**: break opportunities are now recognized after hyphens (e.g. `many-word` wraps after the dash)
+- **letter-spacing**: fix inter-character spacing not being applied when rendering text with `letter-spacing` — characters were drawn without any gap between them
+- **letter-spacing**: fix wrap-budget calculation to account for `letter-spacing` using `(n-1)` inter-character gaps, matching the browser's line-breaking model
+- **box-shadow**: rebuild Bézier curves with spread-adjusted border-radius so spread correctly inflates/deflates rounded corners ([0b99c4c](https://github.com/html2canvas/html2canvas/commit/0b99c4c))
+- **text**: align text and list markers using measured font baseline for consistent cross-browser vertical positioning ([908115a](https://github.com/html2canvas/html2canvas/commit/908115a))
+- **css**: resolve CSS custom properties performance issue and fix associated box-shadow rendering regression ([7a51e66](https://github.com/html2canvas/html2canvas/commit/7a51e66))
+- **svg**: SVG elements with embedded images now render correctly ([d5e7049](https://github.com/html2canvas/html2canvas/commit/d5e7049))
+
+### test
+
+- add `tests/reftests/text/letter-spacing.html` covering plain text, kerning pairs, block wrap, `input`, `textarea`, emoji and `text-align` combinations
+- add `tests/reftests/text/textarea.html` covering word-wrap, padding, line-height, letter-spacing, newlines, long words, hyphens and kerning
+- add `tests/reftests/native-elements/progress-meter-range.html` covering `<progress>`, `<meter>` and `<input type="range">` rendering
+- add `tests/reftests/writing-mode/` — five reference tests for `horizontal-tb`, `vertical-rl`, `vertical-lr`, `sideways-rl` and `sideways-lr`
+
+### chore
+
+- migrate documentation site from Gatsby to Astro
+- migrate bundler from webpack to rollup
+- update README: remove proxy package reference, drop IE/experimental notes
+
 ## [1.6.3](https://github.com/html2canvas/html2canvas/compare/v1.6.2...v1.6.3) (2024-07-18)
 
 ### fix
