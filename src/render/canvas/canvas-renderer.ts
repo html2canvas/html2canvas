@@ -1,32 +1,32 @@
-import {contains} from '../../core/bitwise';
-import {Context} from '../../core/context';
-import {CSSParsedDeclaration} from '../../css';
-import {Bounds} from '../../css/layout/bounds';
-import {segmentGraphemes, TextBounds} from '../../css/layout/text';
-import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
-import {DIRECTION} from '../../css/property-descriptors/direction';
-import {DISPLAY} from '../../css/property-descriptors/display';
-import {computeLineHeight} from '../../css/property-descriptors/line-height';
-import {LIST_STYLE_POSITION} from '../../css/property-descriptors/list-style-position';
-import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
-import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
-import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
-import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
-import {TextShadow} from '../../css/property-descriptors/text-shadow';
-import {WRITING_MODE} from '../../css/property-descriptors/writing-mode';
-import {isDimensionToken} from '../../css/syntax/parser';
-import {asString, Color, isTransparent} from '../../css/types/color';
-import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
-import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
-import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
-import {ElementContainer, FLAGS} from '../../dom/element-container';
-import {SelectElementContainer} from '../../dom/elements/select-element-container';
-import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
-import {ReplacedElementContainer} from '../../dom/replaced-elements';
-import {CanvasElementContainer} from '../../dom/replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from '../../dom/replaced-elements/iframe-element-container';
-import {ImageElementContainer} from '../../dom/replaced-elements/image-element-container';
+import { contains } from '../../core/bitwise';
+import { Context } from '../../core/context';
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { segmentGraphemes, TextBounds } from '../../css/layout/text';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { computeLineHeight } from '../../css/property-descriptors/line-height';
+import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
+import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
+import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
+import { isDimensionToken } from '../../css/syntax/parser';
+import { asString, Color, isTransparent } from '../../css/types/color';
+import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
+import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
+import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
+import { ElementContainer, FLAGS } from '../../dom/element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
+import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
+import { ReplacedElementContainer } from '../../dom/replaced-elements';
+import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
+import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
 import {
     CHECKBOX,
     INPUT_COLOR,
@@ -34,27 +34,33 @@ import {
     RADIO,
     RANGE
 } from '../../dom/replaced-elements/input-element-container';
-import {METER_STATE, MeterElementContainer} from '../../dom/replaced-elements/meter-element-container';
-import {ProgressElementContainer} from '../../dom/replaced-elements/progress-element-container';
-import {SVGElementContainer} from '../../dom/replaced-elements/svg-element-container';
-import {TextContainer} from '../../dom/text-container';
-import {calculateBackgroundRendering, getBackgroundValueForIndex} from '../background';
-import {BezierCurve, isBezierCurve} from '../bezier-curve';
+import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
+import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
+import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
+import { TextContainer } from '../../dom/text-container';
+import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
+import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
     parsePathForBorderDoubleOuter,
     parsePathForBorderStroke
 } from '../border';
-import {BoundCurves, calculateBorderBoxPath, calculateContentBoxPath, calculatePaddingBoxPath} from '../bound-curves';
-import {contentBox} from '../box-sizing';
-import {EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect} from '../effects';
-import {FontMetrics} from '../font-metrics';
-import {calculateObjectFitBounds} from '../object-fit';
-import {Path, reversePath, transformPath} from '../path';
-import {Renderer} from '../renderer';
-import {ElementPaint, parseStackingContexts, StackingContext} from '../stacking-context';
-import {Vector} from '../vector';
+import {
+    BoundCurves,
+    calculateBorderBoxPath,
+    calculateContentBoxPath,
+    calculatePaddingBoxPath,
+    expandBorderBoxPath
+} from '../bound-curves';
+import { contentBox } from '../box-sizing';
+import { EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect } from '../effects';
+import { FontMetrics } from '../font-metrics';
+import { calculateObjectFitBounds } from '../object-fit';
+import { Path, reversePath } from '../path';
+import { Renderer } from '../renderer';
+import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
+import { Vector } from '../vector';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: Color | null;
@@ -87,8 +93,8 @@ export class CanvasRenderer extends Renderer {
             this.canvas.style.width = `${options.width}px`;
             this.canvas.style.height = `${options.height}px`;
         }
-        this.fontMetrics = new FontMetrics(document);
         this._isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
+        this.fontMetrics = new FontMetrics(document, this._isFirefox ? 1 : 2);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this._isChrome = !!(window as any).chrome;
         this.ctx.scale(this.options.scale, this.options.scale);
@@ -258,7 +264,7 @@ export class CanvasRenderer extends Renderer {
     }
 
     async renderTextNode(text: TextContainer, styles: CSSParsedDeclaration): Promise<void> {
-        const [font] = this.createFontStyle(styles);
+        const [font, fontFamily, fontSize] = this.createFontStyle(styles);
 
         this.ctx.font = font;
 
@@ -273,12 +279,16 @@ export class CanvasRenderer extends Renderer {
             wm === WRITING_MODE.SIDEWAYS_RL ||
             wm === WRITING_MODE.SIDEWAYS_LR;
 
+        // Use the real measured baseline offset so that Firefox and Chrome both
+        // place text at the correct vertical position regardless of line-height.
+        const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
+
         text.textBounds.forEach((text) => {
             paintOrder.forEach((paintOrderLayer) => {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
                         this.ctx.fillStyle = asString(styles.color);
-                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, getNumber(styles.fontSize), wm);
+                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
@@ -291,12 +301,7 @@ export class CanvasRenderer extends Renderer {
                                     this.ctx.shadowOffsetY = textShadow.offsetY.number * this.options.scale;
                                     this.ctx.shadowBlur = textShadow.blur.number;
 
-                                    this.renderTextWithLetterSpacing(
-                                        text,
-                                        styles.letterSpacing,
-                                        getNumber(styles.fontSize),
-                                        wm
-                                    );
+                                    this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                                 });
 
                             this.ctx.shadowColor = '';
@@ -397,13 +402,7 @@ export class CanvasRenderer extends Renderer {
                             this.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
                             this.ctx.lineWidth = styles.webkitTextStrokeWidth;
                             this.ctx.lineJoin = this._isChrome ? 'miter' : 'round';
-                            this.renderTextWithLetterSpacing(
-                                text,
-                                styles.letterSpacing,
-                                getNumber(styles.fontSize),
-                                wm,
-                                true
-                            );
+                            this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm, true);
                         }
                         this.ctx.strokeStyle = '';
                         this.ctx.lineWidth = 0;
@@ -815,20 +814,26 @@ export class CanvasRenderer extends Renderer {
                     this.ctx.fillText(paint.listValue, 0, 0);
                     this.ctx.restore();
                 } else {
-                    this.ctx.textBaseline = 'middle';
+                    this.ctx.textBaseline = 'alphabetic';
                     this.ctx.textAlign = 'right';
-                    const bounds = new Bounds(
-                        container.bounds.left,
-                        container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width),
-                        container.bounds.width,
-                        computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 1
-                    );
 
-                    this.renderTextWithLetterSpacing(
-                        new TextBounds(paint.listValue, bounds),
-                        styles.letterSpacing,
-                        computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 2
-                    );
+                    // Align the marker baseline with the first line of the list item.
+                    // Use raw metrics (no browser-specific adjustment) so the marker
+                    // sits exactly on the same baseline as the item text on all browsers.
+                    const [, fontFamily, fontSize] = this.createFontStyle(styles);
+                    const {baseline} = this.fontMetrics.getRawMetrics(fontFamily, fontSize);
+                    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+                    const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+
+                    const markerY =
+                        Math.floor(
+                            container.bounds.top +
+                                getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+                                leading / 2 +
+                                baseline
+                        ) - (this._isFirefox ? 1 : 0);
+
+                    this.ctx.fillText(paint.listValue, container.bounds.left, markerY);
                 }
                 this.ctx.textBaseline = 'bottom';
                 this.ctx.textAlign = 'left';
@@ -1110,18 +1115,15 @@ export class CanvasRenderer extends Renderer {
                     this.ctx.save();
                     const borderBoxArea = calculateBorderBoxPath(paint.curves);
                     // Build the painting area by applying offset and spread.
-                    // For inset shadows the painted shape shrinks inward; for outset it expands outward.
-                    // No maskOffset trick here — offsets are applied directly to the path so that
-                    // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur that
-                    // occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
+                    // expandBorderBoxPath rebuilds the Bézier curves with adjusted radii
+                    // (border-radius ± spread) per the CSS spec, unlike transformPath which
+                    // only translates corners without updating the curve geometry.
+                    // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur
+                    // that occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
                     // See https://github.com/html2canvas/html2canvas/issues/21
-                    const spreadSign = shadow.inset ? -1 : 1;
-                    const shadowPaintingArea = transformPath(
-                        borderBoxArea,
-                        shadow.offsetX.number + spreadSign * -shadow.spread.number,
-                        shadow.offsetY.number + spreadSign * -shadow.spread.number,
-                        shadow.spread.number * spreadSign * 2,
-                        shadow.spread.number * spreadSign * 2
+                    const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
+                    const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
+                        p.add(shadow.offsetX.number, shadow.offsetY.number)
                     );
                     if (shadow.inset) {
                         this.path(borderBoxArea);
