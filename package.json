@@ -6,7 +6,7 @@
     "module": "dist/html2canvas.esm.js",
     "typings": "dist/types/src/index.d.ts",
     "browser": "dist/html2canvas.js",
-    "version": "1.6.5",
+    "version": "1.6.4",
     "keywords": [
         "typescript",
         "html",
@@ -120,7 +120,7 @@
         "karma": "karma start",
         "watch": "rollup -c rollup.config.js --watch",
         "watch:unittest": "jest --watch src/**/__tests__/*.ts",
-        "start": "ts-node --project tests/tsconfig.json tests/server --port=8080 --cors=8081"
+        "start": "ts-node --project tests/tsconfig.json tests/server --port=8080 --cors=8081 --screenshot=8000"
     },
     "license": "MIT",
     "dependencies": {
