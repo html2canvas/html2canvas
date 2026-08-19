@@ -208,44 +208,51 @@
         </div>
 
         <!-- Cases from issue #21: offset box-shadow with rgba color (was broken in Blink) -->
-        <div style="box-shadow: 2px 2px 4px rgba(0,0,0,0.6)" class="boxshadow">
+        <div style="box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6)" class="boxshadow">
             2px 2px 4px rgba(0,0,0,0.6) — issue #21 classic case
         </div>
-        <div style="box-shadow: 4px 4px 0px rgba(255,0,0,0.8)" class="boxshadow">
+        <div style="box-shadow: 4px 4px 0px rgba(255, 0, 0, 0.8)" class="boxshadow">
             4px 4px 0px rgba(255,0,0,0.8) — no blur, offset only
         </div>
-        <div style="box-shadow: -4px -4px 6px rgba(0,0,255,0.5)" class="boxshadow">
+        <div style="box-shadow: -4px -4px 6px rgba(0, 0, 255, 0.5)" class="boxshadow">
             -4px -4px 6px rgba(0,0,255,0.5) — negative offsets
         </div>
-        <div style="box-shadow: 0 8px 12px rgba(0,0,0,0.4)" class="boxshadow">
+        <div style="box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4)" class="boxshadow">
             0 8px 12px rgba(0,0,0,0.4) — vertical offset only
         </div>
-        <div style="box-shadow: 8px 0 12px rgba(0,0,0,0.4)" class="boxshadow">
+        <div style="box-shadow: 8px 0 12px rgba(0, 0, 0, 0.4)" class="boxshadow">
             8px 0 12px rgba(0,0,0,0.4) — horizontal offset only
         </div>
-        <div style="box-shadow: 2px 2px 4px rgba(0,0,0,0.6), -2px -2px 4px rgba(255,0,0,0.4)" class="boxshadow">
+        <div
+            style="
+                box-shadow:
+                    2px 2px 4px rgba(0, 0, 0, 0.6),
+                    -2px -2px 4px rgba(255, 0, 0, 0.4);
+            "
+            class="boxshadow"
+        >
             multiple rgba shadows
         </div>
 
         <!-- Spread + offset combinations -->
-        <div style="box-shadow: 5px 5px 10px 3px rgba(0,128,0,0.5)" class="boxshadow">
+        <div style="box-shadow: 5px 5px 10px 3px rgba(0, 128, 0, 0.5)" class="boxshadow">
             5px 5px 10px 3px rgba(0,128,0,0.5) — offset + blur + spread
         </div>
-        <div style="box-shadow: 0 0 0 4px rgba(255,165,0,0.8)" class="boxshadow">
+        <div style="box-shadow: 0 0 0 4px rgba(255, 165, 0, 0.8)" class="boxshadow">
             0 0 0 4px rgba(255,165,0,0.8) — spread only, no blur no offset
         </div>
-        <div style="box-shadow: 3px 3px 0 6px rgba(128,0,128,0.6)" class="boxshadow">
+        <div style="box-shadow: 3px 3px 0 6px rgba(128, 0, 128, 0.6)" class="boxshadow">
             3px 3px 0 6px rgba(128,0,128,0.6) — offset + spread, no blur
         </div>
 
         <!-- Inset with offset -->
-        <div style="box-shadow: inset 3px 3px 6px rgba(0,0,0,0.5)" class="boxshadow">
+        <div style="box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.5)" class="boxshadow">
             inset 3px 3px 6px rgba(0,0,0,0.5) — inset with offset
         </div>
-        <div style="box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5)" class="boxshadow">
+        <div style="box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.5)" class="boxshadow">
             inset -3px -3px 6px rgba(0,0,0,0.5) — inset negative offset
         </div>
-        <div style="box-shadow: inset 0 4px 8px 2px rgba(255,0,0,0.4)" class="boxshadow">
+        <div style="box-shadow: inset 0 4px 8px 2px rgba(255, 0, 0, 0.4)" class="boxshadow">
             inset 0 4px 8px 2px rgba(255,0,0,0.4) — inset with spread
         </div>
     </body>

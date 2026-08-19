@@ -129,15 +129,13 @@ module.exports = function (config) {
     const customLaunchers = ciLauncher
         ? {target_browser: ciLauncher}
         : {
+              // stable_chrome and stable_firefox require karma-chrome-launcher /
+              // karma-firefox-launcher which are not installed locally.
+              // Use Puppeteer_Chrome for local runs; CI selects the right browser
+              // via TARGET_BROWSER.
               Puppeteer_Chrome: {
                   base: 'Puppeteer',
                   flags: ['--no-sandbox']
-              },
-              stable_chrome: {
-                  base: 'ChromeHeadless'
-              },
-              stable_firefox: {
-                  base: 'Firefox'
               }
           };
 

@@ -17,38 +17,30 @@ The script allows you to take "screenshots" of webpages or parts of it, directly
 The script renders the current page as a canvas image, by reading the DOM and the different styles applied to the elements.
 
 It does **not require any rendering from the server**, as the whole image is created on the **client's browser**. However, as it is heavily dependent on the browser, this library is _not suitable_ to be used in nodejs.
-It doesn't magically circumvent any browser content policy restrictions either, so rendering cross-origin content will require a [proxy](https://github.com/niklasvh/html2canvas/wiki/Proxies) to get the content to the [same origin](http://en.wikipedia.org/wiki/Same_origin_policy).
-
-The script is still in a **very experimental state**, so I don't recommend using it in a production environment nor start building applications with it yet, as there will be still major changes made.
+It doesn't magically circumvent any browser content policy restrictions either, so rendering cross-origin content will require a proxy to get the content to the [same origin](http://en.wikipedia.org/wiki/Same_origin_policy). You can pass a proxy URL via the `proxy` option — the proxy must accept a `?url=` query parameter and return the resource as a base64 data URI.
 
 ### Browser compatibility
 
-The library should work fine on the following browsers (with `Promise` polyfill):
+The library works on all modern evergreen browsers:
 
--   Firefox 3.5+
--   Google Chrome
--   Opera 12+
--   IE9+
--   Safari 6+
+- Firefox
+- Chrome / Chromium-based browsers (Edge, Opera, …)
+- Safari
 
 As each CSS property needs to be manually built to be supported, there are a number of properties that are not yet supported.
 
 ### Install
 
 ```shell
-pnpm add @html2canvas/html2canvas
+npm i @html2canvas/html2canvas
 # yarn add @html2canvas/html2canvas
-# npm i @html2canvas/html2canvas
+# pnpm add @html2canvas/html2canvas
 ```
 
 ### Usage
 
-The html2canvas library utilizes `Promise`s and expects them to be available in the global context. If you wish to
-support [older browsers](http://caniuse.com/#search=promise) that do not natively support `Promise`s, please include a polyfill such as
-[es6-promise](https://github.com/jakearchibald/es6-promise) before including `html2canvas`.
-
 To render an `element` with html2canvas, simply call:
-` html2canvas(element[, options]);`
+`html2canvas(element[, options]);`
 
 The function returns a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) containing the `<canvas>` element. Simply add a promise fulfillment handler to the promise using `then`:
 
@@ -106,19 +98,23 @@ npm run unittest
 **Visual reftests** (requires a browser):
 
 1. Build the project first (only needed once, or after source changes):
+
     ```shell
     npm run build
     ```
 
 2. Start the local dev server:
+
     ```shell
     npm start
     ```
 
 3. Open the test runner in your browser:
+
     ```
     http://localhost:8080/tests/testrunner.html
     ```
+
     Each reftest renders a page through html2canvas and compares the output against a reference PNG stored in `tests/reftests/`. Results are shown inline with pass/fail status.
 
     Individual reftest pages (e.g. `tests/reftests/background/box-shadow.html`) can also be opened directly to inspect a specific feature.

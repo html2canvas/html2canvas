@@ -1,8 +1,8 @@
-import {ElementContainer} from '../dom/element-container';
-import {getAbsoluteValue, getAbsoluteValueForTuple} from '../css/types/length-percentage';
-import {Vector} from './vector';
-import {BezierCurve} from './bezier-curve';
-import {Path} from './path';
+import { getAbsoluteValue, getAbsoluteValueForTuple } from '../css/types/length-percentage';
+import { ElementContainer } from '../dom/element-container';
+import { BezierCurve, isBezierCurve } from './bezier-curve';
+import { Path } from './path';
+import { Vector } from './vector';
 
 export class BoundCurves {
     readonly topLeftBorderDoubleOuterBox: Path;
@@ -367,6 +367,90 @@ const getCurvePoints = (x: number, y: number, r1: number, r2: number, position: 
 
 export const calculateBorderBoxPath = (curves: BoundCurves): Path[] => {
     return [curves.topLeftBorderBox, curves.topRightBorderBox, curves.bottomRightBorderBox, curves.bottomLeftBorderBox];
+};
+
+/**
+ * Build a border-box path expanded (or contracted) by `spread` pixels on all sides,
+ * with the corner radii adjusted by the same amount per the CSS spec:
+ *   shadow-radius = max(border-radius + spread, 0)
+ *
+ * Unlike `transformPath` which only translates corners, this function rebuilds
+ * the Bézier curves so that the shadow shape matches the browser rendering.
+ */
+export const expandBorderBoxPath = (curves: BoundCurves, spread: number): Path[] => {
+    // Collect the original border-box radii from the existing corner curves.
+    // getCurvePoints produces BezierCurves; if a corner has no radius it's a Vector.
+    const getRadii = (corner: Path): [number, number] => {
+        if (isBezierCurve(corner)) {
+            // For TOP_LEFT: start=(x, ym), end=(xm, y) → r1=xm-x, r2=ym-y
+            // We back-calculate from the start/end points of the curve.
+            // The anchor point (x,y) is the corner tip; r1 and r2 are the distances to start/end.
+            const c = corner as BezierCurve;
+            // The two extremes of the curve land at (x, ym) and (xm, y).
+            // r1 = |end.x - start.x| for TOP_LEFT, etc. — use max of differences.
+            const dx = Math.abs(c.end.x - c.start.x);
+            const dy = Math.abs(c.end.y - c.start.y);
+            return [dx, dy];
+        }
+        return [0, 0];
+    };
+
+    const [tlH, tlV] = getRadii(curves.topLeftBorderBox);
+    const [trH, trV] = getRadii(curves.topRightBorderBox);
+    const [brH, brV] = getRadii(curves.bottomRightBorderBox);
+    const [blH, blV] = getRadii(curves.bottomLeftBorderBox);
+
+    // Original bounding box — read from the border-box curves.
+    // TOP_LEFT corner start point is (left, top + tlV); end is (left + tlH, top).
+    const tl = curves.topLeftBorderBox;
+    const left = isBezierCurve(tl) ? tl.start.x : (tl as Vector).x;
+    const top = isBezierCurve(tl) ? tl.end.y : (tl as Vector).y;
+    const br = curves.bottomRightBorderBox;
+    const right = isBezierCurve(br) ? br.start.x : (br as Vector).x;
+    const bottom = isBezierCurve(br) ? br.start.y + brV : (br as Vector).y;
+
+    const newLeft = left - spread;
+    const newTop = top - spread;
+    const newRight = right + spread;
+    const newBottom = bottom + spread;
+    const newWidth = newRight - newLeft;
+    const newHeight = newBottom - newTop;
+
+    if (newWidth <= 0 || newHeight <= 0) {
+        // Shadow completely collapsed — return an empty degenerate path.
+        const mid = new Vector((left + right) / 2, (top + bottom) / 2);
+        return [mid, mid, mid, mid];
+    }
+
+    // Adjust radii — clamp to half the new dimensions so they don't overlap.
+    const newTlH = Math.min(Math.max(0, tlH + spread), newWidth / 2);
+    const newTlV = Math.min(Math.max(0, tlV + spread), newHeight / 2);
+    const newTrH = Math.min(Math.max(0, trH + spread), newWidth / 2);
+    const newTrV = Math.min(Math.max(0, trV + spread), newHeight / 2);
+    const newBrH = Math.min(Math.max(0, brH + spread), newWidth / 2);
+    const newBrV = Math.min(Math.max(0, brV + spread), newHeight / 2);
+    const newBlH = Math.min(Math.max(0, blH + spread), newWidth / 2);
+    const newBlV = Math.min(Math.max(0, blV + spread), newHeight / 2);
+
+    const topWidth = newWidth - newTrH;
+    const rightHeight = newHeight - newBrV;
+    const bottomWidth = newWidth - newBrH;
+    const leftHeight = newHeight - newBlV;
+
+    return [
+        newTlH > 0 || newTlV > 0
+            ? getCurvePoints(newLeft, newTop, newTlH, newTlV, CORNER.TOP_LEFT)
+            : new Vector(newLeft, newTop),
+        newTrH > 0 || newTrV > 0
+            ? getCurvePoints(newLeft + topWidth, newTop, newTrH, newTrV, CORNER.TOP_RIGHT)
+            : new Vector(newLeft + newWidth, newTop),
+        newBrH > 0 || newBrV > 0
+            ? getCurvePoints(newLeft + bottomWidth, newTop + rightHeight, newBrH, newBrV, CORNER.BOTTOM_RIGHT)
+            : new Vector(newLeft + newWidth, newTop + newHeight),
+        newBlH > 0 || newBlV > 0
+            ? getCurvePoints(newLeft, newTop + leftHeight, newBlH, newBlV, CORNER.BOTTOM_LEFT)
+            : new Vector(newLeft, newTop + newHeight)
+    ];
 };
 
 export const calculateContentBoxPath = (curves: BoundCurves): Path[] => {

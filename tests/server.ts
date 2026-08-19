@@ -7,9 +7,9 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import serveIndex from 'serve-index';
-import {URL} from 'url';
+import { URL } from 'url';
 import yargs from 'yargs';
-import {ScreenshotRequest} from './types';
+import { ScreenshotRequest } from './types';
 
 // Inline proxy middleware — replaces the html2canvas-proxy package.
 // Fetches a remote URL (passed as ?url=) and returns its content as a base64 data URI.
@@ -127,10 +127,11 @@ screenshotApp.use((error: Error, _req: express.Request, _res: express.Response, 
     next();
 });
 
-const args = yargs(process.argv.slice(2)).number(['port', 'cors']).argv as {
+const args = yargs(process.argv.slice(2)).number(['port', 'cors', 'screenshot']).argv as {
     [x: string]: unknown;
     port: number | undefined;
     cors: number | undefined;
+    screenshot: number | undefined;
 };
 
 if (args.port) {
@@ -142,5 +143,11 @@ if (args.port) {
 if (args.cors) {
     corsApp.listen(args.cors, () => {
         console.log(`CORS server running on port ${args.cors}`);
+    });
+}
+
+if (args.screenshot) {
+    screenshotApp.listen(args.screenshot, () => {
+        console.log(`Screenshot server running on port ${args.screenshot}`);
     });
 }

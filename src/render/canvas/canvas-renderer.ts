@@ -1,50 +1,66 @@
-import {contains} from '../../core/bitwise';
-import {Context} from '../../core/context';
-import {CSSParsedDeclaration} from '../../css';
-import {Bounds} from '../../css/layout/bounds';
-import {segmentGraphemes, TextBounds} from '../../css/layout/text';
-import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
-import {DIRECTION} from '../../css/property-descriptors/direction';
-import {DISPLAY} from '../../css/property-descriptors/display';
-import {computeLineHeight} from '../../css/property-descriptors/line-height';
-import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
-import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
-import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
-import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
-import {TextShadow} from '../../css/property-descriptors/text-shadow';
-import {isDimensionToken} from '../../css/syntax/parser';
-import {asString, Color, isTransparent} from '../../css/types/color';
-import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
-import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
-import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
-import {ElementContainer, FLAGS} from '../../dom/element-container';
-import {SelectElementContainer} from '../../dom/elements/select-element-container';
-import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
-import {ReplacedElementContainer} from '../../dom/replaced-elements';
-import {CanvasElementContainer} from '../../dom/replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from '../../dom/replaced-elements/iframe-element-container';
-import {ImageElementContainer} from '../../dom/replaced-elements/image-element-container';
-import {CHECKBOX, INPUT_COLOR, InputElementContainer, RADIO} from '../../dom/replaced-elements/input-element-container';
-import {SVGElementContainer} from '../../dom/replaced-elements/svg-element-container';
-import {TextContainer} from '../../dom/text-container';
-import {calculateBackgroundRendering, getBackgroundValueForIndex} from '../background';
-import {BezierCurve, isBezierCurve} from '../bezier-curve';
+import { contains } from '../../core/bitwise';
+import { Context } from '../../core/context';
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { segmentGraphemes, TextBounds } from '../../css/layout/text';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { computeLineHeight } from '../../css/property-descriptors/line-height';
+import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
+import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
+import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
+import { isDimensionToken } from '../../css/syntax/parser';
+import { asString, Color, isTransparent } from '../../css/types/color';
+import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
+import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
+import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
+import { ElementContainer, FLAGS } from '../../dom/element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
+import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
+import { ReplacedElementContainer } from '../../dom/replaced-elements';
+import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
+import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
+import {
+    CHECKBOX,
+    INPUT_COLOR,
+    InputElementContainer,
+    RADIO,
+    RANGE
+} from '../../dom/replaced-elements/input-element-container';
+import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
+import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
+import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
+import { TextContainer } from '../../dom/text-container';
+import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
+import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
     parsePathForBorderDoubleOuter,
     parsePathForBorderStroke
 } from '../border';
-import {BoundCurves, calculateBorderBoxPath, calculateContentBoxPath, calculatePaddingBoxPath} from '../bound-curves';
-import {contentBox} from '../box-sizing';
-import {EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect} from '../effects';
-import {FontMetrics} from '../font-metrics';
-import {calculateObjectFitBounds} from '../object-fit';
-import {Path, reversePath, transformPath} from '../path';
-import {Renderer} from '../renderer';
-import {ElementPaint, parseStackingContexts, StackingContext} from '../stacking-context';
-import {Vector} from '../vector';
+import {
+    BoundCurves,
+    calculateBorderBoxPath,
+    calculateContentBoxPath,
+    calculatePaddingBoxPath,
+    expandBorderBoxPath
+} from '../bound-curves';
+import { contentBox } from '../box-sizing';
+import { EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect } from '../effects';
+import { FontMetrics } from '../font-metrics';
+import { calculateObjectFitBounds } from '../object-fit';
+import { Path, reversePath } from '../path';
+import { Renderer } from '../renderer';
+import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
+import { Vector } from '../vector';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: Color | null;
@@ -64,6 +80,8 @@ export class CanvasRenderer extends Renderer {
     ctx: CanvasRenderingContext2D;
     private readonly _activeEffects: IElementEffect[] = [];
     private readonly fontMetrics: FontMetrics;
+    private readonly _isFirefox: boolean;
+    private readonly _isChrome: boolean;
 
     constructor(context: Context, options: RenderConfigurations) {
         super(context, options);
@@ -75,7 +93,10 @@ export class CanvasRenderer extends Renderer {
             this.canvas.style.width = `${options.width}px`;
             this.canvas.style.height = `${options.height}px`;
         }
-        this.fontMetrics = new FontMetrics(document);
+        this._isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
+        this.fontMetrics = new FontMetrics(document, this._isFirefox ? 1 : 2);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this._isChrome = !!(window as any).chrome;
         this.ctx.scale(this.options.scale, this.options.scale);
         this.ctx.translate(-options.x, -options.y);
         this.ctx.textBaseline = 'bottom';
@@ -143,23 +164,86 @@ export class CanvasRenderer extends Renderer {
         }
     }
 
-    renderTextWithLetterSpacing(text: TextBounds, letterSpacing: number, baseline: number): void {
-        if (letterSpacing === 0) {
-            // Fixed an issue with characters moving up in non-Firefox.
-            // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-            if (navigator.userAgent.indexOf('Firefox') === -1) {
-                this.ctx.textBaseline = 'ideographic';
-                this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
-            } else {
-                this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + baseline);
-            }
-        } else {
-            const letters = segmentGraphemes(text.text);
-            letters.reduce((left, letter) => {
-                this.ctx.fillText(letter, left, text.bounds.top + baseline);
+    renderTextWithLetterSpacing(
+        text: TextBounds,
+        letterSpacing: number,
+        baseline: number,
+        writingMode: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB,
+        useStroke: boolean = false
+    ): void {
+        const isVertical =
+            writingMode === WRITING_MODE.VERTICAL_RL ||
+            writingMode === WRITING_MODE.VERTICAL_LR ||
+            writingMode === WRITING_MODE.SIDEWAYS_RL ||
+            writingMode === WRITING_MODE.SIDEWAYS_LR;
 
-                return left + this.ctx.measureText(letter).width;
-            }, text.bounds.left);
+        const drawText = useStroke
+            ? (t: string, x: number, y: number) => this.ctx.strokeText(t, x, y)
+            : (t: string, x: number, y: number) => this.ctx.fillText(t, x, y);
+
+        if (isVertical) {
+            // For vertical writing modes the browser already positions the text bounds correctly.
+            // We rotate the canvas ±90° around the centre of the text bounds so that fillText
+            // draws along the right axis, then restore.
+            const isSidewaysLR = writingMode === WRITING_MODE.SIDEWAYS_LR;
+            // sideways-lr rotates -90°; all other vertical modes rotate +90°
+            const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+            const cx = text.bounds.left + text.bounds.width / 2;
+            const cy = text.bounds.top + text.bounds.height / 2;
+
+            this.ctx.save();
+            this.ctx.translate(cx, cy);
+            this.ctx.rotate(angle);
+            this.ctx.translate(-cx, -cy);
+
+            // After rotation the "visual" width and height swap, so we need to
+            // paint as if the text was horizontal with swapped bounds.
+            const rotatedBounds = new Bounds(
+                cx - text.bounds.height / 2,
+                cy - text.bounds.width / 2,
+                text.bounds.height,
+                text.bounds.width
+            );
+            const rotatedText = new TextBounds(text.text, rotatedBounds);
+
+            if (letterSpacing === 0) {
+                if (!this._isFirefox) {
+                    this.ctx.textBaseline = 'ideographic';
+                    drawText(
+                        rotatedText.text,
+                        rotatedText.bounds.left,
+                        rotatedText.bounds.top + rotatedText.bounds.height
+                    );
+                } else {
+                    drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + baseline);
+                }
+            } else {
+                const letters = segmentGraphemes(rotatedText.text);
+                letters.reduce((left, letter) => {
+                    drawText(letter, left, rotatedText.bounds.top + baseline);
+                    return left + this.ctx.measureText(letter).width;
+                }, rotatedText.bounds.left);
+            }
+
+            this.ctx.restore();
+        } else {
+            if (letterSpacing === 0) {
+                // Fixed an issue with characters moving up in non-Firefox.
+                // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
+                if (!this._isFirefox) {
+                    this.ctx.textBaseline = 'ideographic';
+                    drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+                } else {
+                    drawText(text.text, text.bounds.left, text.bounds.top + baseline);
+                }
+            } else {
+                const letters = segmentGraphemes(text.text);
+                letters.reduce((left, letter) => {
+                    drawText(letter, left, text.bounds.top + baseline);
+
+                    return left + this.ctx.measureText(letter).width;
+                }, text.bounds.left);
+            }
         }
     }
 
@@ -187,15 +271,24 @@ export class CanvasRenderer extends Renderer {
         this.ctx.direction = styles.direction === DIRECTION.RTL ? 'rtl' : 'ltr';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'alphabetic';
-        const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
         const paintOrder = styles.paintOrder;
+        const wm = styles.writingMode;
+        const isVertical =
+            wm === WRITING_MODE.VERTICAL_RL ||
+            wm === WRITING_MODE.VERTICAL_LR ||
+            wm === WRITING_MODE.SIDEWAYS_RL ||
+            wm === WRITING_MODE.SIDEWAYS_LR;
+
+        // Use the real measured baseline offset so that Firefox and Chrome both
+        // place text at the correct vertical position regardless of line-height.
+        const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
 
         text.textBounds.forEach((text) => {
             paintOrder.forEach((paintOrderLayer) => {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
                         this.ctx.fillStyle = asString(styles.color);
-                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, getNumber(styles.fontSize));
+                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
@@ -208,11 +301,7 @@ export class CanvasRenderer extends Renderer {
                                     this.ctx.shadowOffsetY = textShadow.offsetY.number * this.options.scale;
                                     this.ctx.shadowBlur = textShadow.blur.number;
 
-                                    this.renderTextWithLetterSpacing(
-                                        text,
-                                        styles.letterSpacing,
-                                        getNumber(styles.fontSize)
-                                    );
+                                    this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                                 });
 
                             this.ctx.shadowColor = '';
@@ -226,31 +315,84 @@ export class CanvasRenderer extends Renderer {
                             styles.textDecorationLine.forEach((textDecorationLine) => {
                                 // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
                                 const decorationLineHeight = 1;
-                                switch (textDecorationLine) {
-                                    case TEXT_DECORATION_LINE.UNDERLINE:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top + text.bounds.height - decorationLineHeight,
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
-                                    case TEXT_DECORATION_LINE.OVERLINE:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top,
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
-                                    case TEXT_DECORATION_LINE.LINE_THROUGH:
-                                        this.ctx.fillRect(
-                                            text.bounds.left,
-                                            text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
-                                            text.bounds.width,
-                                            decorationLineHeight
-                                        );
-                                        break;
+                                if (isVertical) {
+                                    // In vertical writing modes underline/overline become vertical bars.
+                                    // The side depends on the writing mode:
+                                    //   vertical-lr: underline=left, overline=right
+                                    //   vertical-rl, sideways-rl, sideways-lr: underline=right, overline=left
+                                    const underlineOnLeft =
+                                        wm === WRITING_MODE.VERTICAL_LR || wm === WRITING_MODE.VERTICAL_RL;
+                                    switch (textDecorationLine) {
+                                        case TEXT_DECORATION_LINE.UNDERLINE:
+                                            if (underlineOnLeft) {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            } else {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            }
+                                            break;
+                                        case TEXT_DECORATION_LINE.OVERLINE:
+                                            if (underlineOnLeft) {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            } else {
+                                                this.ctx.fillRect(
+                                                    text.bounds.left,
+                                                    text.bounds.top,
+                                                    decorationLineHeight,
+                                                    text.bounds.height
+                                                );
+                                            }
+                                            break;
+                                        case TEXT_DECORATION_LINE.LINE_THROUGH:
+                                            this.ctx.fillRect(
+                                                text.bounds.left + (text.bounds.width / 2 - decorationLineHeight / 2),
+                                                text.bounds.top,
+                                                decorationLineHeight,
+                                                text.bounds.height
+                                            );
+                                            break;
+                                    }
+                                } else {
+                                    switch (textDecorationLine) {
+                                        case TEXT_DECORATION_LINE.UNDERLINE:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top + text.bounds.height - decorationLineHeight,
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                        case TEXT_DECORATION_LINE.OVERLINE:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top,
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                        case TEXT_DECORATION_LINE.LINE_THROUGH:
+                                            this.ctx.fillRect(
+                                                text.bounds.left,
+                                                text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
+                                                text.bounds.width,
+                                                decorationLineHeight
+                                            );
+                                            break;
+                                    }
                                 }
                             });
                         }
@@ -259,9 +401,8 @@ export class CanvasRenderer extends Renderer {
                         if (styles.webkitTextStrokeWidth && text.text.trim().length) {
                             this.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
                             this.ctx.lineWidth = styles.webkitTextStrokeWidth;
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            this.ctx.lineJoin = !!(window as any).chrome ? 'miter' : 'round';
-                            this.ctx.strokeText(text.text, text.bounds.left, text.bounds.top + baseline);
+                            this.ctx.lineJoin = this._isChrome ? 'miter' : 'round';
+                            this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm, true);
                         }
                         this.ctx.strokeStyle = '';
                         this.ctx.lineWidth = 0;
@@ -418,7 +559,122 @@ export class CanvasRenderer extends Renderer {
                     this.ctx.fill();
                     this.ctx.restore();
                 }
+            } else if (container.type === RANGE) {
+                // Draw range input: track + thumb
+                const bounds = container.bounds;
+                const ratio =
+                    container.max > container.min
+                        ? (container.valueAsNumber - container.min) / (container.max - container.min)
+                        : 0;
+                const isHorizontal = bounds.width >= bounds.height;
+                const trackThickness = 4;
+                const thumbRadius = Math.min(bounds.width, bounds.height) * 0.35;
+
+                this.ctx.save();
+                if (isHorizontal) {
+                    // Track
+                    const trackY = bounds.top + bounds.height / 2 - trackThickness / 2;
+                    const trackLeft = bounds.left + thumbRadius;
+                    const trackWidth = bounds.width - thumbRadius * 2;
+                    this.ctx.fillStyle = '#c0c0c0';
+                    this.ctx.fillRect(trackLeft, trackY, trackWidth, trackThickness);
+                    // Filled portion
+                    this.ctx.fillStyle = '#0075ff';
+                    this.ctx.fillRect(trackLeft, trackY, trackWidth * ratio, trackThickness);
+                    // Thumb
+                    const thumbX = trackLeft + trackWidth * ratio;
+                    const thumbY = bounds.top + bounds.height / 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#0075ff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                } else {
+                    // Vertical track
+                    const trackX = bounds.left + bounds.width / 2 - trackThickness / 2;
+                    const trackTop = bounds.top + thumbRadius;
+                    const trackHeight = bounds.height - thumbRadius * 2;
+                    this.ctx.fillStyle = '#c0c0c0';
+                    this.ctx.fillRect(trackX, trackTop, trackThickness, trackHeight);
+                    // Filled portion (bottom to value)
+                    const filledHeight = trackHeight * ratio;
+                    this.ctx.fillStyle = '#0075ff';
+                    this.ctx.fillRect(trackX, trackTop + trackHeight - filledHeight, trackThickness, filledHeight);
+                    // Thumb
+                    const thumbX = bounds.left + bounds.width / 2;
+                    const thumbY = trackTop + trackHeight * (1 - ratio);
+                    this.ctx.beginPath();
+                    this.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#0075ff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                }
+                this.ctx.restore();
             }
+        }
+
+        if (container instanceof ProgressElementContainer) {
+            const bounds = container.bounds;
+            const ratio = container.ratio;
+            const borderRadius = Math.min(bounds.height / 2, 4);
+
+            this.ctx.save();
+            // Track background
+            this.ctx.beginPath();
+            this.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+            this.ctx.fillStyle = '#e6e6e6';
+            this.ctx.fill();
+            // Filled bar
+            if (ratio > 0) {
+                const fillWidth = bounds.width * ratio;
+                this.ctx.beginPath();
+                this.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+                this.ctx.fillStyle = '#0075ff';
+                this.ctx.fill();
+            }
+            this.ctx.restore();
+        }
+
+        if (container instanceof MeterElementContainer) {
+            const bounds = container.bounds;
+            const ratio = container.ratio;
+            const state = container.state;
+            const borderRadius = Math.min(bounds.height / 2, 4);
+
+            // Color based on meter state
+            let fillColor: string;
+            switch (state) {
+                case METER_STATE.OPTIMUM:
+                    fillColor = '#30b030';
+                    break;
+                case METER_STATE.SUBOPTIMUM:
+                    fillColor = '#daa520';
+                    break;
+                case METER_STATE.CRITICAL:
+                default:
+                    fillColor = '#e04040';
+                    break;
+            }
+
+            this.ctx.save();
+            // Track background
+            this.ctx.beginPath();
+            this.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+            this.ctx.fillStyle = '#e6e6e6';
+            this.ctx.fill();
+            // Filled bar
+            if (ratio > 0) {
+                const fillWidth = bounds.width * ratio;
+                this.ctx.beginPath();
+                this.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+                this.ctx.fillStyle = fillColor;
+                this.ctx.fill();
+            }
+            this.ctx.restore();
         }
 
         if (isTextInputElement(container) && container.value.length) {
@@ -480,24 +736,105 @@ export class CanvasRenderer extends Renderer {
                 }
             } else if (paint.listValue && container.styles.listStyleType !== LIST_STYLE_TYPE.NONE) {
                 const [fontFamily] = this.createFontStyle(styles);
+                const wm = styles.writingMode;
+                const isVerticalList =
+                    wm === WRITING_MODE.VERTICAL_RL ||
+                    wm === WRITING_MODE.VERTICAL_LR ||
+                    wm === WRITING_MODE.SIDEWAYS_RL ||
+                    wm === WRITING_MODE.SIDEWAYS_LR;
 
                 this.ctx.font = fontFamily;
                 this.ctx.fillStyle = asString(styles.color);
 
-                this.ctx.textBaseline = 'middle';
-                this.ctx.textAlign = 'right';
-                const bounds = new Bounds(
-                    container.bounds.left,
-                    container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width),
-                    container.bounds.width,
-                    computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 1
-                );
+                if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.OUTSIDE) {
+                    // In vertical writing modes with list-style-position: outside,
+                    // the list marker appears at inline-start outside the <li>, rotated like the text.
+                    const fontSize = getNumber(styles.fontSize);
+                    const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+                    const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
 
-                this.renderTextWithLetterSpacing(
-                    new TextBounds(paint.listValue, bounds),
-                    styles.letterSpacing,
-                    computeLineHeight(styles.lineHeight, getNumber(styles.fontSize)) / 2 + 2
-                );
+                    // First column center x = container.left + paddingLeft + fontSize/2
+                    const markerX =
+                        container.bounds.left +
+                        getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) +
+                        fontSize / 2;
+
+                    // Inline-start differs by writing mode:
+                    //   sideways-lr: inline-start is bottom → marker below content
+                    //   vertical-rl/lr, sideways-rl: inline-start is top → marker above content
+                    let markerY: number;
+                    if (isSidewaysLR) {
+                        markerY = container.bounds.top + container.bounds.height + fontSize;
+                    } else {
+                        markerY = container.bounds.top - fontSize / 2;
+                    }
+
+                    this.ctx.save();
+                    this.ctx.translate(markerX, markerY);
+                    this.ctx.rotate(angle);
+                    this.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(paint.listValue, 0, 0);
+                    this.ctx.restore();
+                } else if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+                    // In vertical writing modes with list-style-position: inside,
+                    // the marker is at the beginning of the text content (inline-start, inside padding).
+                    const fontSize = getNumber(styles.fontSize);
+                    const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+                    const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+
+                    // Position within the content area
+                    const markerX =
+                        container.bounds.left +
+                        getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) +
+                        fontSize / 2;
+
+                    // Inside: marker at the start of content within the box
+                    let markerY: number;
+                    if (isSidewaysLR) {
+                        // sideways-lr: text goes bottom→top, so inline-start = bottom of content
+                        markerY =
+                            container.bounds.top +
+                            container.bounds.height -
+                            getAbsoluteValue(container.styles.paddingBottom, container.bounds.height) -
+                            fontSize / 2;
+                    } else {
+                        // vertical-rl/lr: text goes top→bottom, so inline-start = top of content
+                        markerY =
+                            container.bounds.top +
+                            getAbsoluteValue(container.styles.paddingTop, container.bounds.height) +
+                            fontSize / 2;
+                    }
+
+                    this.ctx.save();
+                    this.ctx.translate(markerX, markerY);
+                    this.ctx.rotate(angle);
+                    this.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+                    this.ctx.textAlign = 'right';
+                    this.ctx.fillText(paint.listValue, 0, 0);
+                    this.ctx.restore();
+                } else {
+                    this.ctx.textBaseline = 'alphabetic';
+                    this.ctx.textAlign = 'right';
+
+                    // Align the marker baseline with the first line of the list item.
+                    // Use raw metrics (no browser-specific adjustment) so the marker
+                    // sits exactly on the same baseline as the item text on all browsers.
+                    const [, fontFamily, fontSize] = this.createFontStyle(styles);
+                    const {baseline} = this.fontMetrics.getRawMetrics(fontFamily, fontSize);
+                    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+                    const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+
+                    const markerY =
+                        Math.floor(
+                            container.bounds.top +
+                                getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+                                leading / 2 +
+                                baseline
+                        ) - (this._isFirefox ? 1 : 0);
+
+                    this.ctx.fillText(paint.listValue, container.bounds.left, markerY);
+                }
                 this.ctx.textBaseline = 'bottom';
                 this.ctx.textAlign = 'left';
             }
@@ -778,18 +1115,15 @@ export class CanvasRenderer extends Renderer {
                     this.ctx.save();
                     const borderBoxArea = calculateBorderBoxPath(paint.curves);
                     // Build the painting area by applying offset and spread.
-                    // For inset shadows the painted shape shrinks inward; for outset it expands outward.
-                    // No maskOffset trick here — offsets are applied directly to the path so that
-                    // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur that
-                    // occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
+                    // expandBorderBoxPath rebuilds the Bézier curves with adjusted radii
+                    // (border-radius ± spread) per the CSS spec, unlike transformPath which
+                    // only translates corners without updating the curve geometry.
+                    // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur
+                    // that occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
                     // See https://github.com/html2canvas/html2canvas/issues/21
-                    const spreadSign = shadow.inset ? -1 : 1;
-                    const shadowPaintingArea = transformPath(
-                        borderBoxArea,
-                        shadow.offsetX.number + spreadSign * -shadow.spread.number,
-                        shadow.offsetY.number + spreadSign * -shadow.spread.number,
-                        shadow.spread.number * spreadSign * 2,
-                        shadow.spread.number * spreadSign * 2
+                    const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
+                    const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
+                        p.add(shadow.offsetX.number, shadow.offsetY.number)
                     );
                     if (shadow.inset) {
                         this.path(borderBoxArea);
@@ -969,7 +1303,12 @@ const isTextInputElement = (
         return true;
     } else if (container instanceof SelectElementContainer) {
         return true;
-    } else if (container instanceof InputElementContainer && container.type !== RADIO && container.type !== CHECKBOX) {
+    } else if (
+        container instanceof InputElementContainer &&
+        container.type !== RADIO &&
+        container.type !== CHECKBOX &&
+        container.type !== RANGE
+    ) {
         return true;
     }
     return false;

@@ -1,5 +1,5 @@
 import react from '@astrojs/react';
-import { defineConfig } from 'astro/config';
+import {defineConfig} from 'astro/config';
 import rehypePrism from 'rehype-prism-plus';
 
 export default defineConfig({

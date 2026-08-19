@@ -1,5 +1,5 @@
-import { marked } from 'marked';
-import { createHighlighter } from 'shiki';
+import {marked} from 'marked';
+import {createHighlighter} from 'shiki';
 
 // Lazily initialized shiki highlighter (singleton)
 let highlighterPromise: ReturnType<typeof createHighlighter> | null = null;
@@ -42,10 +42,7 @@ async function buildRenderer() {
             });
         } catch {
             // Fallback: plain pre/code block
-            const escaped = text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             return `<pre class="language-${finalLang}"><code>${escaped}</code></pre>`;
         }
     };

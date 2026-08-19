@@ -3,23 +3,40 @@ var CI = window.location.search.indexOf('selenium') !== -1;
 var AUTORUN = window.location.search.indexOf('run=false') === -1;
 var REFTEST = window.location.search.indexOf('reftest') !== -1;
 
+// In reftest mode the iframe is 800×600 — constrain the body width so that
+// line-wrapping and vw-based values are consistent across all environments.
+if (REFTEST) {
+    var style = document.createElement('style');
+    style.textContent = 'html, body { width: 800px; max-width: 800px; box-sizing: border-box; margin: 0; }';
+    document.head.appendChild(style);
+}
+
 (function (document, window) {
-    function appendScript(src) {
-        document.write(
-            '<script type="text/javascript" src="' +
-                window.location.protocol +
-                '//' +
-                window.location.host +
-                src +
-                '.js?' +
-                Math.random() +
-                '"></script>'
-        );
+    function loadScripts(srcs, callback) {
+        var base = window.location.protocol + '//' + window.location.host;
+        function loadNext(index) {
+            if (index >= srcs.length) {
+                callback();
+                return;
+            }
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = base + srcs[index] + '.js?' + Math.random();
+            script.onload = function () {
+                loadNext(index + 1);
+            };
+            script.onerror = function () {
+                console.error('Failed to load script: ' + script.src);
+                loadNext(index + 1);
+            };
+            document.head.appendChild(script);
+        }
+        loadNext(0);
     }
 
-    (typeof Promise === 'undefined' ? ['/node_modules/es6-promise/dist/es6-promise.auto.min'] : [])
-        .concat(['/node_modules/jquery/dist/jquery.min', '/dist/html2canvas'])
-        .forEach(appendScript);
+    var scripts = (
+        typeof Promise === 'undefined' ? ['/node_modules/es6-promise/dist/es6-promise.auto.min'] : []
+    ).concat(['/node_modules/jquery/dist/jquery.min', '/dist/html2canvas']);
 
     window.addEventListener('unhandledrejection', function (event) {
         console.info('UNHANDLED PROMISE REJECTION:', event);
@@ -139,4 +156,12 @@ var REFTEST = window.location.search.indexOf('reftest') !== -1;
             setTimeout(window.run, 100);
         }
     };
+
+    // Load dependencies after window.onload is defined so the callback
+    // can safely fire it if the page is already complete.
+    loadScripts(scripts, function () {
+        if (document.readyState === 'complete' && typeof window.onload === 'function') {
+            window.onload();
+        }
+    });
 })(document, window);
