@@ -3,14 +3,14 @@
     "name": "@html2canvas/html2canvas",
     "description": "Screenshots with JavaScript",
     "main": "dist/html2canvas.min.js",
-    "module": "dist/html2canvas.esm.js",
+    "module": "dist/html2canvas.module.js",
     "types": "dist/types/index.d.ts",
     "typings": "dist/types/index.d.ts",
     "browser": "dist/html2canvas.js",
     "exports": {
         ".": {
             "types": "./dist/types/index.d.ts",
-            "import": "./dist/html2canvas.esm.js",
+            "import": "./dist/html2canvas.module.js",
             "require": "./dist/html2canvas.min.js",
             "default": "./dist/html2canvas.esm.js"
         }

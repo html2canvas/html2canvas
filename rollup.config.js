@@ -1,7 +1,7 @@
-import typescript from '@rollup/plugin-typescript';
-import {nodeResolve} from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import {nodeResolve} from '@rollup/plugin-node-resolve';
 import terser from '@rollup/plugin-terser';
+import typescript from '@rollup/plugin-typescript';
 import {readFileSync} from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
@@ -25,6 +25,25 @@ const commonPlugins = [
         declarationDir: undefined
     })
 ];
+
+// Plugins for the unbundled ESM build (dependencies are external)
+const esmUnbundledPlugins = [
+    nodeResolve({
+        preferBuiltins: false,
+        resolveOnly: [] // don't resolve any deps
+    }),
+    commonjs(),
+    typescript({
+        tsconfig: './tsconfig.json',
+        declaration: false,
+        declarationMap: false,
+        outDir: undefined,
+        declarationDir: undefined
+    })
+];
+
+// Dependencies to externalize in the unbundled ESM build
+const externalDeps = [/^colorjs\.io/, /^css-line-break/, /^text-segmentation/];
 
 export default [
     // UMD build (non-minified)
@@ -73,7 +92,7 @@ export default [
         plugins: commonPlugins
         // Note: css-line-break and text-segmentation are bundled for importmap compatibility
     },
-    // ES Module build (minified)
+    // ES Module build (minified) - standalone with all deps bundled
     {
         input: 'src/index.ts',
         output: {
@@ -92,5 +111,19 @@ export default [
             })
         ]
         // Note: css-line-break and text-segmentation are bundled for importmap compatibility
+    },
+    // ES Module build (unbundled) - dependencies are external for deduplication
+    // Use this in TypeScript/bundler projects via "module" field in package.json
+    {
+        input: 'src/index.ts',
+        external: externalDeps,
+        output: {
+            file: 'dist/html2canvas.module.js',
+            format: 'es',
+            banner,
+            sourcemap: true,
+            exports: 'default'
+        },
+        plugins: esmUnbundledPlugins
     }
 ];
