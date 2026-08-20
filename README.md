@@ -65,6 +65,15 @@ const canvas = await html2canvas(document.body);
 document.body.appendChild(canvas);
 ```
 
+or with TypeScript:
+
+```ts
+import html2canvas from '@html2canvas/html2canvas';
+
+const canvas = await html2canvas(document.body);
+document.body.appendChild(canvas);
+```
+
 ### Building
 
 You can download ready builds [here](https://github.com/html2canvas/html2canvas/releases).
