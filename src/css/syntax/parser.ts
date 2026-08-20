@@ -26,6 +26,7 @@ export type CSSValue = CSSFunction | CSSToken | CSSBlock;
 
 export class Parser {
     private _tokens: CSSToken[];
+    private _pos = 0;
 
     constructor(tokens: CSSToken[]) {
         this._tokens = tokens;
@@ -130,12 +131,14 @@ export class Parser {
     }
 
     private consumeToken(): CSSToken {
-        const token = this._tokens.shift();
-        return typeof token === 'undefined' ? EOF_TOKEN : token;
+        if (this._pos >= this._tokens.length) {
+            return EOF_TOKEN;
+        }
+        return this._tokens[this._pos++];
     }
 
-    private reconsumeToken(token: CSSToken): void {
-        this._tokens.unshift(token);
+    private reconsumeToken(_token: CSSToken): void {
+        this._pos--;
     }
 }
 

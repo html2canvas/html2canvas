@@ -214,14 +214,16 @@ export class DocumentCloner {
         try {
             const sheet = node.sheet as CSSStyleSheet | undefined;
             if (sheet && sheet.cssRules) {
-                const css: string = [].slice.call(sheet.cssRules, 0).reduce((css: string, rule: CSSRule) => {
+                const rules = sheet.cssRules;
+                const parts: string[] = [];
+                for (let i = 0; i < rules.length; i++) {
+                    const rule = rules[i];
                     if (rule && typeof rule.cssText === 'string') {
-                        return css + rule.cssText;
+                        parts.push(rule.cssText);
                     }
-                    return css;
-                }, '');
+                }
                 const style = node.cloneNode(false) as HTMLStyleElement;
-                style.textContent = css;
+                style.textContent = parts.join('');
                 return style;
             }
         } catch (e) {
@@ -615,11 +617,11 @@ const iframeLoader = (iframe: HTMLIFrameElement): Promise<HTMLIFrameElement> => 
     });
 };
 
-const ignoredStyleProperties = [
+const ignoredStyleProperties = new Set([
     'all', // #2476
     'd', // #2483
     'content' // Safari shows pseudoelements if content is set
-];
+]);
 
 export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     style: CSSStyleDeclaration,
@@ -632,15 +634,16 @@ export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     // slowdowns when copied unnecessarily. See https://github.com/niklasvh/html2canvas/issues/3191
     for (let i = 0; i < style.length; i++) {
         const property = style.item(i);
-        if (ignoredStyleProperties.indexOf(property) === -1) {
-            if (onCopyProperty) {
-                // If the callback returns true the caller has handled this property; skip default copy.
-                if (onCopyProperty(property, style, target)) {
-                    continue;
-                }
-            }
-            target.style.setProperty(property, style.getPropertyValue(property));
+        if (ignoredStyleProperties.has(property)) {
+            continue;
         }
+        if (onCopyProperty) {
+            // If the callback returns true the caller has handled this property; skip default copy.
+            if (onCopyProperty(property, style, target)) {
+                continue;
+            }
+        }
+        target.style.setProperty(property, style.getPropertyValue(property));
     }
     return target;
 };

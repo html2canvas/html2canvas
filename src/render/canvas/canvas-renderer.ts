@@ -1,32 +1,32 @@
-import { contains } from '../../core/bitwise';
-import { Context } from '../../core/context';
-import { CSSParsedDeclaration } from '../../css';
-import { Bounds } from '../../css/layout/bounds';
-import { segmentGraphemes, TextBounds } from '../../css/layout/text';
-import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
-import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
-import { DIRECTION } from '../../css/property-descriptors/direction';
-import { DISPLAY } from '../../css/property-descriptors/display';
-import { computeLineHeight } from '../../css/property-descriptors/line-height';
-import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
-import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
-import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
-import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
-import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
-import { TextShadow } from '../../css/property-descriptors/text-shadow';
-import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
-import { isDimensionToken } from '../../css/syntax/parser';
-import { asString, Color, isTransparent } from '../../css/types/color';
-import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
-import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
-import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
-import { ElementContainer, FLAGS } from '../../dom/element-container';
-import { SelectElementContainer } from '../../dom/elements/select-element-container';
-import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
-import { ReplacedElementContainer } from '../../dom/replaced-elements';
-import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
-import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
-import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
+import {contains} from '../../core/bitwise';
+import {Context} from '../../core/context';
+import {CSSParsedDeclaration} from '../../css';
+import {Bounds} from '../../css/layout/bounds';
+import {segmentGraphemes, TextBounds} from '../../css/layout/text';
+import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
+import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
+import {DIRECTION} from '../../css/property-descriptors/direction';
+import {DISPLAY} from '../../css/property-descriptors/display';
+import {computeLineHeight} from '../../css/property-descriptors/line-height';
+import {LIST_STYLE_POSITION} from '../../css/property-descriptors/list-style-position';
+import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
+import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
+import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
+import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
+import {TextShadow} from '../../css/property-descriptors/text-shadow';
+import {WRITING_MODE} from '../../css/property-descriptors/writing-mode';
+import {isDimensionToken} from '../../css/syntax/parser';
+import {asString, Color, isTransparent} from '../../css/types/color';
+import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
+import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
+import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
+import {ElementContainer, FLAGS} from '../../dom/element-container';
+import {SelectElementContainer} from '../../dom/elements/select-element-container';
+import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
+import {ReplacedElementContainer} from '../../dom/replaced-elements';
+import {CanvasElementContainer} from '../../dom/replaced-elements/canvas-element-container';
+import {IFrameElementContainer} from '../../dom/replaced-elements/iframe-element-container';
+import {ImageElementContainer} from '../../dom/replaced-elements/image-element-container';
 import {
     CHECKBOX,
     INPUT_COLOR,
@@ -34,12 +34,12 @@ import {
     RADIO,
     RANGE
 } from '../../dom/replaced-elements/input-element-container';
-import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
-import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
-import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
-import { TextContainer } from '../../dom/text-container';
-import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
-import { BezierCurve, isBezierCurve } from '../bezier-curve';
+import {METER_STATE, MeterElementContainer} from '../../dom/replaced-elements/meter-element-container';
+import {ProgressElementContainer} from '../../dom/replaced-elements/progress-element-container';
+import {SVGElementContainer} from '../../dom/replaced-elements/svg-element-container';
+import {TextContainer} from '../../dom/text-container';
+import {calculateBackgroundRendering, getBackgroundValueForIndex} from '../background';
+import {BezierCurve, isBezierCurve} from '../bezier-curve';
 import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
@@ -53,14 +53,14 @@ import {
     calculatePaddingBoxPath,
     expandBorderBoxPath
 } from '../bound-curves';
-import { contentBox } from '../box-sizing';
-import { EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect } from '../effects';
-import { FontMetrics } from '../font-metrics';
-import { calculateObjectFitBounds } from '../object-fit';
-import { Path, reversePath } from '../path';
-import { Renderer } from '../renderer';
-import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
-import { Vector } from '../vector';
+import {contentBox} from '../box-sizing';
+import {EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect} from '../effects';
+import {FontMetrics} from '../font-metrics';
+import {calculateObjectFitBounds} from '../object-fit';
+import {Path, reversePath} from '../path';
+import {Renderer} from '../renderer';
+import {ElementPaint, parseStackingContexts, StackingContext} from '../stacking-context';
+import {Vector} from '../vector';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: Color | null;
@@ -82,6 +82,7 @@ export class CanvasRenderer extends Renderer {
     private readonly fontMetrics: FontMetrics;
     private readonly _isFirefox: boolean;
     private readonly _isChrome: boolean;
+    private readonly _fontStyleCache = new WeakMap<CSSParsedDeclaration, string[]>();
 
     constructor(context: Context, options: RenderConfigurations) {
         super(context, options);
@@ -249,6 +250,10 @@ export class CanvasRenderer extends Renderer {
     }
 
     private createFontStyle(styles: CSSParsedDeclaration): string[] {
+        const cached = this._fontStyleCache.get(styles);
+        if (cached) {
+            return cached;
+        }
         const fontVariant = styles.fontVariant
             .filter((variant) => variant === 'normal' || variant === 'small-caps')
             .join('');
@@ -257,11 +262,13 @@ export class CanvasRenderer extends Renderer {
             ? `${getNumber(styles.fontSize)}${styles.fontSize.unit}`
             : `${getNumber(styles.fontSize)}px`;
 
-        return [
+        const result = [
             [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
             fontFamily,
             fontSize
         ];
+        this._fontStyleCache.set(styles, result);
+        return result;
     }
 
     async renderTextNode(text: TextContainer, styles: CSSParsedDeclaration): Promise<void> {

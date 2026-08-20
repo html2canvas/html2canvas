@@ -309,11 +309,8 @@ const WHITESPACE_TOKEN: Token = {type: TokenType.WHITESPACE_TOKEN};
 export const EOF_TOKEN: Token = {type: TokenType.EOF_TOKEN};
 
 export class Tokenizer {
-    private _value: number[];
-
-    constructor() {
-        this._value = [];
-    }
+    private _value: number[] = [];
+    private _pos = 0;
 
     write(chunk: string): void {
         this._value = this._value.concat(toCodePoints(chunk));
@@ -510,21 +507,23 @@ export class Tokenizer {
     }
 
     private consumeCodePoint(): number {
-        const value = this._value.shift();
-
-        return typeof value === 'undefined' ? -1 : value;
+        if (this._pos >= this._value.length) {
+            this._pos++;
+            return -1;
+        }
+        return this._value[this._pos++];
     }
 
-    private reconsumeCodePoint(codePoint: number) {
-        this._value.unshift(codePoint);
+    private reconsumeCodePoint(_codePoint: number) {
+        this._pos--;
     }
 
     private peekCodePoint(delta: number): number {
-        if (delta >= this._value.length) {
+        const idx = this._pos + delta;
+        if (idx >= this._value.length) {
             return -1;
         }
-
-        return this._value[delta];
+        return this._value[idx];
     }
 
     private consumeUnicodeRangeToken(): UnicodeRangeToken {
@@ -661,10 +660,12 @@ export class Tokenizer {
         let value = '';
         while (count > 0) {
             const amount = Math.min(SLICE_STACK_SIZE, count);
-            value += fromCodePoint(...this._value.splice(0, amount));
+            value += fromCodePoint(...this._value.slice(this._pos, this._pos + amount));
+            this._pos += amount;
             count -= amount;
         }
-        this._value.shift();
+        // Skip the ending code point
+        this._pos++;
 
         return value;
     }
@@ -674,24 +675,25 @@ export class Tokenizer {
         let i = 0;
 
         do {
-            const codePoint = this._value[i];
+            const codePoint = this._value[this._pos + i];
             if (codePoint === EOF || codePoint === undefined || codePoint === endingCodePoint) {
                 value += this.consumeStringSlice(i);
                 return {type: TokenType.STRING_TOKEN, value};
             }
 
             if (codePoint === LINE_FEED) {
-                this._value.splice(0, i);
+                this._pos += i;
                 return BAD_STRING_TOKEN;
             }
 
             if (codePoint === REVERSE_SOLIDUS) {
-                const next = this._value[i + 1];
+                const next = this._value[this._pos + i + 1];
                 if (next !== EOF && next !== undefined) {
                     if (next === LINE_FEED) {
                         value += this.consumeStringSlice(i);
                         i = -1;
-                        this._value.shift();
+                        // Skip the line feed
+                        this._pos++;
                     } else if (isValidEscape(codePoint, next)) {
                         value += this.consumeStringSlice(i);
                         value += fromCodePoint(this.consumeEscapedCodePoint());

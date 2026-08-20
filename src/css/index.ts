@@ -231,7 +231,6 @@ export class CSSParsedDeclaration {
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
         this.writingMode = parse(context, writingMode, declaration.writingMode);
         this.zIndex = parse(context, zIndex, declaration.zIndex);
-        this.objectFit = parse(context, objectFit, declaration.objectFit);
     }
 
     isVisible(): boolean {
@@ -292,8 +291,17 @@ export class CSSParsedCounterDeclaration {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const parse = (context: Context, descriptor: CSSPropertyDescriptor<any>, style?: string | null) => {
-    const tokenizer = new Tokenizer();
     const value = style !== null && typeof style !== 'undefined' ? style.toString() : descriptor.initialValue;
+
+    // Fast-path for IDENT_VALUE: skip tokenization when the value is a simple identifier
+    if (descriptor.type === PropertyDescriptorParsingType.IDENT_VALUE) {
+        // Simple ident values contain only letters, hyphens, and don't need full parsing
+        if (/^[a-zA-Z-]+$/.test(value)) {
+            return descriptor.parse(context, value);
+        }
+    }
+
+    const tokenizer = new Tokenizer();
     tokenizer.write(value);
     const parser = new Parser(tokenizer.read());
     switch (descriptor.type) {
@@ -318,8 +326,8 @@ const parse = (context: Context, descriptor: CSSPropertyDescriptor<any>, style?:
                     const length = parser.parseComponentValue();
                     return isLength(length) ? length : ZERO_LENGTH;
                 case 'length-percentage':
-                    const value = parser.parseComponentValue();
-                    return isLengthPercentage(value) ? value : ZERO_LENGTH;
+                    const lpValue = parser.parseComponentValue();
+                    return isLengthPercentage(lpValue) ? lpValue : ZERO_LENGTH;
                 case 'time':
                     return time.parse(context, parser.parseComponentValue());
             }

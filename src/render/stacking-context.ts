@@ -37,6 +37,7 @@ export class ElementPaint {
     readonly effects: IElementEffect[] = [];
     readonly curves: BoundCurves;
     listValue?: string;
+    private _collectedEffects: IElementEffect[] | null = null;
 
     constructor(
         readonly container: ElementContainer,
@@ -68,6 +69,13 @@ export class ElementPaint {
     }
 
     getEffects(target: EffectTarget): IElementEffect[] {
+        if (!this._collectedEffects) {
+            this._collectedEffects = this._computeEffects();
+        }
+        return this._collectedEffects.filter((effect) => contains(effect.target, target));
+    }
+
+    private _computeEffects(): IElementEffect[] {
         let inFlow = [POSITION.ABSOLUTE, POSITION.FIXED].indexOf(this.container.styles.position) === -1;
         let parent = this.parent;
         const effects = this.effects.slice(0);
@@ -90,7 +98,7 @@ export class ElementPaint {
             parent = parent.parent;
         }
 
-        return effects.filter((effect) => contains(effect.target, target));
+        return effects;
     }
 }
 

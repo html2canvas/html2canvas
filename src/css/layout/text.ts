@@ -1,10 +1,10 @@
-import {OVERFLOW_WRAP} from '../property-descriptors/overflow-wrap';
-import {CSSParsedDeclaration} from '../index';
 import {fromCodePoint, LineBreaker, toCodePoints} from 'css-line-break';
 import {splitGraphemes} from 'text-segmentation';
-import {Bounds, parseBounds} from './bounds';
-import {FEATURES} from '../../core/features';
 import {Context} from '../../core/context';
+import {FEATURES} from '../../core/features';
+import {CSSParsedDeclaration} from '../index';
+import {OVERFLOW_WRAP} from '../property-descriptors/overflow-wrap';
+import {Bounds, parseBounds} from './bounds';
 
 export class TextBounds {
     readonly text: string;
@@ -85,11 +85,15 @@ const createRange = (node: Text, offset: number, length: number): Range => {
     if (!ownerDocument) {
         throw new Error('Node has no owner document');
     }
-    const range = ownerDocument.createRange();
-    range.setStart(node, offset);
-    range.setEnd(node, offset + length);
-    return range;
+    if (!_reusableRange || _reusableRange.startContainer.ownerDocument !== ownerDocument) {
+        _reusableRange = ownerDocument.createRange();
+    }
+    _reusableRange.setStart(node, offset);
+    _reusableRange.setEnd(node, offset + length);
+    return _reusableRange;
 };
+
+let _reusableRange: Range | null = null;
 
 export const segmentGraphemes = (value: string): string[] => {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
