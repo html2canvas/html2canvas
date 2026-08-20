@@ -13,16 +13,15 @@ jobs:
         runs-on: ubuntu-latest
         name: Build
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 16
+                  node-version: 20
             - name: Cache node modules
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               env:
                   cache-name: cache-node-modules
               with:
-                  # npm cache files are stored in `~/.npm` on Linux/macOS
                   path: ~/.npm
                   key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
                   restore-keys: |
@@ -39,19 +38,19 @@ jobs:
                   mv html2canvas-html2canvas-*.tgz html2canvas.tgz
                   tar --list --verbose --file=html2canvas.tgz
             - name: Upload npm pack
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: npm
                   path: html2canvas.tgz
                   if-no-files-found: error
             - name: Upload dist
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: dist
                   path: dist
                   if-no-files-found: error
             - name: Upload build
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: build
                   path: build
@@ -61,16 +60,15 @@ jobs:
         runs-on: ubuntu-latest
         name: Test
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 16
+                  node-version: 20
             - name: Cache node modules
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               env:
                   cache-name: cache-node-modules
               with:
-                  # npm cache files are stored in `~/.npm` on Linux/macOS
                   path: ~/.npm
                   key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
                   restore-keys: |
@@ -85,6 +83,7 @@ jobs:
               run: npm run lint
             - name: Unit tests
               run: npm run unittest
+
     browser-test:
         strategy:
             fail-fast: false
@@ -101,7 +100,7 @@ jobs:
                     - os: macos-latest
                       name: OSX Safari Stable
                       targetBrowser: Safari_Stable
-                    - os: macos-11
+                    - os: macos-latest
                       name: iOS Simulator Safari 15.0
                       targetBrowser: Safari_IOS_15_0
                       xcode: /Applications/Xcode_13.0.app
@@ -111,16 +110,15 @@ jobs:
             TARGET_BROWSER: ${{ matrix.config.targetBrowser }}
         needs: build
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 16
+                  node-version: 20
             - name: Cache node modules
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               env:
                   cache-name: cache-node-modules
               with:
-                  # npm cache files are stored in `~/.npm` on Linux/macOS
                   path: ~/.npm
                   key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
                   restore-keys: |
@@ -130,12 +128,12 @@ jobs:
             - name: Npm install
               run: npm ci
             - name: Download library
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: dist
                   path: dist
             - name: Download test-runner
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: build
                   path: build
@@ -152,11 +150,12 @@ jobs:
               if: ${{ matrix.config.xvfb == true }}
               run: DISPLAY=:99 npm run karma
             - name: Upload screenshots
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
-                  name: reftest-results
+                  name: reftest-results-${{ matrix.config.targetBrowser }}
                   path: tmp/reftests
                   if-no-files-found: error
+
     publish:
         runs-on: ubuntu-latest
         name: Publish
@@ -224,6 +223,7 @@ jobs:
               run: cd npm/package && npm publish --access public --provenance
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     publish-gpr:
         runs-on: ubuntu-latest
         name: Publish Github Package
@@ -233,42 +233,42 @@ jobs:
             contents: write
             packages: write
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
             - name: Download NPM package
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: npm
                   path: npm
             - name: Download library
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: dist
                   path: dist
             - name: Unpack npm
               run: cd npm && tar -xvzf "html2canvas.tgz"
-            - uses: actions/setup-node@v3
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 16
+                  node-version: 20
                   registry-url: https://npm.pkg.github.com/
             - run: npm pkg set publishConfig.registry=https://npm.pkg.github.com
             - run: npm publish
               env:
                   NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
     docs:
         runs-on: ubuntu-latest
         name: Build docs
-        needs: browser-test
+        needs: build
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: 16
+                  node-version: 20
             - name: Cache node modules
-              uses: actions/cache@v3
+              uses: actions/cache@v4
               env:
                   cache-name: cache-node-modules
               with:
-                  # npm cache files are stored in `~/.npm` on Linux/macOS
                   path: ~/.npm
                   key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
                   restore-keys: |
@@ -278,31 +278,23 @@ jobs:
             - name: Npm install
               run: npm ci
             - name: Download library
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: dist
                   path: www/static/dist
-            - name: Download test results
-              uses: actions/download-artifact@v3
-              with:
-                  name: reftest-results
-                  path: www/static/results
             - name: Copy reftests to docs website
               run: cp -R tests/reftests www/static/tests/reftests && cp -R tests/assets www/static/tests/assets && cp tests/test.js www/static/tests/test.js
-            - name: Create reftest result index
-              run: npm run build:reftest-result-list www/static/results/metadata www/src/results.json
             - name: Create reftest previewer
               run: npm run build:reftest-preview
-            - name: Clean metadata folder
-              run: rm -rf www/static/results/metadata
             - name: Build docs
               run: npm run build && cd www && npm install && npm run build && cd ..
             - name: Upload docs
-              uses: actions/upload-artifact@v3
+              uses: actions/upload-artifact@v4
               with:
                   name: docs
-                  path: www/public
+                  path: www/dist-site
                   if-no-files-found: error
+
     publish-docs:
         runs-on: ubuntu-latest
         name: Publish Docs
@@ -311,11 +303,11 @@ jobs:
         permissions:
             contents: write
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   persist-credentials: false
             - name: Download docs
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                   name: docs
                   path: docs
@@ -327,43 +319,3 @@ jobs:
                   FOLDER: docs
                   SINGLE_COMMIT: true
                   CLEAN: true
-    diff-reftests:
-        runs-on: ubuntu-latest
-        name: Diff reftest screenshots
-        needs: browser-test
-        steps:
-            - uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
-            - uses: actions/setup-node@v3
-              with:
-                  node-version: 16
-            - name: Cache node modules
-              uses: actions/cache@v3
-              env:
-                  cache-name: cache-node-modules
-              with:
-                  # npm cache files are stored in `~/.npm` on Linux/macOS
-                  path: ~/.npm
-                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-                  restore-keys: |
-                      ${{ runner.os }}-build-${{ env.cache-name }}-
-                      ${{ runner.os }}-build-
-                      ${{ runner.os }}-
-            - name: Npm install
-              run: npm ci
-            - name: Checkout current snapshots
-              run: git checkout origin/gh-pages results
-            - name: Download test results
-              uses: actions/download-artifact@v3
-              with:
-                  name: reftest-results
-                  path: tmp/reftests
-            - name: Run diff
-              run: npm run reftests-diff
-              continue-on-error: true
-            - name: Upload diff
-              uses: actions/upload-artifact@v3
-              with:
-                  name: snapshot-diffs
-                  path: tmp/snapshot-diffs
