@@ -9,22 +9,21 @@ nextTitle: 'Configuration'
 
 ## Installing
 
-You can install `html2canvas` through npm or [download a built release](https://github.com/niklasvh/html2canvas/releases).
+You can install `html2canvas` through npm or [download a built release](https://github.com/html2canvas/html2canvas/releases).
 
 ### npm
 
     npm install @html2canvas/html2canvas
 
 ```javascript
-import html2canvas from 'html2canvas';
+import html2canvas from '@html2canvas/html2canvas';
 ```
 
-##cdn
+## cdn
 
 ```html
 <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.js"
-    integrity="sha512-sn/GHTj+FCxK5wam7k9w4gPPm6zss4Zwl/X9wgrvGMFbnedR8lTUSLdsolDRBRzsX6N+YgG6OWyvn9qaFVXH9w=="
+    src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas-next/1.7.1/html2canvas.min.js"
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
 ></script>
