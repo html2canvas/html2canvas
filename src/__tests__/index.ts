@@ -1,8 +1,8 @@
 import html2canvas from '../index';
 
-import {CanvasRenderer} from '../render/canvas/canvas-renderer';
-import {DocumentCloner} from '../dom/document-cloner';
-import {COLORS} from '../css/types/color';
+import { COLORS } from '../css/types/color';
+import { DocumentCloner } from '../dom/document-cloner';
+import { CanvasRenderer } from '../render/canvas/canvas-renderer';
 
 jest.mock('../core/logger');
 jest.mock('../css/layout/bounds');
@@ -49,7 +49,7 @@ describe('html2canvas', () => {
                 canvas: undefined
             })
         );
-        expect(DocumentCloner.destroy).toBeCalled();
+        expect(DocumentCloner.destroy as jest.Mock).toHaveBeenCalled();
     });
 
     it('should have transparent background with backgroundColor: null', async () => {
@@ -88,6 +88,6 @@ describe('html2canvas', () => {
                 canvas: undefined
             })
         );
-        expect(DocumentCloner.destroy).not.toBeCalled();
+        expect(DocumentCloner.destroy as jest.Mock).not.toHaveBeenCalled();
     });
 });
