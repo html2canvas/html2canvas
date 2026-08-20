@@ -4,8 +4,17 @@
     "description": "Screenshots with JavaScript",
     "main": "dist/html2canvas.min.js",
     "module": "dist/html2canvas.esm.js",
-    "typings": "dist/types/src/index.d.ts",
+    "types": "dist/types/index.d.ts",
+    "typings": "dist/types/index.d.ts",
     "browser": "dist/html2canvas.js",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/html2canvas.esm.js",
+            "require": "./dist/html2canvas.min.js",
+            "default": "./dist/html2canvas.esm.js"
+        }
+    },
     "version": "1.7.0",
     "keywords": [
         "typescript",
@@ -106,7 +115,7 @@
     },
     "scripts": {
         "prebuild": "rimraf dist/ && rimraf build/ && mkdir -p dist && mkdir -p build",
-        "build": "tsc --module commonjs && rollup -c rollup.config.js && npm run build:create-reftest-list && npm run build:testrunner",
+        "build": "tsc --project tsconfig.build.json --module commonjs && rollup -c rollup.config.js && npm run build:create-reftest-list && npm run build:testrunner",
         "build:testrunner": "webpack --config tests/webpack.config.js",
         "build:reftest-result-list": "ts-node scripts/create-reftest-result-list.ts",
         "build:create-reftest-list": "ts-node scripts/create-reftest-list.ts tests/reftests/ignore.txt build/reftests.ts",
