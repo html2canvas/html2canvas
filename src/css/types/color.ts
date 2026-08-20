@@ -3,7 +3,7 @@ import {ITypeDescriptor} from '../ITypeDescriptor';
 import {CSSValue, nonFunctionArgSeparator, Parser} from '../syntax/parser';
 import {TokenType} from '../syntax/tokenizer';
 
-import Color from 'colorjs.io';
+import Color from './colorjs-minimal';
 
 export type PackedColor = number;
 
@@ -180,11 +180,11 @@ const delegateToColorJs = (functionName: string, args: CSSValue[]): number => {
 };
 
 const hsl = (_context: Context, args: CSSValue[]): number => delegateToColorJs('hsl', args);
+const hwb = (_context: Context, args: CSSValue[]): number => delegateToColorJs('hwb', args);
 const lch = (_context: Context, args: CSSValue[]): number => delegateToColorJs('lch', args);
 const lab = (_context: Context, args: CSSValue[]): number => delegateToColorJs('lab', args);
 const oklch = (_context: Context, args: CSSValue[]): number => delegateToColorJs('oklch', args);
 const oklab = (_context: Context, args: CSSValue[]): number => delegateToColorJs('oklab', args);
-const hwb = (_context: Context, args: CSSValue[]): number => delegateToColorJs('hwb', args);
 const colorFunction = (_context: Context, args: CSSValue[]): number => delegateToColorJs('color', args);
 
 /**
