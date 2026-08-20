@@ -283,11 +283,15 @@ jobs:
                   name: dist
                   path: www/static/dist
             - name: Copy reftests to docs website
-              run: cp -R tests/reftests www/static/tests/reftests && cp -R tests/assets www/static/tests/assets && cp tests/test.js www/static/tests/test.js
+              run: |
+                  mkdir -p www/static/tests
+                  cp -R tests/reftests www/static/tests/reftests
+                  cp -R tests/assets www/static/tests/assets
+                  cp tests/test.js www/static/tests/test.js
             - name: Create reftest previewer
               run: npm run build:reftest-preview
             - name: Build docs
-              run: npm run build && cd www && npm install && npm run build && cd ..
+              run: cd www && npm install && npm run build && cd ..
             - name: Upload docs
               uses: actions/upload-artifact@v4
               with:
