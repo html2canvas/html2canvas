@@ -2,8 +2,6 @@
 // Generated on Sat Aug 05 2017 23:42:26 GMT+0800 (Malay Peninsula Standard Time)
 
 const path = require('path');
-const simctl = require('node-simctl');
-const iosSimulator = require('appium-ios-simulator');
 const listenAddress = 'localhost';
 const port = 9876;
 
@@ -103,6 +101,9 @@ module.exports = function (config) {
         }
         baseBrowserDecorator(this);
         this.on('start', (url) => {
+            // lazy-load iOS simulator deps only when the launcher is actually used
+            const simctl = require('node-simctl');
+            const iosSimulator = require('appium-ios-simulator');
             simctl
                 .getDevices(args.sdk, args.platform)
                 .then((devices) => {

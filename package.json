@@ -115,7 +115,7 @@
         "build:testrunner": "webpack --config tests/webpack.config.js",
         "build:reftest-result-list": "ts-node scripts/create-reftest-result-list.ts",
         "build:create-reftest-list": "ts-node scripts/create-reftest-list.ts tests/reftests/ignore.txt build/reftests.ts",
-        "build:reftest-preview": "webpack --config www/webpack.config.js",
+        "build:reftest-preview": "webpack --config www/webpack.config.cjs",
         "release": "npm run build && release-it",
         "publish": "npm publish --access public",
         "format": "prettier --write \"{src,www/src,tests,scripts}/**/*.ts\"",
