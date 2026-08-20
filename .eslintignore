@@ -1,5 +1,0 @@
-**/*.js
-/build
-/dist
-node_modules
-/tmp

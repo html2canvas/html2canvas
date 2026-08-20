@@ -7,6 +7,10 @@ const iosSimulator = require('appium-ios-simulator');
 const listenAddress = 'localhost';
 const port = 9876;
 
+// Use Chromium bundled with puppeteer for local headless runs
+const {executablePath} = require('puppeteer');
+process.env.CHROME_BIN = executablePath();
+
 const log = require('karma/lib/logger').create('launcher:MobileSafari');
 
 module.exports = function (config) {
@@ -54,65 +58,6 @@ module.exports = function (config) {
             platform: 'iOS',
             sdk: '15.2'
         },
-        SauceLabs_IE9: {
-            base: 'SauceLabs',
-            browserName: 'internet explorer',
-            version: '9.0',
-            platform: 'Windows 7'
-        },
-        SauceLabs_IE10: {
-            base: 'SauceLabs',
-            browserName: 'internet explorer',
-            version: '10.0',
-            platform: 'Windows 7'
-        },
-        SauceLabs_IE11: {
-            base: 'SauceLabs',
-            browserName: 'internet explorer',
-            version: '11.0',
-            platform: 'Windows 7'
-        },
-        SauceLabs_Edge18: {
-            base: 'SauceLabs',
-            browserName: 'MicrosoftEdge',
-            version: '18.17763',
-            platform: 'Windows 10'
-        },
-        SauceLabs_Android4: {
-            base: 'SauceLabs',
-            browserName: 'Browser',
-            platform: 'Android',
-            version: '4.4',
-            device: 'Android Emulator'
-        },
-        SauceLabs_iOS10_3: {
-            base: 'SauceLabs',
-            browserName: 'Safari',
-            platform: 'iOS',
-            version: '10.3',
-            device: 'iPhone 7 Plus Simulator'
-        },
-        SauceLabs_iOS9_3: {
-            base: 'SauceLabs',
-            browserName: 'Safari',
-            platform: 'iOS',
-            version: '9.3',
-            device: 'iPhone 6 Plus Simulator'
-        },
-        IE_9: {
-            base: 'IE',
-            'x-ua-compatible': 'IE=EmulateIE9',
-            flags: ['-extoff']
-        },
-        IE_10: {
-            base: 'IE',
-            'x-ua-compatible': 'IE=EmulateIE10',
-            flags: ['-extoff']
-        },
-        IE_11: {
-            base: 'IE',
-            flags: ['-extoff']
-        },
         Safari_Stable: {
             base: 'SafariNative'
         },
@@ -131,11 +76,11 @@ module.exports = function (config) {
         : {
               // stable_chrome and stable_firefox require karma-chrome-launcher /
               // karma-firefox-launcher which are not installed locally.
-              // Use Puppeteer_Chrome for local runs; CI selects the right browser
-              // via TARGET_BROWSER.
-              Puppeteer_Chrome: {
-                  base: 'Puppeteer',
-                  flags: ['--no-sandbox']
+              // Use ChromeHeadless (puppeteer Chromium) for local runs; CI selects
+              // the right browser via TARGET_BROWSER.
+              ChromeHeadless_Puppeteer: {
+                  base: 'ChromeHeadless',
+                  flags: ['--no-sandbox', '--disable-setuid-sandbox']
               }
           };
 

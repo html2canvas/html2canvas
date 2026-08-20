@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.1](https://github.com/html2canvas/html2canvas/compare/v1.7.0...v1.7.1) (2026-08-20)
+
+### build
+
+- add proper TypeScript type declarations to build output ([f677a13](https://github.com/html2canvas/html2canvas/commit/f677a131344a1facf43b0c26a6b878deb90266a2))
+- add unbundled ESM build to deduplicate colorjs.io in TS projects ([613608c](https://github.com/html2canvas/html2canvas/commit/613608c6d319315297721f0936233cba044a6e2e))
+
+### perf
+
+- optimize hot paths in CSS parsing, DOM cloning, and rendering ([6b1a9ba](https://github.com/html2canvas/html2canvas/commit/6b1a9ba6b6763c11414c594cb81f2d67ee0e3e6d))
+- reduce bundle size by using minimal colorjs.io import ([b2b9f82](https://github.com/html2canvas/html2canvas/commit/b2b9f82a689b5945b1b6f42cdae1234b7d8ff1bc))
+
 ## [1.7.0](https://github.com/html2canvas/html2canvas/compare/v1.6.3...v1.7.0) (2026-08-20)
 
 ### feat

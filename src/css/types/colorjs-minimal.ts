@@ -7,40 +7,38 @@
  */
 
 // Core Color class without any spaces pre-registered
-// @ts-ignore – colorjs.io does not ship granular type declarations
 import Color from 'colorjs.io/src/color.js';
 
-// @ts-ignore
 import ColorSpace from 'colorjs.io/src/ColorSpace.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import sRGB from 'colorjs.io/src/spaces/srgb.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import sRGB_Linear from 'colorjs.io/src/spaces/srgb-linear.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import HSL from 'colorjs.io/src/spaces/hsl.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import HWB from 'colorjs.io/src/spaces/hwb.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import Lab from 'colorjs.io/src/spaces/lab.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import LCH from 'colorjs.io/src/spaces/lch.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import OKLab from 'colorjs.io/src/spaces/oklab.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import OKLCH from 'colorjs.io/src/spaces/oklch.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import P3 from 'colorjs.io/src/spaces/p3.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import P3_Linear from 'colorjs.io/src/spaces/p3-linear.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import REC_2020 from 'colorjs.io/src/spaces/rec2020.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import REC_2020_Linear from 'colorjs.io/src/spaces/rec2020-linear.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import XYZ_D65 from 'colorjs.io/src/spaces/xyz-d65.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import XYZ_D50 from 'colorjs.io/src/spaces/xyz-d50.js';
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import Lab_D65 from 'colorjs.io/src/spaces/lab-d65.js';
 
 // Register only the spaces we need
@@ -61,7 +59,7 @@ ColorSpace.register(XYZ_D50);
 ColorSpace.register(Lab_D65);
 
 // Extend Color with interpolation (needed for Color.mix in color-mix)
-// @ts-ignore
+// @ts-expect-error – colorjs.io does not ship granular type declarations
 import * as interpolation from 'colorjs.io/src/interpolation.js';
 Color.extend(interpolation);
 

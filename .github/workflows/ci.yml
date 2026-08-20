@@ -105,9 +105,6 @@ jobs:
                       name: iOS Simulator Safari 15.0
                       targetBrowser: Safari_IOS_15_0
                       xcode: /Applications/Xcode_13.0.app
-                    - os: windows-latest
-                      name: Windows Internet Explorer 11
-                      targetBrowser: IE_11
         runs-on: ${{ matrix.config.os }}
         name: ${{ matrix.config.name }}
         env:

@@ -1,8 +1,8 @@
-import { getAbsoluteValue, getAbsoluteValueForTuple } from '../css/types/length-percentage';
-import { ElementContainer } from '../dom/element-container';
-import { BezierCurve, isBezierCurve } from './bezier-curve';
-import { Path } from './path';
-import { Vector } from './vector';
+import {getAbsoluteValue, getAbsoluteValueForTuple} from '../css/types/length-percentage';
+import {ElementContainer} from '../dom/element-container';
+import {BezierCurve, isBezierCurve} from './bezier-curve';
+import {Path} from './path';
+import {Vector} from './vector';
 
 export class BoundCurves {
     readonly topLeftBorderDoubleOuterBox: Path;

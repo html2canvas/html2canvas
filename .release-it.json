@@ -15,5 +15,11 @@
     "hooks": {
         "before:init": "npm run build"
     },
-    "plugins": {}
+    "plugins": {
+        "@release-it/conventional-changelog": {
+            "preset": "conventionalcommits",
+            "infile": "CHANGELOG.md",
+            "header": "# Changelog\nAll notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines."
+        }
+    }
 }

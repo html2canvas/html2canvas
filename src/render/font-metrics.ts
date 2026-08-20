@@ -1,4 +1,4 @@
-import { SMALL_IMAGE } from '../core/util';
+import {SMALL_IMAGE} from '../core/util';
 export interface FontMetric {
     baseline: number;
     middle: number;

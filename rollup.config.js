@@ -1,8 +1,8 @@
 import commonjs from '@rollup/plugin-commonjs';
-import {nodeResolve} from '@rollup/plugin-node-resolve';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
-import {readFileSync} from 'fs';
+import { readFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
@@ -29,8 +29,7 @@ const commonPlugins = [
 // Plugins for the unbundled ESM build (dependencies are external)
 const esmUnbundledPlugins = [
     nodeResolve({
-        preferBuiltins: false,
-        resolveOnly: [] // don't resolve any deps
+        preferBuiltins: false
     }),
     commonjs(),
     typescript({
