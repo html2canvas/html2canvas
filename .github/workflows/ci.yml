@@ -16,7 +16,7 @@ jobs:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
             - name: Cache node modules
               uses: actions/cache@v4
               env:
@@ -63,7 +63,7 @@ jobs:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
             - name: Cache node modules
               uses: actions/cache@v4
               env:
@@ -113,7 +113,7 @@ jobs:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
             - name: Cache node modules
               uses: actions/cache@v4
               env:
@@ -217,7 +217,7 @@ jobs:
               run: cd npm && tar -xvzf "html2canvas.tgz"
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
                   registry-url: 'https://registry.npmjs.org'
             - name: NPM Publish
               run: cd npm/package && npm publish --access public --provenance
@@ -248,7 +248,7 @@ jobs:
               run: cd npm && tar -xvzf "html2canvas.tgz"
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
                   registry-url: https://npm.pkg.github.com/
             - run: npm pkg set publishConfig.registry=https://npm.pkg.github.com
             - run: npm publish
@@ -263,7 +263,7 @@ jobs:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
             - name: Cache node modules
               uses: actions/cache@v4
               env:
