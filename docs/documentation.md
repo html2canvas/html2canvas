@@ -35,11 +35,8 @@ The script doesn't render plugin content such as Flash or Java applets.
 
 ## Browser compatibility
 
-The library should work fine on the following browsers (with `Promise` polyfill):
+The library works on all modern evergreen browsers:
 
-- Firefox 3.5+
-- Google Chrome
-- Opera 12+
-- IE9+
-- Edge
-- Safari 6+
+- Firefox
+- Chrome / Chromium-based browsers (Edge, Opera, Brave, ...)
+- Safari
