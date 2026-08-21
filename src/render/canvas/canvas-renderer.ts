@@ -1,33 +1,33 @@
-import {contains} from '../../core/bitwise';
-import {Context} from '../../core/context';
-import {CSSParsedDeclaration} from '../../css';
-import {Bounds} from '../../css/layout/bounds';
-import {segmentGraphemes, TextBounds} from '../../css/layout/text';
-import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
-import {DIRECTION} from '../../css/property-descriptors/direction';
-import {DISPLAY} from '../../css/property-descriptors/display';
-import {FilterType} from '../../css/property-descriptors/filter';
-import {computeLineHeight} from '../../css/property-descriptors/line-height';
-import {LIST_STYLE_POSITION} from '../../css/property-descriptors/list-style-position';
-import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
-import {PAINT_ORDER_LAYER} from '../../css/property-descriptors/paint-order';
-import {TEXT_ALIGN} from '../../css/property-descriptors/text-align';
-import {TEXT_DECORATION_LINE} from '../../css/property-descriptors/text-decoration-line';
-import {TextShadow} from '../../css/property-descriptors/text-shadow';
-import {WRITING_MODE} from '../../css/property-descriptors/writing-mode';
-import {isDimensionToken} from '../../css/syntax/parser';
-import {asString, Color, isTransparent} from '../../css/types/color';
-import {calculateGradientDirection, calculateRadius, processColorStops} from '../../css/types/functions/gradient';
-import {CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient} from '../../css/types/image';
-import {FIFTY_PERCENT, getAbsoluteValue, getNumber} from '../../css/types/length-percentage';
-import {ElementContainer, FLAGS} from '../../dom/element-container';
-import {SelectElementContainer} from '../../dom/elements/select-element-container';
-import {TextareaElementContainer} from '../../dom/elements/textarea-element-container';
-import {ReplacedElementContainer} from '../../dom/replaced-elements';
-import {CanvasElementContainer} from '../../dom/replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from '../../dom/replaced-elements/iframe-element-container';
-import {ImageElementContainer} from '../../dom/replaced-elements/image-element-container';
+import { contains } from '../../core/bitwise';
+import { Context } from '../../core/context';
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { segmentGraphemes, TextBounds } from '../../css/layout/text';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { FilterType } from '../../css/property-descriptors/filter';
+import { computeLineHeight } from '../../css/property-descriptors/line-height';
+import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
+import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
+import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
+import { isDimensionToken } from '../../css/syntax/parser';
+import { asString, Color, isTransparent } from '../../css/types/color';
+import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
+import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
+import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
+import { ElementContainer, FLAGS } from '../../dom/element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
+import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
+import { ReplacedElementContainer } from '../../dom/replaced-elements';
+import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
+import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
 import {
     CHECKBOX,
     INPUT_COLOR,
@@ -35,12 +35,12 @@ import {
     RADIO,
     RANGE
 } from '../../dom/replaced-elements/input-element-container';
-import {METER_STATE, MeterElementContainer} from '../../dom/replaced-elements/meter-element-container';
-import {ProgressElementContainer} from '../../dom/replaced-elements/progress-element-container';
-import {SVGElementContainer} from '../../dom/replaced-elements/svg-element-container';
-import {TextContainer} from '../../dom/text-container';
-import {calculateBackgroundRendering, getBackgroundValueForIndex} from '../background';
-import {BezierCurve, isBezierCurve} from '../bezier-curve';
+import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
+import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
+import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
+import { TextContainer } from '../../dom/text-container';
+import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
+import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
@@ -54,7 +54,7 @@ import {
     calculatePaddingBoxPath,
     expandBorderBoxPath
 } from '../bound-curves';
-import {contentBox} from '../box-sizing';
+import { contentBox } from '../box-sizing';
 import {
     EffectTarget,
     IElementEffect,
@@ -63,12 +63,12 @@ import {
     isOpacityEffect,
     isTransformEffect
 } from '../effects';
-import {FontMetrics} from '../font-metrics';
-import {calculateObjectFitBounds} from '../object-fit';
-import {Path, reversePath} from '../path';
-import {Renderer} from '../renderer';
-import {ElementPaint, parseStackingContexts, StackingContext} from '../stacking-context';
-import {Vector} from '../vector';
+import { FontMetrics } from '../font-metrics';
+import { calculateObjectFitBounds } from '../object-fit';
+import { Path, reversePath } from '../path';
+import { Renderer } from '../renderer';
+import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
+import { Vector } from '../vector';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: Color | null;
@@ -148,46 +148,8 @@ export class CanvasRenderer extends Renderer {
         }
 
         if (isFilterEffect(effect)) {
-            const filterStrings: string[] = [];
-            for (const f of effect.filter) {
-                switch (f.type) {
-                    case FilterType.DROP_SHADOW:
-                        filterStrings.push(
-                            `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`
-                        );
-                        break;
-                    case FilterType.BLUR:
-                        filterStrings.push(`blur(${f.radius.number}px)`);
-                        break;
-                    case FilterType.BRIGHTNESS:
-                        filterStrings.push(`brightness(${f.amount})`);
-                        break;
-                    case FilterType.CONTRAST:
-                        filterStrings.push(`contrast(${f.amount})`);
-                        break;
-                    case FilterType.GRAYSCALE:
-                        filterStrings.push(`grayscale(${f.amount})`);
-                        break;
-                    case FilterType.HUE_ROTATE:
-                        filterStrings.push(`hue-rotate(${f.angle}deg)`);
-                        break;
-                    case FilterType.INVERT:
-                        filterStrings.push(`invert(${f.amount})`);
-                        break;
-                    case FilterType.OPACITY:
-                        filterStrings.push(`opacity(${f.amount})`);
-                        break;
-                    case FilterType.SATURATE:
-                        filterStrings.push(`saturate(${f.amount})`);
-                        break;
-                    case FilterType.SEPIA:
-                        filterStrings.push(`sepia(${f.amount})`);
-                        break;
-                }
-            }
-            if (filterStrings.length) {
-                this.ctx.filter = filterStrings.join(' ');
-            }
+            // All filters are now handled via offscreen canvas in renderStack.
+            // This block is kept as a no-op for the effect to be tracked in _activeEffects.
         }
 
         this._activeEffects.push(effect);
@@ -201,8 +163,104 @@ export class CanvasRenderer extends Renderer {
     async renderStack(stack: StackingContext): Promise<void> {
         const styles = stack.element.container.styles;
         if (styles.isVisible()) {
-            await this.renderStackContent(stack);
+            // Check if this stacking context has drop-shadow or blur filters that need
+            // offscreen rendering to avoid being clipped by the element's clip region.
+            const offscreenFilters = this._getOffscreenFilters(stack);
+            if (offscreenFilters) {
+                await this._renderStackWithOffscreenFilters(stack, offscreenFilters);
+            } else {
+                await this.renderStackContent(stack);
+            }
         }
+    }
+
+    /**
+     * Returns the ctx.filter string for all filters if the stacking context's own
+     * effects include them, or null if there are none.
+     * Offscreen rendering is needed because ctx.filter interacts badly with ctx.clip().
+     */
+    private _getOffscreenFilters(stack: StackingContext): string | null {
+        const filterStrings: string[] = [];
+        for (const effect of stack.element.effects) {
+            if (isFilterEffect(effect)) {
+                for (const f of effect.filter) {
+                    switch (f.type) {
+                        case FilterType.DROP_SHADOW:
+                            filterStrings.push(
+                                `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`
+                            );
+                            break;
+                        case FilterType.BLUR:
+                            filterStrings.push(`blur(${f.radius.number}px)`);
+                            break;
+                        case FilterType.BRIGHTNESS:
+                            filterStrings.push(`brightness(${f.amount})`);
+                            break;
+                        case FilterType.CONTRAST:
+                            filterStrings.push(`contrast(${f.amount})`);
+                            break;
+                        case FilterType.GRAYSCALE:
+                            filterStrings.push(`grayscale(${f.amount})`);
+                            break;
+                        case FilterType.HUE_ROTATE:
+                            filterStrings.push(`hue-rotate(${f.angle}deg)`);
+                            break;
+                        case FilterType.INVERT:
+                            filterStrings.push(`invert(${f.amount})`);
+                            break;
+                        case FilterType.OPACITY:
+                            filterStrings.push(`opacity(${f.amount})`);
+                            break;
+                        case FilterType.SATURATE:
+                            filterStrings.push(`saturate(${f.amount})`);
+                            break;
+                        case FilterType.SEPIA:
+                            filterStrings.push(`sepia(${f.amount})`);
+                            break;
+                    }
+                }
+            }
+        }
+        return filterStrings.length > 0 ? filterStrings.join(' ') : null;
+    }
+
+    /**
+     * Renders a stacking context into an offscreen canvas, then draws it onto the
+     * main canvas with the drop-shadow/blur filter applied. This prevents the filter
+     * from being clipped by the element's own clip region.
+     */
+    private async _renderStackWithOffscreenFilters(stack: StackingContext, filterString: string): Promise<void> {
+        // Save current canvas state
+        const mainCanvas = this.canvas;
+        const mainCtx = this.ctx;
+
+        // Create offscreen canvas with extra padding for blur/shadow overflow
+        const offscreen = document.createElement('canvas');
+        offscreen.width = mainCanvas.width;
+        offscreen.height = mainCanvas.height;
+        const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
+        offCtx.scale(this.options.scale, this.options.scale);
+        offCtx.translate(-this.options.x, -this.options.y);
+        offCtx.textBaseline = 'bottom';
+
+        // Swap to offscreen canvas
+        this.canvas = offscreen;
+        this.ctx = offCtx;
+
+        // Render the stacking context content normally (without drop-shadow/blur in effects)
+        await this.renderStackContent(stack);
+
+        // Restore main canvas
+        this.canvas = mainCanvas;
+        this.ctx = mainCtx;
+
+        // Draw offscreen canvas onto main canvas with the filter
+        this.ctx.save();
+        this.ctx.filter = filterString;
+        // Reset transform to identity since offscreen canvas is already at the correct scale/position
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.drawImage(offscreen, 0, 0);
+        this.ctx.restore();
     }
 
     async renderNode(paint: ElementPaint): Promise<void> {

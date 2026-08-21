@@ -26,7 +26,7 @@ Below is a list of all the supported CSS properties and values.
 - content
 - color
 - display
-- filter (**Chromium only** — Firefox does not support `CanvasRenderingContext2D.filter`)
+- filter
     - blur()
     - brightness()
     - contrast()
