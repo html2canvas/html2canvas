@@ -8,7 +8,15 @@ import {ElementContainer, FLAGS} from '../dom/element-container';
 import {LIElementContainer} from '../dom/elements/li-element-container';
 import {OLElementContainer} from '../dom/elements/ol-element-container';
 import {BoundCurves, calculateBorderBoxPath, calculatePaddingBoxPath} from './bound-curves';
-import {ClipEffect, EffectTarget, IElementEffect, OpacityEffect, TransformEffect, isClipEffect} from './effects';
+import {
+    ClipEffect,
+    EffectTarget,
+    FilterEffect,
+    IElementEffect,
+    OpacityEffect,
+    TransformEffect,
+    isClipEffect
+} from './effects';
 import {equalPath} from './path';
 
 export class StackingContext {
@@ -65,6 +73,10 @@ export class ElementPaint {
                 this.effects.push(new ClipEffect(borderBox, EffectTarget.BACKGROUND_BORDERS));
                 this.effects.push(new ClipEffect(paddingBox, EffectTarget.CONTENT));
             }
+        }
+
+        if (this.container.styles.isFiltered()) {
+            this.effects.push(new FilterEffect(this.container.styles.filter));
         }
     }
 
@@ -124,7 +136,12 @@ const parseStackTree = (
 
             const stack = new StackingContext(paintContainer);
 
-            if (child.styles.isPositioned() || child.styles.opacity < 1 || child.styles.isTransformed()) {
+            if (
+                child.styles.isPositioned() ||
+                child.styles.opacity < 1 ||
+                child.styles.isTransformed() ||
+                child.styles.isFiltered()
+            ) {
                 const order = child.styles.zIndex.order;
                 if (order < 0) {
                     let index = 0;

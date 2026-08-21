@@ -2432,6 +2432,154 @@ var duration = {
     }
 };
 
+var filter = {
+    name: 'filter',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: function (context, tokens) {
+        if (tokens.length === 1 && isIdentWithValue(tokens[0], 'none')) {
+            return [];
+        }
+        var filters = [];
+        for (var i = 0; i < tokens.length; i++) {
+            var token = tokens[i];
+            if (token.type === 18 /* TokenType.FUNCTION */) {
+                var parsed = parseFilterFunction(context, token.name, token.values);
+                if (parsed) {
+                    filters.push(parsed);
+                }
+            }
+        }
+        return filters;
+    }
+};
+var parseFilterFunction = function (context, name, values) {
+    switch (name) {
+        case 'drop-shadow':
+            return parseDropShadow(context, values);
+        case 'blur':
+            return parseBlur(values);
+        case 'brightness':
+            return parseAmountFilter(2 /* FilterType.BRIGHTNESS */, values);
+        case 'contrast':
+            return parseAmountFilter(3 /* FilterType.CONTRAST */, values);
+        case 'grayscale':
+            return parseAmountFilter(4 /* FilterType.GRAYSCALE */, values);
+        case 'invert':
+            return parseAmountFilter(6 /* FilterType.INVERT */, values);
+        case 'opacity':
+            return parseAmountFilter(7 /* FilterType.OPACITY */, values);
+        case 'saturate':
+            return parseAmountFilter(8 /* FilterType.SATURATE */, values);
+        case 'sepia':
+            return parseAmountFilter(9 /* FilterType.SEPIA */, values);
+        case 'hue-rotate':
+            return parseHueRotate(values);
+        default:
+            return null;
+    }
+};
+var parseDropShadow = function (context, values) {
+    var shadow = {
+        type: 0 /* FilterType.DROP_SHADOW */,
+        color: COLORS.TRANSPARENT,
+        offsetX: ZERO_LENGTH,
+        offsetY: ZERO_LENGTH,
+        blur: ZERO_LENGTH
+    };
+    var lengthCount = 0;
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+            continue;
+        }
+        if (isLength(token)) {
+            if (lengthCount === 0) {
+                shadow.offsetX = token;
+            }
+            else if (lengthCount === 1) {
+                shadow.offsetY = token;
+            }
+            else if (lengthCount === 2) {
+                shadow.blur = token;
+            }
+            lengthCount++;
+        }
+        else {
+            shadow.color = color$1.parse(context, token);
+        }
+    }
+    // At minimum, offsetX and offsetY are required
+    if (lengthCount < 2) {
+        return null;
+    }
+    return shadow;
+};
+var parseBlur = function (values) {
+    var result = {
+        type: 1 /* FilterType.BLUR */,
+        radius: ZERO_LENGTH
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (isLength(token)) {
+            result.radius = token;
+            break;
+        }
+    }
+    return result;
+};
+var parseAmountFilter = function (type, values) {
+    var result = {
+        type: type,
+        amount: 1 // default is 1 (100%) for most filters
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+            result.amount = token.number / 100;
+            break;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            result.amount = token.number;
+            break;
+        }
+    }
+    return result;
+};
+var parseHueRotate = function (values) {
+    var result = {
+        type: 5 /* FilterType.HUE_ROTATE */,
+        angle: 0
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            switch (token.unit) {
+                case 'deg':
+                    result.angle = token.number;
+                    break;
+                case 'rad':
+                    result.angle = (token.number * 180) / Math.PI;
+                    break;
+                case 'grad':
+                    result.angle = (token.number * 180) / 200;
+                    break;
+                case 'turn':
+                    result.angle = token.number * 360;
+                    break;
+            }
+            break;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */ && token.number === 0) {
+            result.angle = 0;
+            break;
+        }
+    }
+    return result;
+};
+
 var float = {
     name: 'float',
     initialValue: 'none',
@@ -3230,6 +3378,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.direction = parse(context, direction, declaration.direction);
         this.display = parse(context, display, declaration.display);
         this.float = parse(context, float, declaration.cssFloat);
+        this.filter = parse(context, filter, declaration.filter);
         this.fontFamily = parse(context, fontFamily, declaration.fontFamily);
         this.fontSize = parse(context, fontSize, declaration.fontSize);
         this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
@@ -3279,6 +3428,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
     };
     CSSParsedDeclaration.prototype.isTransformed = function () {
         return this.transform !== null;
+    };
+    CSSParsedDeclaration.prototype.isFiltered = function () {
+        return this.filter.length > 0;
     };
     CSSParsedDeclaration.prototype.isPositioned = function () {
         return this.position !== 0 /* POSITION.STATIC */;
@@ -4020,6 +4172,7 @@ var createsRealStackingContext = function (node, container, root) {
     return (container.styles.isPositionedWithZIndex() ||
         container.styles.opacity < 1 ||
         container.styles.isTransformed() ||
+        container.styles.isFiltered() ||
         (isBodyElement(node) && root.styles.isTransparent()));
 };
 var createsStackingContext = function (styles) { return styles.isPositioned() || styles.isFloating(); };
@@ -6048,11 +6201,20 @@ var OpacityEffect = /** @class */ (function () {
     }
     return OpacityEffect;
 }());
+var FilterEffect = /** @class */ (function () {
+    function FilterEffect(filter) {
+        this.filter = filter;
+        this.type = 3 /* EffectType.FILTER */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+    return FilterEffect;
+}());
 var isTransformEffect = function (effect) {
     return effect.type === 0 /* EffectType.TRANSFORM */;
 };
 var isClipEffect = function (effect) { return effect.type === 1 /* EffectType.CLIP */; };
 var isOpacityEffect = function (effect) { return effect.type === 2 /* EffectType.OPACITY */; };
+var isFilterEffect = function (effect) { return effect.type === 3 /* EffectType.FILTER */; };
 
 var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -6292,6 +6454,9 @@ var ElementPaint = /** @class */ (function () {
                 this.effects.push(new ClipEffect(paddingBox, 4 /* EffectTarget.CONTENT */));
             }
         }
+        if (this.container.styles.isFiltered()) {
+            this.effects.push(new FilterEffect(this.container.styles.filter));
+        }
     }
     ElementPaint.prototype.getEffects = function (target) {
         if (!this._collectedEffects) {
@@ -6334,7 +6499,10 @@ var parseStackTree = function (parent, stackingContext, realStackingContext, lis
         if (treatAsRealStackingContext || createsStackingContext) {
             var parentStack = treatAsRealStackingContext || child.styles.isPositioned() ? realStackingContext : stackingContext;
             var stack = new StackingContext(paintContainer);
-            if (child.styles.isPositioned() || child.styles.opacity < 1 || child.styles.isTransformed()) {
+            if (child.styles.isPositioned() ||
+                child.styles.opacity < 1 ||
+                child.styles.isTransformed() ||
+                child.styles.isFiltered()) {
                 var order_1 = child.styles.zIndex.order;
                 if (order_1 < 0) {
                     var index_1 = 0;
@@ -6460,6 +6628,47 @@ var CanvasRenderer = /** @class */ (function (_super) {
         if (isClipEffect(effect)) {
             this.path(effect.path);
             this.ctx.clip();
+        }
+        if (isFilterEffect(effect)) {
+            var filterStrings = [];
+            for (var _i = 0, _a = effect.filter; _i < _a.length; _i++) {
+                var f = _a[_i];
+                switch (f.type) {
+                    case 0 /* FilterType.DROP_SHADOW */:
+                        filterStrings.push("drop-shadow(".concat(f.offsetX.number, "px ").concat(f.offsetY.number, "px ").concat(f.blur.number, "px ").concat(asString(f.color), ")"));
+                        break;
+                    case 1 /* FilterType.BLUR */:
+                        filterStrings.push("blur(".concat(f.radius.number, "px)"));
+                        break;
+                    case 2 /* FilterType.BRIGHTNESS */:
+                        filterStrings.push("brightness(".concat(f.amount, ")"));
+                        break;
+                    case 3 /* FilterType.CONTRAST */:
+                        filterStrings.push("contrast(".concat(f.amount, ")"));
+                        break;
+                    case 4 /* FilterType.GRAYSCALE */:
+                        filterStrings.push("grayscale(".concat(f.amount, ")"));
+                        break;
+                    case 5 /* FilterType.HUE_ROTATE */:
+                        filterStrings.push("hue-rotate(".concat(f.angle, "deg)"));
+                        break;
+                    case 6 /* FilterType.INVERT */:
+                        filterStrings.push("invert(".concat(f.amount, ")"));
+                        break;
+                    case 7 /* FilterType.OPACITY */:
+                        filterStrings.push("opacity(".concat(f.amount, ")"));
+                        break;
+                    case 8 /* FilterType.SATURATE */:
+                        filterStrings.push("saturate(".concat(f.amount, ")"));
+                        break;
+                    case 9 /* FilterType.SEPIA */:
+                        filterStrings.push("sepia(".concat(f.amount, ")"));
+                        break;
+                }
+            }
+            if (filterStrings.length) {
+                this.ctx.filter = filterStrings.join(' ');
+            }
         }
         this._activeEffects.push(effect);
     };

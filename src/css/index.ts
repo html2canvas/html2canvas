@@ -40,6 +40,7 @@ import {counterReset} from './property-descriptors/counter-reset';
 import {direction} from './property-descriptors/direction';
 import {DISPLAY, display} from './property-descriptors/display';
 import {duration} from './property-descriptors/duration';
+import {filter as filterDescriptor} from './property-descriptors/filter';
 import {FLOAT, float} from './property-descriptors/float';
 import {fontFamily} from './property-descriptors/font-family';
 import {fontSize} from './property-descriptors/font-size';
@@ -112,6 +113,7 @@ export class CSSParsedDeclaration {
     color: Color;
     direction: ReturnType<typeof direction.parse>;
     display: ReturnType<typeof display.parse>;
+    filter: ReturnType<typeof filterDescriptor.parse>;
     float: ReturnType<typeof float.parse>;
     fontFamily: ReturnType<typeof fontFamily.parse>;
     fontSize: LengthPercentage;
@@ -183,6 +185,7 @@ export class CSSParsedDeclaration {
         this.direction = parse(context, direction, declaration.direction);
         this.display = parse(context, display, declaration.display);
         this.float = parse(context, float, declaration.cssFloat);
+        this.filter = parse(context, filterDescriptor, declaration.filter);
         this.fontFamily = parse(context, fontFamily, declaration.fontFamily);
         this.fontSize = parse(context, fontSize, declaration.fontSize);
         this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
@@ -243,6 +246,10 @@ export class CSSParsedDeclaration {
 
     isTransformed(): boolean {
         return this.transform !== null;
+    }
+
+    isFiltered(): boolean {
+        return this.filter.length > 0;
     }
 
     isPositioned(): boolean {
