@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="Explore the different configuration options available for html2canvas"><title>Options - html2canvas</title><link rel="icon" type="image/svg+xml" href="/logo_icon.svg"><style>@import"https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap";*,*:before,*:after{box-sizing:border-box}html{font-size:14.5px;line-height:1.5}body{margin:0;padding:0;font-family:Roboto,sans-serif;font-weight:400;color:#000000de;-webkit-font-smoothing:antialiased}p{color:#000000b5;padding:0;-webkit-font-smoothing:antialiased}h1{font-weight:300;font-size:4.2rem;padding:0;margin:.67em 0}h4{font-size:2.28rem;line-height:110%;margin:1.14rem 0 .912rem}h5{font-size:1.28rem;line-height:110%;margin:1.14rem 0 .912rem}h6{line-height:110%;margin:1.14rem 0 .912rem}a{color:#7cb342;text-decoration:none}table{border:1px solid #ddd;border-collapse:collapse;width:100%}table tr:nth-child(odd){background-color:#f9f9f9}th{padding:8px;border:1px solid #ddd;border-bottom-width:2px}td{padding:8px}th:first-child,td:first-child{padding-left:8px}:not(pre)>code{padding:.1em .25em;border:solid 1px rgba(51,51,51,.12);background:#f5f2f0;border-radius:.3em;color:#000;font-family:Inconsolata,Monaco,Consolas,Andale Mono,monospace;direction:ltr;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;line-height:1.4}blockquote{white-space:pre-wrap;padding:0 20px;margin:20px 0;border:1px solid #eee;border-left-width:5px;border-radius:3px;border-left-color:#558b2f}blockquote p{padding:0}#carbonads{display:block;overflow:hidden;text-align:center;font-size:14px;line-height:1.5}#carbonads span{display:block;overflow:hidden}.carbon-img{display:block}.carbon-text{display:block;margin-bottom:.5em}.carbon-poweredby{display:block;color:#fff9;font-size:9px}#carbonads a{color:#fff}pre[class*=shiki],pre[class*=language-]{font-family:Inconsolata,Monaco,Consolas,Andale Mono,monospace;font-size:.9em;padding:1em;margin:.5em 0;overflow:auto;border-radius:.3em}
+@media(min-width:1000px){.docs-wrapper[data-astro-cid-mw7aashj]{margin-left:300px!important}.docs-title[data-astro-cid-mw7aashj]{font-size:4.2rem!important}.docs-desc[data-astro-cid-mw7aashj]{font-size:2.28rem!important}}
+</style></head> <body>  <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="12i5HF" prefix="r4" component-url="/_astro/navigation.Dkvuo1Aa.js" component-export="default" renderer-url="/_astro/client.Bz692-Ao.js" props="{&quot;data-astro-cid-mw7aashj&quot;:[0,true]}" ssr client="load" opts="{&quot;name&quot;:&quot;Navigation&quot;,&quot;value&quot;:true}" await-children><nav style="font-size:13px;background-color:#fff" class="nav-sidebar"><div style="background:#558b2f;align-items:center;padding:24px 30px 24px 0px;display:flex" class="nav-header"><img src="/ic_menu_black_24px.svg" alt="Menu" style="width:50px;cursor:pointer;margin:0 20px 0" class="nav-menu-icon"/><a href="/"><img src="/logo.svg" style="margin:0" alt="html2canvas"/></a></div><ul style="list-style:none;margin:0;padding:0" class="nav-links"><li style="padding:0;margin:0"><a href="/documentation" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">About</a></li><li style="padding:0;margin:0"><a href="/getting-started" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">Getting started</a></li><li style="padding:0;margin:0"><a href="/configuration" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">Configuration</a></li><li style="padding:0;margin:0"><a href="/features" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">Features</a></li><li style="padding:0;margin:0"><a href="/proxy" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">Proxy</a></li><li style="padding:0;margin:0"><a href="/faq" style="line-height:44px;height:44px;padding:0 30px;display:block;font-weight:500;transition:.3s ease-out;color:rgba(0,0,0,0.87);text-decoration:none" class="nav-link">FAQ</a></li></ul><style>
+                .nav-sidebar {
+                    position: relative;
+                }
+                .nav-menu-icon {
+                    display: block;
+                }
+                .nav-links {
+                    display: none;
+                }
+                .nav-links--open {
+                    display: block !important;
+                }
+                .nav-link:hover {
+                    background-color: rgba(0,0,0,0.05);
+                }
+                @media (min-width: 1000px) {
+                    .nav-sidebar {
+                        position: fixed !important;
+                        top: 0;
+                        left: 0;
+                        width: 300px;
+                        box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12), 0 3px 1px -2px rgba(0,0,0,0.2);
+                        height: 100%;
+                        z-index: 100;
+                    }
+                    .nav-header {
+                        padding: 24px 30px 24px 30px !important;
+                    }
+                    .nav-menu-icon {
+                        display: none !important;
+                    }
+                    .nav-links {
+                        display: block !important;
+                    }
+                }
+            </style></nav><!--astro:end--></astro-island> <div style="margin-left: 0; display: flex; min-height: 100vh; flex-direction: column;" class="docs-wrapper" data-astro-cid-mw7aashj> <!-- Page header --> <div style="background: #7cb342; margin-bottom: 1.45rem; color: #fff; padding-top: 1rem; padding-bottom: 1rem;" data-astro-cid-mw7aashj> <div style="max-width: 960px;" data-astro-cid-mw7aashj> <div style="width: 85%; margin: 0 auto; display: flex;" data-astro-cid-mw7aashj> <div style="flex: 1;" data-astro-cid-mw7aashj> <h1 style="padding: 20px 0; font-size: 2.8rem; margin: 0;" class="docs-title" data-astro-cid-mw7aashj> Options </h1> <h4 style="font-weight: 300; color: rgba(255,255,255,0.6); font-size: 1.8rem;" class="docs-desc" data-astro-cid-mw7aashj> Explore the different configuration options available for html2canvas </h4> </div> <astro-island uid="bU04A" prefix="r5" component-url="/_astro/carbon.Gn4oXR-j.js" component-export="default" renderer-url="/_astro/client.Bz692-Ao.js" props="{&quot;style&quot;:[0,{&quot;width&quot;:[0,&quot;150px&quot;],&quot;marginLeft&quot;:[0,&quot;20px&quot;]}],&quot;data-astro-cid-mw7aashj&quot;:[0,true]}" ssr client="load" opts="{&quot;name&quot;:&quot;Carbon&quot;,&quot;value&quot;:true}" await-children><div style="width:150px;margin-left:20px"></div><!--astro:end--></astro-island> </div> </div> </div> <!-- Content --> <div style="max-width: 960px; padding-top: 0; flex-grow: 1;" data-astro-cid-mw7aashj> <div style="width: 85%; margin: 0 auto;" class="docs-content" data-astro-cid-mw7aashj>  <p>These are all of the available configuration options.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th align="center">Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>allowTaint</td>
+<td align="center"><code>false</code></td>
+<td>Whether to allow cross-origin images to taint the canvas</td>
+</tr>
+<tr>
+<td>backgroundColor</td>
+<td align="center"><code>#ffffff</code></td>
+<td>Canvas background color, if none is specified in DOM. Set <code>null</code> for transparent</td>
+</tr>
+<tr>
+<td>canvas</td>
+<td align="center"><code>null</code></td>
+<td>Existing <code>canvas</code> element to use as a base for drawing on</td>
+</tr>
+<tr>
+<td>foreignObjectRendering</td>
+<td align="center"><code>false</code></td>
+<td>Whether to use ForeignObject rendering if the browser supports it</td>
+</tr>
+<tr>
+<td>imageTimeout</td>
+<td align="center"><code>15000</code></td>
+<td>Timeout for loading an image (in milliseconds). Set to <code>0</code> to disable timeout.</td>
+</tr>
+<tr>
+<td>ignoreElements</td>
+<td align="center"><code>(element) =&gt; false</code></td>
+<td>Predicate function which removes the matching elements from the render.</td>
+</tr>
+<tr>
+<td>logging</td>
+<td align="center"><code>true</code></td>
+<td>Enable logging for debug purposes</td>
+</tr>
+<tr>
+<td>onclone</td>
+<td align="center"><code>null</code></td>
+<td>Callback function which is called when the Document has been cloned for rendering, can be used to modify the contents that will be rendered without affecting the original source document.</td>
+</tr>
+<tr>
+<td>proxy</td>
+<td align="center"><code>null</code></td>
+<td>Url to the <a href="./proxy">proxy</a> which is to be used for loading cross-origin images. If left empty, cross-origin images won&#39;t be loaded.</td>
+</tr>
+<tr>
+<td>removeContainer</td>
+<td align="center"><code>true</code></td>
+<td>Whether to cleanup the cloned DOM elements html2canvas creates temporarily</td>
+</tr>
+<tr>
+<td>scale</td>
+<td align="center"><code>window.devicePixelRatio</code></td>
+<td>The scale to use for rendering. Defaults to the browsers device pixel ratio.</td>
+</tr>
+<tr>
+<td>useCORS</td>
+<td align="center"><code>false</code></td>
+<td>Whether to attempt to load images from a server using CORS</td>
+</tr>
+<tr>
+<td>width</td>
+<td align="center"><code>Element</code> width</td>
+<td>The width of the <code>canvas</code></td>
+</tr>
+<tr>
+<td>height</td>
+<td align="center"><code>Element</code> height</td>
+<td>The height of the <code>canvas</code></td>
+</tr>
+<tr>
+<td>x</td>
+<td align="center"><code>Element</code> x-offset</td>
+<td>Crop canvas x-coordinate</td>
+</tr>
+<tr>
+<td>y</td>
+<td align="center"><code>Element</code> y-offset</td>
+<td>Crop canvas y-coordinate</td>
+</tr>
+<tr>
+<td>scrollX</td>
+<td align="center"><code>Element</code> scrollX</td>
+<td>The x-scroll position to used when rendering element, (for example if the Element uses <code>position: fixed</code>)</td>
+</tr>
+<tr>
+<td>scrollY</td>
+<td align="center"><code>Element</code> scrollY</td>
+<td>The y-scroll position to used when rendering element, (for example if the Element uses <code>position: fixed</code>)</td>
+</tr>
+<tr>
+<td>windowWidth</td>
+<td align="center"><code>Window.innerWidth</code></td>
+<td>Window width to use when rendering <code>Element</code>, which may affect things like Media queries</td>
+</tr>
+<tr>
+<td>windowHeight</td>
+<td align="center"><code>Window.innerHeight</code></td>
+<td>Window height to use when rendering <code>Element</code>, which may affect things like Media queries</td>
+</tr>
+</tbody></table>
+<p>If you wish to exclude certain <code>Element</code>s from getting rendered, you can add a <code>data-html2canvas-ignore</code> attribute to those elements and html2canvas will exclude them from the rendering.</p>
+  </div> </div> <!-- Pagination --> <div style="background-color: #7cb342; margin-top: 30px;" data-astro-cid-mw7aashj> <div style="width: 85%; display: flex; margin: 0 auto; align-items: center; height: 96px;" data-astro-cid-mw7aashj> <a href="/getting-started" style="flex: 1; color: #fff; display: flex; align-items: flex-end; text-decoration: none;" data-astro-cid-mw7aashj> <div style="height: 24px; width: 24px;" data-astro-cid-mw7aashj><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+</svg>
+</div> <div data-astro-cid-mw7aashj> <span style="display: block; color: rgba(255,255,255,.55); font-size: 15px; line-height: 18px; margin-bottom: 1px;" data-astro-cid-mw7aashj>
+Previous
+</span> <div style="color: rgba(255,255,255,.87); font-size: 20px;" data-astro-cid-mw7aashj> Getting Started </div> </div> </a> <a href="/features" style="flex: 1; color: #fff; justify-content: flex-end; display: flex; align-items: flex-end; text-decoration: none;" data-astro-cid-mw7aashj> <div data-astro-cid-mw7aashj> <span style="display: block; color: rgba(255,255,255,.55); font-size: 15px; line-height: 18px; margin-bottom: 1px;" data-astro-cid-mw7aashj>
+Next
+</span> <div style="color: rgba(255,255,255,.87); font-size: 20px;" data-astro-cid-mw7aashj> Features </div> </div> <div style="height: 24px; width: 24px;" data-astro-cid-mw7aashj><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+</svg>
+</div> </a> </div> </div> <footer style="background-color:#558b2f;color:rgba(255,255,255, 0.8);font-weight:300;min-height:50px;line-height:50px;padding:10px 0px"><div style="margin:0 auto;font-size:10.5px;text-align:center" class="footer-inner">Created by<!-- --> <a href="https://hertzen.com" style="color:#fff;font-weight:bold">Niklas von Hertzen</a>. Licensed under the MIT License.</div><style>
+                @media (min-width: 1000px) {
+                    .footer-inner {
+                        text-align: left !important;
+                        width: 85%;
+                        font-size: 14.5px !important;
+                    }
+                }
+            </style></footer> </div>  <astro-island uid="ZCWAaB" prefix="r7" component-url="/_astro/example.K8G8pT_I.js" component-export="default" renderer-url="/_astro/client.Bz692-Ao.js" props="{}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div style="width:800px;height:800px;position:fixed;z-index:1000;right:-348.4px;bottom:-327.2px;visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div style="position:absolute;top:344px;left:344px;width:112px;height:112px;border-radius:50%;z-index:100001"><div id="tryhtml2canvas" style="display:flex;justify-content:center;align-items:center;width:56px;height:56px;background-color:#33691e;position:absolute;left:50%;top:50%;cursor:pointer;transform:translate(-50%, -50%);border-radius:50%;visibility:visible;box-shadow:0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12), 0 3px 1px -2px rgba(0,0,0,0.2)"><img src="/ic_camera_alt_black_24px.svg" style="width:30px;height:30px;flex:1;margin:0" alt="Try html2canvas"/></div></div><div style="background-color:#33691e;border-radius:50%;opacity:0;transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1);transform:scale(0);position:absolute;width:100%;height:100%;z-index:100000"><div style="width:456px;height:600px;right:56px;bottom:56px;padding:56px;position:fixed;left:0;color:#fff"><h4>Try out html2canvas</h4><p style="color:#fff">Test out html2canvas by rendering the viewport from the current page.</p><div style="padding:4px 8px;margin:10px;border:2px solid #fff;color:#fff;display:inline-block;cursor:pointer">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html> 
