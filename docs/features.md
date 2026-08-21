@@ -6,6 +6,7 @@ description: 'Discover the different features supported by html2canvas'
 Below is a list of all the supported CSS properties and values.
 
 - background
+    - background-blend-mode
     - background-clip (**Does not support `text`**)
     - background-color
     - background-image
@@ -90,7 +91,6 @@ Below is a list of all the supported CSS properties and values.
 
 These CSS properties are **NOT** currently supported
 
-- [background-blend-mode](https://github.com/niklasvh/html2canvas/issues/966)
 - [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
 - [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)

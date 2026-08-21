@@ -1221,6 +1221,10 @@ export class CanvasRenderer extends Renderer {
     async renderBackgroundImage(container: ElementContainer): Promise<void> {
         let index = container.styles.backgroundImage.length - 1;
         for (const backgroundImage of container.styles.backgroundImage.slice(0).reverse()) {
+            const blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
+            if (blendMode !== 'source-over') {
+                this.ctx.globalCompositeOperation = blendMode;
+            }
             if (backgroundImage.type === CSSImageType.URL) {
                 let image;
                 const url = (backgroundImage as CSSURLImage).url;
@@ -1302,6 +1306,9 @@ export class CanvasRenderer extends Renderer {
                 }
             }
             index--;
+            if (blendMode !== 'source-over') {
+                this.ctx.globalCompositeOperation = 'source-over';
+            }
         }
     }
 

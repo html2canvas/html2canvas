@@ -1,6 +1,10 @@
 import { contains } from '../core/bitwise';
 import { Context } from '../core/context';
 import { CSSPropertyDescriptor, PropertyDescriptorParsingType } from './IPropertyDescriptor';
+import {
+    BACKGROUND_BLEND_MODE,
+    backgroundBlendMode as backgroundBlendModeDescriptor,
+} from './property-descriptors/background-blend-mode';
 import { backgroundClip } from './property-descriptors/background-clip';
 import { backgroundColor } from './property-descriptors/background-color';
 import { backgroundImage } from './property-descriptors/background-image';
@@ -88,6 +92,7 @@ import { time } from './types/time';
 export class CSSParsedDeclaration {
     animationDuration: ReturnType<typeof duration.parse>;
     backgroundClip: ReturnType<typeof backgroundClip.parse>;
+    backgroundBlendMode: BACKGROUND_BLEND_MODE[];
     backgroundColor: Color;
     backgroundImage: ReturnType<typeof backgroundImage.parse>;
     backgroundOrigin: ReturnType<typeof backgroundOrigin.parse>;
@@ -160,6 +165,7 @@ export class CSSParsedDeclaration {
     constructor(context: Context, declaration: CSSStyleDeclaration) {
         this.animationDuration = parse(context, duration, declaration.animationDuration);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
+        this.backgroundBlendMode = parse(context, backgroundBlendModeDescriptor, declaration.backgroundBlendMode);
         this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
         this.backgroundImage = parse(context, backgroundImage, declaration.backgroundImage);
         this.backgroundOrigin = parse(context, backgroundOrigin, declaration.backgroundOrigin);
