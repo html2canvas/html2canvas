@@ -5,6 +5,8 @@ description: 'Discover the different features supported by html2canvas'
 
 Below is a list of all the supported CSS properties and values.
 
+## Properties
+
 - background
     - background-blend-mode
     - background-clip
@@ -86,6 +88,37 @@ Below is a list of all the supported CSS properties and values.
 - word-wrap
 - z-index
 - object-fit
+
+## Values
+
+- bend-mode
+    - multiply
+    - screen
+    - overlay
+    - darken
+    - lighten
+    - color-dodge
+    - color-burn
+    - hard-light
+    - soft-light
+    - difference
+    - exclusion
+    - hue
+    - saturation
+    - color
+    - luminosity
+- color
+    - color name
+    - hexa
+    - rgb()
+    - hsl()
+    - lch()
+    - lab()
+    - oklch()
+    - oklab()
+    - hwb()
+    - color()
+    - color-mix()
 
 ## Unsupported CSS properties
 
