@@ -33,6 +33,10 @@ elements on the page, which have been tainted with cross-origin content, they wi
 
 The script doesn't render plugin content such as Flash or Java applets.
 
+### iframes
+
+Same-origin iframes are fully supported — their content is rendered recursively. Cross-origin iframes cannot be rendered due to browser security restrictions (the `contentDocument` is not accessible). Sandboxed iframes without `allow-same-origin` have the same limitation.
+
 ## Browser compatibility
 
 The library works on all modern evergreen browsers:
