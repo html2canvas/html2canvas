@@ -1,11 +1,11 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum FLOAT {
     NONE = 0,
     LEFT = 1,
     RIGHT = 2,
     INLINE_START = 3,
-    INLINE_END = 4
+    INLINE_END = 4,
 }
 
 export const float: IPropertyIdentValueDescriptor<FLOAT> = {
@@ -25,5 +25,5 @@ export const float: IPropertyIdentValueDescriptor<FLOAT> = {
                 return FLOAT.INLINE_END;
         }
         return FLOAT.NONE;
-    }
+    },
 };

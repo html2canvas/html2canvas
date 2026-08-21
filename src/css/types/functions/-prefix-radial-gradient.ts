@@ -1,15 +1,21 @@
-import {CSSValue, isIdentToken, parseFunctionArgs} from '../../syntax/parser';
+import { CSSValue, isIdentToken, parseFunctionArgs } from '../../syntax/parser';
 import {
     CSSImageType,
     CSSRadialExtent,
     CSSRadialGradientImage,
     CSSRadialShape,
     CSSRadialSize,
-    UnprocessedGradientColorStop
+    UnprocessedGradientColorStop,
 } from '../image';
-import {parseColorStop} from './gradient';
-import {FIFTY_PERCENT, HUNDRED_PERCENT, isLengthPercentage, LengthPercentage, ZERO_LENGTH} from '../length-percentage';
-import {isLength} from '../length';
+import { parseColorStop } from './gradient';
+import {
+    FIFTY_PERCENT,
+    HUNDRED_PERCENT,
+    isLengthPercentage,
+    LengthPercentage,
+    ZERO_LENGTH,
+} from '../length-percentage';
+import { isLength } from '../length';
 import {
     CIRCLE,
     CLOSEST_CORNER,
@@ -18,9 +24,9 @@ import {
     COVER,
     ELLIPSE,
     FARTHEST_CORNER,
-    FARTHEST_SIDE
+    FARTHEST_SIDE,
 } from './radial-gradient';
-import {Context} from '../../../core/context';
+import { Context } from '../../../core/context';
 
 export const prefixRadialGradient = (context: Context, tokens: CSSValue[]): CSSRadialGradientImage => {
     let shape: CSSRadialShape = CSSRadialShape.CIRCLE;
@@ -96,5 +102,5 @@ export const prefixRadialGradient = (context: Context, tokens: CSSValue[]): CSSR
         }
     });
 
-    return {size, shape, stops, position, type: CSSImageType.RADIAL_GRADIENT};
+    return { size, shape, stops, position, type: CSSImageType.RADIAL_GRADIENT };
 };

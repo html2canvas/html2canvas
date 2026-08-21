@@ -1,8 +1,8 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum OVERFLOW_WRAP {
     NORMAL = 'normal',
-    BREAK_WORD = 'break-word'
+    BREAK_WORD = 'break-word',
 }
 
 export const overflowWrap: IPropertyIdentValueDescriptor<OVERFLOW_WRAP> = {
@@ -18,5 +18,5 @@ export const overflowWrap: IPropertyIdentValueDescriptor<OVERFLOW_WRAP> = {
             default:
                 return OVERFLOW_WRAP.NORMAL;
         }
-    }
+    },
 };

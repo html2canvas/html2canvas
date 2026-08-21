@@ -1,7 +1,7 @@
-import {ElementContainer} from '../element-container';
-import {parseBounds} from '../../css/layout/bounds';
-import {Context} from '../../core/context';
-import {serializeSvg} from '../../core/features';
+import { ElementContainer } from '../element-container';
+import { parseBounds } from '../../css/layout/bounds';
+import { Context } from '../../core/context';
+import { serializeSvg } from '../../core/features';
 
 export class SVGElementContainer extends ElementContainer {
     svg: string;

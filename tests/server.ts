@@ -7,9 +7,9 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import serveIndex from 'serve-index';
-import {URL} from 'url';
+import { URL } from 'url';
 import yargs from 'yargs';
-import {ScreenshotRequest} from './types';
+import { ScreenshotRequest } from './types';
 
 // Inline proxy middleware — replaces the html2canvas-proxy package.
 // Fetches a remote URL (passed as ?url=) and returns its content as a base64 data URI.
@@ -32,7 +32,7 @@ const proxyMiddleware = (): express.Router => {
 
         const transport = parsed.protocol === 'https:' ? https : http;
         transport
-            .get(rawUrl, (upstream) => {
+            .get(rawUrl, upstream => {
                 const contentType = upstream.headers['content-type'] ?? 'application/octet-stream';
                 const chunks: Uint8Array[] = [];
                 upstream.on('data', (chunk: Uint8Array) => chunks.push(chunk));
@@ -58,7 +58,7 @@ export const app = express();
 // (node_modules, src, build, etc.) are returned with the correct MIME type
 // rather than being intercepted by the directory listing middleware.
 app.use('/', express.static(path.resolve(__dirname, '../')));
-app.use('/', serveIndex(path.resolve(__dirname, '../'), {icons: true}));
+app.use('/', serveIndex(path.resolve(__dirname, '../'), { icons: true }));
 
 export const corsApp = express();
 corsApp.use('/proxy', proxyMiddleware());
@@ -77,20 +77,20 @@ screenshotApp.use((req: express.Request, _res: express.Response, next: express.N
 screenshotApp.use(
     express.json({
         limit: '15mb',
-        type: '*/*'
-    })
+        type: '*/*',
+    }),
 );
 
 const prefix = 'data:image/png;base64,';
 const screenshotFolder = '../tmp/reftests';
 const metadataFolder = '../tmp/reftests/metadata';
 
-fs.mkdirSync(path.resolve(__dirname, screenshotFolder), {recursive: true});
-fs.mkdirSync(path.resolve(__dirname, metadataFolder), {recursive: true});
+fs.mkdirSync(path.resolve(__dirname, screenshotFolder), { recursive: true });
+fs.mkdirSync(path.resolve(__dirname, metadataFolder), { recursive: true });
 
 const writeScreenshot = (buffer: Buffer, body: ScreenshotRequest) => {
     const filename = `${filenamifyUrl(body.test.replace(/^\/tests\/reftests\//, '').replace(/\.html$/, ''), {
-        replacement: '-'
+        replacement: '-',
     })}!${[process.env.TARGET_BROWSER, body.platform.name, body.platform.version].join('-')}`;
 
     fs.writeFileSync(path.resolve(__dirname, screenshotFolder, `${filename}.png`), buffer as unknown as Uint8Array);
@@ -115,11 +115,11 @@ screenshotApp.post(
                 devicePixelRatio: req.body.devicePixelRatio,
                 test: req.body.test,
                 id: process.env.TARGET_BROWSER,
-                screenshot: filename
-            })
+                screenshot: filename,
+            }),
         );
         return res.sendStatus(200);
-    }
+    },
 );
 
 screenshotApp.use((error: Error, _req: express.Request, _res: express.Response, next: express.NextFunction) => {

@@ -1,14 +1,14 @@
-import {Context} from '../../core/context';
-import {ITypeDescriptor} from '../ITypeDescriptor';
-import {CSSValue, nonFunctionArgSeparator, Parser} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
+import { Context } from '../../core/context';
+import { ITypeDescriptor } from '../ITypeDescriptor';
+import { CSSValue, nonFunctionArgSeparator, Parser } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
 
 import Color from './colorjs-minimal';
 
 export type PackedColor = number;
 
 // Keep backward-compatible type alias
-export type {PackedColor as Color};
+export type { PackedColor as Color };
 
 export const color: ITypeDescriptor<PackedColor> = {
     name: 'color',
@@ -63,7 +63,7 @@ export const color: ITypeDescriptor<PackedColor> = {
         }
 
         return COLORS.TRANSPARENT;
-    }
+    },
 };
 
 export const isTransparent = (color: PackedColor): boolean => (0xff & color) === 0;
@@ -84,7 +84,7 @@ export const pack = (r: number, g: number, b: number, a: number): PackedColor =>
  * The color is gamut-mapped to sRGB before packing.
  */
 const colorJsToPacked = (c: Color): PackedColor => {
-    const srgb = c.toGamut({space: 'srgb'}).to('srgb');
+    const srgb = c.toGamut({ space: 'srgb' }).to('srgb');
     const r = Math.round(Math.min(255, Math.max(0, (srgb.coords[0] || 0) * 255)));
     const g = Math.round(Math.min(255, Math.max(0, (srgb.coords[1] || 0) * 255)));
     const b = Math.round(Math.min(255, Math.max(0, (srgb.coords[2] || 0) * 255)));
@@ -223,15 +223,15 @@ const colorMix = (_context: Context, args: CSSValue[]): number => {
         const space = spaceToken.value;
 
         // Parse color1 + percentage from second group
-        const {colorStr: color1Str, percentage: pct1} = extractColorAndPercentage(groups[1]);
+        const { colorStr: color1Str, percentage: pct1 } = extractColorAndPercentage(groups[1]);
         // Parse color2 + percentage from third group
-        const {colorStr: color2Str, percentage: pct2} = extractColorAndPercentage(groups[2]);
+        const { colorStr: color2Str, percentage: pct2 } = extractColorAndPercentage(groups[2]);
 
         const p1 = pct1 !== null ? pct1 / 100 : pct2 !== null ? 1 - pct2 / 100 : 0.5;
 
         const c1 = new Color(color1Str);
         const c2 = new Color(color2Str);
-        const mixed = Color.mix(c1, c2, 1 - p1, {space});
+        const mixed = Color.mix(c1, c2, 1 - p1, { space });
         return colorJsToPacked(mixed);
     } catch {
         return COLORS.TRANSPARENT;
@@ -242,7 +242,7 @@ const colorMix = (_context: Context, args: CSSValue[]): number => {
  * Extracts a color string and an optional trailing percentage from a group of tokens.
  * e.g. tokens for "hsl(120 100% 50%) 25%" → { colorStr: "hsl(120 100% 50%)", percentage: 25 }
  */
-const extractColorAndPercentage = (tokens: CSSValue[]): {colorStr: string; percentage: number | null} => {
+const extractColorAndPercentage = (tokens: CSSValue[]): { colorStr: string; percentage: number | null } => {
     // Check if the last non-whitespace token is a percentage
     const nonWs = tokens.filter((t: CSSValue) => t.type !== TokenType.WHITESPACE_TOKEN);
     const lastToken = nonWs[nonWs.length - 1];
@@ -260,7 +260,7 @@ const extractColorAndPercentage = (tokens: CSSValue[]): {colorStr: string; perce
         .map((t: CSSValue) => reconstructToken(t))
         .join('')
         .trim();
-    return {colorStr, percentage};
+    return { colorStr, percentage };
 };
 
 const SUPPORTED_COLOR_FUNCTIONS: {
@@ -276,13 +276,13 @@ const SUPPORTED_COLOR_FUNCTIONS: {
     oklab: oklab,
     hwb: hwb,
     color: colorFunction,
-    'color-mix': colorMix
+    'color-mix': colorMix,
 };
 
 export const parseColor = (context: Context, value: string): PackedColor =>
     color.parse(context, Parser.create(value).parseComponentValue());
 
-export const COLORS: {[key: string]: PackedColor} = {
+export const COLORS: { [key: string]: PackedColor } = {
     ALICEBLUE: 0xf0f8ffff,
     ANTIQUEWHITE: 0xfaebd7ff,
     AQUA: 0x00ffffff,
@@ -431,5 +431,5 @@ export const COLORS: {[key: string]: PackedColor} = {
     WHITE: 0xffffffff,
     WHITESMOKE: 0xf5f5f5ff,
     YELLOW: 0xffff00ff,
-    YELLOWGREEN: 0x9acd32ff
+    YELLOWGREEN: 0x9acd32ff,
 };

@@ -1,10 +1,10 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum TEXT_TRANSFORM {
     NONE = 0,
     LOWERCASE = 1,
     UPPERCASE = 2,
-    CAPITALIZE = 3
+    CAPITALIZE = 3,
 }
 
 export const textTransform: IPropertyIdentValueDescriptor<TEXT_TRANSFORM> = {
@@ -23,5 +23,5 @@ export const textTransform: IPropertyIdentValueDescriptor<TEXT_TRANSFORM> = {
         }
 
         return TEXT_TRANSFORM.NONE;
-    }
+    },
 };

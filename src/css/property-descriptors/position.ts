@@ -1,11 +1,11 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum POSITION {
     STATIC = 0,
     RELATIVE = 1,
     ABSOLUTE = 2,
     FIXED = 3,
-    STICKY = 4
+    STICKY = 4,
 }
 
 export const position: IPropertyIdentValueDescriptor<POSITION> = {
@@ -26,5 +26,5 @@ export const position: IPropertyIdentValueDescriptor<POSITION> = {
         }
 
         return POSITION.STATIC;
-    }
+    },
 };

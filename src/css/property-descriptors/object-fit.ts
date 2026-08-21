@@ -1,11 +1,11 @@
-import {Context} from '../../core/context';
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 export const enum OBJECT_FIT {
     FILL = 'fill',
     CONTAIN = 'contain',
     COVER = 'cover',
     NONE = 'none',
-    SCALE_DOWN = 'scale-down'
+    SCALE_DOWN = 'scale-down',
 }
 
 export const objectFit: IPropertyIdentValueDescriptor<OBJECT_FIT> = {
@@ -27,5 +27,5 @@ export const objectFit: IPropertyIdentValueDescriptor<OBJECT_FIT> = {
             default:
                 return OBJECT_FIT.FILL;
         }
-    }
+    },
 };

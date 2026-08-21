@@ -1,13 +1,13 @@
-import {CSSValue} from './syntax/parser';
-import {CSSTypes} from './types';
-import {Context} from '../core/context';
+import { CSSValue } from './syntax/parser';
+import { CSSTypes } from './types';
+import { Context } from '../core/context';
 
 export const enum PropertyDescriptorParsingType {
     VALUE,
     LIST,
     IDENT_VALUE,
     TYPE_VALUE,
-    TOKEN_VALUE
+    TOKEN_VALUE,
 }
 
 export interface IPropertyDescriptor {

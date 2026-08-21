@@ -46,7 +46,7 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
             parent.textNodes.push(new TextContainer(context, childNode, parent.styles));
         } else if (isElementNode(childNode)) {
             if (isSlotElement(childNode) && childNode.assignedNodes) {
-                childNode.assignedNodes().forEach((childNode) => parseNodeTree(context, childNode, parent, root));
+                childNode.assignedNodes().forEach(childNode => parseNodeTree(context, childNode, parent, root));
             } else {
                 const container = createContainer(context, childNode);
                 if (container.styles.isVisible()) {

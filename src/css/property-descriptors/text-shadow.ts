@@ -1,9 +1,9 @@
-import {PropertyDescriptorParsingType, IPropertyListDescriptor} from '../IPropertyDescriptor';
-import {CSSValue, isIdentWithValue, parseFunctionArgs} from '../syntax/parser';
-import {ZERO_LENGTH} from '../types/length-percentage';
-import {color, Color, COLORS} from '../types/color';
-import {isLength, Length} from '../types/length';
-import {Context} from '../../core/context';
+import { PropertyDescriptorParsingType, IPropertyListDescriptor } from '../IPropertyDescriptor';
+import { CSSValue, isIdentWithValue, parseFunctionArgs } from '../syntax/parser';
+import { ZERO_LENGTH } from '../types/length-percentage';
+import { color, Color, COLORS } from '../types/color';
+import { isLength, Length } from '../types/length';
+import { Context } from '../../core/context';
 
 export type TextShadow = TextShadowItem[];
 interface TextShadowItem {
@@ -28,7 +28,7 @@ export const textShadow: IPropertyListDescriptor<TextShadow> = {
                 color: COLORS.TRANSPARENT,
                 offsetX: ZERO_LENGTH,
                 offsetY: ZERO_LENGTH,
-                blur: ZERO_LENGTH
+                blur: ZERO_LENGTH,
             };
             let c = 0;
             for (let i = 0; i < values.length; i++) {
@@ -48,5 +48,5 @@ export const textShadow: IPropertyListDescriptor<TextShadow> = {
             }
             return shadow;
         });
-    }
+    },
 };

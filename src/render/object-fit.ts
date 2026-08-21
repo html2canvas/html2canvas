@@ -1,13 +1,13 @@
-import {Bounds} from '../css/layout/bounds';
-import {OBJECT_FIT} from '../css/property-descriptors/object-fit';
+import { Bounds } from '../css/layout/bounds';
+import { OBJECT_FIT } from '../css/property-descriptors/object-fit';
 
 export const calculateObjectFitBounds = (
     objectFit: OBJECT_FIT,
     naturalWidth: number,
     naturalHeight: number,
     clientWidth: number,
-    clientHeight: number
-): {src: Bounds; dest: Bounds} => {
+    clientHeight: number,
+): { src: Bounds; dest: Bounds } => {
     const naturalRatio = naturalWidth / naturalHeight;
     const clientRatio = clientWidth / clientHeight;
 
@@ -112,6 +112,6 @@ export const calculateObjectFitBounds = (
 
     return {
         src: new Bounds(srcX, srcY, srcWidth, srcHeight),
-        dest: new Bounds(destX, destY, destWidth, destHeight)
+        dest: new Bounds(destX, destY, destWidth, destHeight),
     };
 };

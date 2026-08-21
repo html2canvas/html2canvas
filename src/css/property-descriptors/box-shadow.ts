@@ -1,9 +1,9 @@
-import {PropertyDescriptorParsingType, IPropertyListDescriptor} from '../IPropertyDescriptor';
-import {CSSValue, isIdentWithValue, parseFunctionArgs} from '../syntax/parser';
-import {ZERO_LENGTH} from '../types/length-percentage';
-import {color, Color} from '../types/color';
-import {isLength, Length} from '../types/length';
-import {Context} from '../../core/context';
+import { PropertyDescriptorParsingType, IPropertyListDescriptor } from '../IPropertyDescriptor';
+import { CSSValue, isIdentWithValue, parseFunctionArgs } from '../syntax/parser';
+import { ZERO_LENGTH } from '../types/length-percentage';
+import { color, Color } from '../types/color';
+import { isLength, Length } from '../types/length';
+import { Context } from '../../core/context';
 
 export type BoxShadow = BoxShadowItem[];
 interface BoxShadowItem {
@@ -32,7 +32,7 @@ export const boxShadow: IPropertyListDescriptor<BoxShadow> = {
                 offsetY: ZERO_LENGTH,
                 blur: ZERO_LENGTH,
                 spread: ZERO_LENGTH,
-                inset: false
+                inset: false,
             };
             let c = 0;
             for (let i = 0; i < values.length; i++) {
@@ -56,5 +56,5 @@ export const boxShadow: IPropertyListDescriptor<BoxShadow> = {
             }
             return shadow;
         });
-    }
+    },
 };

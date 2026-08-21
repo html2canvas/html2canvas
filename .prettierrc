@@ -1,7 +1,23 @@
 {
-    "trailingComma": "none",
-    "tabWidth": 4,
-    "bracketSpacing": false,
     "singleQuote": true,
-    "printWidth": 120
+    "semi": true,
+    "tabWidth": 4,
+    "printWidth": 120,
+    "arrowParens": "avoid",
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "overrides": [
+        {
+            "files": "*.json",
+            "options": {
+                "tabWidth": 2
+            }
+        },
+        {
+            "files": "*.html",
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
 }

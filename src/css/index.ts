@@ -12,25 +12,25 @@ import {
     borderBottomColor,
     borderLeftColor,
     borderRightColor,
-    borderTopColor
+    borderTopColor,
 } from './property-descriptors/border-color';
 import {
     borderBottomLeftRadius,
     borderBottomRightRadius,
     borderTopLeftRadius,
-    borderTopRightRadius
+    borderTopRightRadius,
 } from './property-descriptors/border-radius';
 import {
     borderBottomStyle,
     borderLeftStyle,
     borderRightStyle,
-    borderTopStyle
+    borderTopStyle,
 } from './property-descriptors/border-style';
 import {
     borderBottomWidth,
     borderLeftWidth,
     borderRightWidth,
-    borderTopWidth
+    borderTopWidth,
 } from './property-descriptors/border-width';
 import { boxShadow } from './property-descriptors/box-shadow';
 import { color } from './property-descriptors/color';
@@ -220,12 +220,12 @@ export class CSSParsedDeclaration {
         this.textDecorationColor = parse(
             context,
             textDecorationColor,
-            declaration.textDecorationColor ?? declaration.color
+            declaration.textDecorationColor ?? declaration.color,
         );
         this.textDecorationLine = parse(
             context,
             textDecorationLine,
-            declaration.textDecorationLine ?? declaration.textDecoration
+            declaration.textDecorationLine ?? declaration.textDecoration,
         );
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);

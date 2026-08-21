@@ -1,10 +1,10 @@
-import {IPropertyListDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue, isIdentToken} from '../syntax/parser';
-import {Context} from '../../core/context';
+import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue, isIdentToken } from '../syntax/parser';
+import { Context } from '../../core/context';
 export const enum PAINT_ORDER_LAYER {
     FILL,
     STROKE,
-    MARKERS
+    MARKERS,
 }
 
 export type PaintOrder = PAINT_ORDER_LAYER[];
@@ -18,7 +18,7 @@ export const paintOrder: IPropertyListDescriptor<PaintOrder> = {
         const DEFAULT_VALUE = [PAINT_ORDER_LAYER.FILL, PAINT_ORDER_LAYER.STROKE, PAINT_ORDER_LAYER.MARKERS];
         const layers: PaintOrder = [];
 
-        tokens.filter(isIdentToken).forEach((token) => {
+        tokens.filter(isIdentToken).forEach(token => {
             switch (token.value) {
                 case 'stroke':
                     layers.push(PAINT_ORDER_LAYER.STROKE);
@@ -31,12 +31,12 @@ export const paintOrder: IPropertyListDescriptor<PaintOrder> = {
                     break;
             }
         });
-        DEFAULT_VALUE.forEach((value) => {
+        DEFAULT_VALUE.forEach(value => {
             if (layers.indexOf(value) === -1) {
                 layers.push(value);
             }
         });
 
         return layers;
-    }
+    },
 };

@@ -1,8 +1,8 @@
 'use strict';
 
-import {readFileSync, writeFileSync} from 'fs';
-import {resolve, relative} from 'path';
-import {sync} from 'glob';
+import { readFileSync, writeFileSync } from 'fs';
+import { resolve, relative } from 'path';
+import { sync } from 'glob';
 
 if (process.argv.length <= 2) {
     console.log('No ignore.txt file provided');
@@ -19,8 +19,8 @@ const outputPath = resolve(__dirname, '../', process.argv[3]);
 const ignoredTests = readFileSync(path)
     .toString()
     .split(/\r\n|\r|\n/)
-    .filter((l) => l.length)
-    .reduce((acc: {[key: string]: string[]}, l) => {
+    .filter(l => l.length)
+    .reduce((acc: { [key: string]: string[] }, l) => {
         const m = l.match(/^(\[(.+)\])?(.+)$/i);
         if (m) {
             acc[m[3]] = m[2] ? m[2].split(',') : [];
@@ -30,7 +30,7 @@ const ignoredTests = readFileSync(path)
 
 const files: string[] = sync('../tests/reftests/**/*.html', {
     cwd: __dirname,
-    root: resolve(__dirname, '../../')
+    root: resolve(__dirname, '../../'),
 });
 
 const testList = files.map((filename: string) => `/${relative('../', filename).replace(/\\/g, '/')}`);
@@ -38,8 +38,8 @@ writeFileSync(
     outputPath,
     [
         `export const testList: string[] = ${JSON.stringify(testList, null, 4)};`,
-        `export const ignoredTests: {[key: string]: string[]} = ${JSON.stringify(ignoredTests, null, 4)};`
-    ].join('\n')
+        `export const ignoredTests: {[key: string]: string[]} = ${JSON.stringify(ignoredTests, null, 4)};`,
+    ].join('\n'),
 );
 
 console.log(`${outputPath} updated`);

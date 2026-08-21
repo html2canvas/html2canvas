@@ -1,33 +1,33 @@
-import {Bounds} from '../../../css/layout/bounds';
-import {TextBounds} from '../../../css/layout/text';
-import {WRITING_MODE} from '../../../css/property-descriptors/writing-mode';
+import { Bounds } from '../../../css/layout/bounds';
+import { TextBounds } from '../../../css/layout/text';
+import { WRITING_MODE } from '../../../css/property-descriptors/writing-mode';
 
 // ---------------------------------------------------------------------------
 // Minimal mock of CanvasRenderingContext2D that records canvas transform calls
 // ---------------------------------------------------------------------------
-type Call = {method: string; args: unknown[]};
+type Call = { method: string; args: unknown[] };
 
 class MockCanvasContext {
     calls: Call[] = [];
     textBaseline = 'alphabetic';
 
     save() {
-        this.calls.push({method: 'save', args: []});
+        this.calls.push({ method: 'save', args: [] });
     }
     restore() {
-        this.calls.push({method: 'restore', args: []});
+        this.calls.push({ method: 'restore', args: [] });
     }
     translate(x: number, y: number) {
-        this.calls.push({method: 'translate', args: [x, y]});
+        this.calls.push({ method: 'translate', args: [x, y] });
     }
     rotate(angle: number) {
-        this.calls.push({method: 'rotate', args: [angle]});
+        this.calls.push({ method: 'rotate', args: [angle] });
     }
     fillText(text: string, x: number, y: number) {
-        this.calls.push({method: 'fillText', args: [text, x, y]});
+        this.calls.push({ method: 'fillText', args: [text, x, y] });
     }
     measureText(_text: string) {
-        return {width: 10};
+        return { width: 10 };
     }
     reset() {
         this.calls = [];
@@ -37,14 +37,14 @@ class MockCanvasContext {
 // ---------------------------------------------------------------------------
 // Thin wrapper that exposes renderTextWithLetterSpacing without a full Context
 // ---------------------------------------------------------------------------
-import {segmentGraphemes} from '../../../css/layout/text';
+import { segmentGraphemes } from '../../../css/layout/text';
 
 function renderTextWithLetterSpacing(
     ctx: MockCanvasContext,
     text: TextBounds,
     letterSpacing: number,
     baseline: number,
-    wm: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB
+    wm: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB,
 ): void {
     const isVertical =
         wm === WRITING_MODE.VERTICAL_RL ||
@@ -67,7 +67,7 @@ function renderTextWithLetterSpacing(
             cx - text.bounds.height / 2,
             cy - text.bounds.width / 2,
             text.bounds.height,
-            text.bounds.width
+            text.bounds.width,
         );
         const rotatedText = new TextBounds(text.text, rotatedBounds);
 
@@ -113,13 +113,13 @@ describe('renderTextWithLetterSpacing', () => {
     describe('horizontal-tb (default)', () => {
         it('does not rotate the canvas', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.HORIZONTAL_TB);
-            const rotateCalls = ctx.calls.filter((c) => c.method === 'rotate');
+            const rotateCalls = ctx.calls.filter(c => c.method === 'rotate');
             expect(rotateCalls).toHaveLength(0);
         });
 
         it('calls fillText at the original position', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.HORIZONTAL_TB);
-            const fillCall = ctx.calls.find((c) => c.method === 'fillText');
+            const fillCall = ctx.calls.find(c => c.method === 'fillText');
             expect(fillCall).toBeDefined();
             expect(fillCall!.args[1]).toBe(bounds.left);
         });
@@ -134,14 +134,14 @@ describe('renderTextWithLetterSpacing', () => {
 
         it('rotates +90°', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.SIDEWAYS_RL);
-            const rotateCall = ctx.calls.find((c) => c.method === 'rotate');
+            const rotateCall = ctx.calls.find(c => c.method === 'rotate');
             expect(rotateCall).toBeDefined();
             expect(rotateCall!.args[0]).toBeCloseTo(Math.PI / 2);
         });
 
         it('translates to/from the centre of the bounds', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.SIDEWAYS_RL);
-            const translates = ctx.calls.filter((c) => c.method === 'translate');
+            const translates = ctx.calls.filter(c => c.method === 'translate');
             const cx = bounds.left + bounds.width / 2; // 25
             const cy = bounds.top + bounds.height / 2; // 70
             expect(translates[0].args).toEqual([cx, cy]);
@@ -152,7 +152,7 @@ describe('renderTextWithLetterSpacing', () => {
     describe('sideways-lr', () => {
         it('rotates -90°', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.SIDEWAYS_LR);
-            const rotateCall = ctx.calls.find((c) => c.method === 'rotate');
+            const rotateCall = ctx.calls.find(c => c.method === 'rotate');
             expect(rotateCall).toBeDefined();
             expect(rotateCall!.args[0]).toBeCloseTo(-Math.PI / 2);
         });
@@ -161,7 +161,7 @@ describe('renderTextWithLetterSpacing', () => {
     describe('vertical-rl', () => {
         it('rotates +90°', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.VERTICAL_RL);
-            const rotateCall = ctx.calls.find((c) => c.method === 'rotate');
+            const rotateCall = ctx.calls.find(c => c.method === 'rotate');
             expect(rotateCall!.args[0]).toBeCloseTo(Math.PI / 2);
         });
     });
@@ -169,7 +169,7 @@ describe('renderTextWithLetterSpacing', () => {
     describe('vertical-lr', () => {
         it('rotates +90°', () => {
             renderTextWithLetterSpacing(ctx, text, 0, 12, WRITING_MODE.VERTICAL_LR);
-            const rotateCall = ctx.calls.find((c) => c.method === 'rotate');
+            const rotateCall = ctx.calls.find(c => c.method === 'rotate');
             expect(rotateCall!.args[0]).toBeCloseTo(Math.PI / 2);
         });
     });
@@ -177,7 +177,7 @@ describe('renderTextWithLetterSpacing', () => {
     describe('letter-spacing with sideways-rl', () => {
         it('calls fillText once per grapheme', () => {
             renderTextWithLetterSpacing(ctx, text, 5, 12, WRITING_MODE.SIDEWAYS_RL);
-            const fillCalls = ctx.calls.filter((c) => c.method === 'fillText');
+            const fillCalls = ctx.calls.filter(c => c.method === 'fillText');
             // 'Hello' → 5 graphemes
             expect(fillCalls).toHaveLength(5);
         });

@@ -8,12 +8,12 @@ export const enum EffectType {
     CLIP = 1,
     OPACITY = 2,
     FILTER = 3,
-    MIX_BLEND_MODE = 4
+    MIX_BLEND_MODE = 4,
 }
 
 export const enum EffectTarget {
     BACKGROUND_BORDERS = 1 << 1,
-    CONTENT = 1 << 2
+    CONTENT = 1 << 2,
 }
 
 export interface IElementEffect {
@@ -28,7 +28,7 @@ export class TransformEffect implements IElementEffect {
     constructor(
         readonly offsetX: number,
         readonly offsetY: number,
-        readonly matrix: Matrix
+        readonly matrix: Matrix,
     ) {}
 }
 
@@ -37,7 +37,7 @@ export class ClipEffect implements IElementEffect {
 
     constructor(
         readonly path: Path[],
-        readonly target: EffectTarget
+        readonly target: EffectTarget,
     ) {}
 }
 

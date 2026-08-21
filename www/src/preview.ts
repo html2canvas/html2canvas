@@ -18,7 +18,7 @@ interface Test {
     screenshot: string;
 }
 
-type TestList = {[key: string]: Test[]};
+type TestList = { [key: string]: Test[] };
 
 function onTestChange(browserTests: Test[]) {
     if (browserSelector) {
@@ -81,7 +81,7 @@ const DOWN_ARROW = 40;
 const LEFT_ARROW = 37;
 const RIGHT_ARROW = 39;
 
-window.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', e => {
     if (testSelector && browserSelector) {
         if (e.keyCode === UP_ARROW) {
             testSelector.selectedIndex = Math.max(0, testSelector.selectedIndex - 1);
@@ -101,7 +101,7 @@ window.addEventListener('keydown', (e) => {
         } else if (e.keyCode === RIGHT_ARROW) {
             browserSelector.selectedIndex = Math.min(
                 browserSelector.children.length - 1,
-                browserSelector.selectedIndex + 1
+                browserSelector.selectedIndex + 1,
             );
             const event = new Event('change');
             browserSelector.dispatchEvent(event);
@@ -116,13 +116,13 @@ if (testSelector && browserSelector) {
         () => {
             selectTest(testSelector.value);
         },
-        false
+        false,
     );
 
     browserSelector.addEventListener(
         'change',
         () => {
-            testList[testSelector.value].some((browser) => {
+            testList[testSelector.value].some(browser => {
                 if (browser.id === browserSelector.value) {
                     if (browser) {
                         onBrowserChange(browser);
@@ -132,7 +132,7 @@ if (testSelector && browserSelector) {
                 return false;
             });
         },
-        false
+        false,
     );
 
     let testFromUrl: string | null = null;
@@ -148,7 +148,7 @@ if (testSelector && browserSelector) {
     }
 
     const tests: string[] = Object.keys(testList);
-    tests.forEach((testName) => {
+    tests.forEach(testName => {
         const option = document.createElement('option');
         option.value = testName;
         option.textContent = testName;

@@ -1,9 +1,9 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 
 export const enum DIRECTION {
     LTR = 0,
-    RTL = 1
+    RTL = 1,
 }
 
 export const direction: IPropertyIdentValueDescriptor<DIRECTION> = {
@@ -19,5 +19,5 @@ export const direction: IPropertyIdentValueDescriptor<DIRECTION> = {
             default:
                 return DIRECTION.LTR;
         }
-    }
+    },
 };

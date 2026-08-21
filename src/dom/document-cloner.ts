@@ -1,12 +1,12 @@
-import {Context} from '../core/context';
-import {DebuggerType, isDebugging} from '../core/debugger';
-import {CSSParsedCounterDeclaration, CSSParsedPseudoDeclaration} from '../css/index';
-import {Bounds} from '../css/layout/bounds';
-import {LIST_STYLE_TYPE, listStyleType} from '../css/property-descriptors/list-style-type';
-import {getQuote} from '../css/property-descriptors/quotes';
-import {isIdentToken, nonFunctionArgSeparator} from '../css/syntax/parser';
-import {TokenType} from '../css/syntax/tokenizer';
-import {CounterState, createCounterText} from '../css/types/functions/counter';
+import { Context } from '../core/context';
+import { DebuggerType, isDebugging } from '../core/debugger';
+import { CSSParsedCounterDeclaration, CSSParsedPseudoDeclaration } from '../css/index';
+import { Bounds } from '../css/layout/bounds';
+import { LIST_STYLE_TYPE, listStyleType } from '../css/property-descriptors/list-style-type';
+import { getQuote } from '../css/property-descriptors/quotes';
+import { isIdentToken, nonFunctionArgSeparator } from '../css/syntax/parser';
+import { TokenType } from '../css/syntax/tokenizer';
+import { CounterState, createCounterText } from '../css/types/functions/counter';
 import {
     isBodyElement,
     isCanvasElement,
@@ -22,7 +22,7 @@ import {
     isSVGElementNode,
     isTextareaElement,
     isTextNode,
-    isVideoElement
+    isVideoElement,
 } from './node-parser';
 
 export interface CloneOptions {
@@ -71,7 +71,7 @@ export class DocumentCloner {
     constructor(
         private readonly context: Context,
         element: HTMLElement,
-        private readonly options: CloneConfigurations
+        private readonly options: CloneConfigurations,
     ) {
         this.scrolledElements = [];
         this.referenceElement = element;
@@ -114,7 +114,7 @@ export class DocumentCloner {
                         cloneWindow.scrollX - windowSize.left,
                         cloneWindow.scrollY - windowSize.top,
                         0,
-                        0
+                        0,
                     );
                 }
             }
@@ -130,14 +130,14 @@ export class DocumentCloner {
             if (documentClone.fonts && documentClone.fonts.status === 'loading') {
                 await Promise.race([
                     documentClone.fonts.ready,
-                    new Promise<void>((resolve) => {
+                    new Promise<void>(resolve => {
                         const fontLoadTimer = setInterval(() => {
                             if (documentClone.fonts.status === 'loaded') {
                                 clearInterval(fontLoadTimer);
                                 resolve();
                             }
                         }, 1000);
-                    })
+                    }),
                 ]);
             }
 
@@ -253,7 +253,7 @@ export class DocumentCloner {
             clonedCanvas.width = canvas.width;
             clonedCanvas.height = canvas.height;
             const ctx = canvas.getContext('2d');
-            const clonedCtx = clonedCanvas.getContext('2d', {willReadFrequently: true});
+            const clonedCtx = clonedCanvas.getContext('2d', { willReadFrequently: true });
             if (clonedCtx) {
                 if (!this.options.allowTaint && ctx) {
                     clonedCtx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
@@ -264,7 +264,7 @@ export class DocumentCloner {
                         if (attribs?.preserveDrawingBuffer === false) {
                             this.context.logger.warn(
                                 'Unable to clone WebGL context as it has preserveDrawingBuffer=false',
-                                canvas
+                                canvas,
                             );
                         }
                     }
@@ -328,7 +328,7 @@ export class DocumentCloner {
             if (isElementNode(child) && isSlotElement(child) && typeof child.assignedNodes === 'function') {
                 const assignedNodes = child.assignedNodes() as ChildNode[];
                 if (assignedNodes.length) {
-                    assignedNodes.forEach((assignedNode) => this.appendChildNode(clone, assignedNode, copyStyles));
+                    assignedNodes.forEach(assignedNode => this.appendChildNode(clone, assignedNode, copyStyles));
                 }
             } else {
                 this.appendChildNode(clone, child, copyStyles);
@@ -412,7 +412,7 @@ export class DocumentCloner {
         node: Element,
         clone: Element,
         style: CSSStyleDeclaration,
-        pseudoElt: PseudoElementType
+        pseudoElt: PseudoElementType,
     ): HTMLElement | void {
         if (!style) {
             return;
@@ -437,7 +437,7 @@ export class DocumentCloner {
         const anonymousReplacedElement = document.createElement('html2canvaspseudoelement');
         copyCSSStyles(style, anonymousReplacedElement, this.options.onCopyProperty);
 
-        declaration.content.forEach((token) => {
+        declaration.content.forEach(token => {
             if (token.type === TokenType.STRING_TOKEN) {
                 anonymousReplacedElement.appendChild(document.createTextNode(token.value));
             } else if (token.type === TokenType.URL_TOKEN) {
@@ -450,7 +450,7 @@ export class DocumentCloner {
                     const attr = token.values.filter(isIdentToken);
                     if (attr.length) {
                         anonymousReplacedElement.appendChild(
-                            document.createTextNode(node.getAttribute(attr[0].value) || '')
+                            document.createTextNode(node.getAttribute(attr[0].value) || ''),
                         );
                     }
                 } else if (token.name === 'counter') {
@@ -463,7 +463,7 @@ export class DocumentCloner {
                                 : LIST_STYLE_TYPE.DECIMAL;
 
                         anonymousReplacedElement.appendChild(
-                            document.createTextNode(createCounterText(counterState, counterType, false))
+                            document.createTextNode(createCounterText(counterState, counterType, false)),
                         );
                     }
                 } else if (token.name === 'counters') {
@@ -476,7 +476,7 @@ export class DocumentCloner {
                                 : LIST_STYLE_TYPE.DECIMAL;
                         const separator = delim && delim.type === TokenType.STRING_TOKEN ? delim.value : '';
                         const text = counterStates
-                            .map((value) => createCounterText(value, counterType, false))
+                            .map(value => createCounterText(value, counterType, false))
                             .join(separator);
 
                         anonymousReplacedElement.appendChild(document.createTextNode(text));
@@ -488,12 +488,12 @@ export class DocumentCloner {
                 switch (token.value) {
                     case 'open-quote':
                         anonymousReplacedElement.appendChild(
-                            document.createTextNode(getQuote(declaration.quotes, this.quoteDepth++, true))
+                            document.createTextNode(getQuote(declaration.quotes, this.quoteDepth++, true)),
                         );
                         break;
                     case 'close-quote':
                         anonymousReplacedElement.appendChild(
-                            document.createTextNode(getQuote(declaration.quotes, --this.quoteDepth, false))
+                            document.createTextNode(getQuote(declaration.quotes, --this.quoteDepth, false)),
                         );
                         break;
                     default:
@@ -550,7 +550,7 @@ export class DocumentCloner {
 
 enum PseudoElementType {
     BEFORE,
-    AFTER
+    AFTER,
 }
 
 let iframeIdCounter = 0;
@@ -577,7 +577,7 @@ const createIFrameContainer = (ownerDocument: Document, bounds: Bounds): HTMLIFr
 };
 
 const imageReady = (img: HTMLImageElement): Promise<Event | void | string> => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         if (img.complete) {
             resolve();
             return;
@@ -620,13 +620,13 @@ const iframeLoader = (iframe: HTMLIFrameElement): Promise<HTMLIFrameElement> => 
 const ignoredStyleProperties = new Set([
     'all', // #2476
     'd', // #2483
-    'content' // Safari shows pseudoelements if content is set
+    'content', // Safari shows pseudoelements if content is set
 ]);
 
 export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     style: CSSStyleDeclaration,
     target: T,
-    onCopyProperty?: (property: string, style: CSSStyleDeclaration, target: T) => boolean | void
+    onCopyProperty?: (property: string, style: CSSStyleDeclaration, target: T) => boolean | void,
 ): T => {
     // Edge does not provide value for cssText.
     // Iterate forward so we can break early when reaching CSS custom properties (--*)
@@ -703,7 +703,7 @@ const createPseudoHideStyles = (body: HTMLElement) => {
     createStyles(
         body,
         `.${PSEUDO_HIDE_ELEMENT_CLASS_BEFORE}${PSEUDO_BEFORE}${PSEUDO_HIDE_ELEMENT_STYLE}
-         .${PSEUDO_HIDE_ELEMENT_CLASS_AFTER}${PSEUDO_AFTER}${PSEUDO_HIDE_ELEMENT_STYLE}`
+         .${PSEUDO_HIDE_ELEMENT_CLASS_AFTER}${PSEUDO_AFTER}${PSEUDO_HIDE_ELEMENT_STYLE}`,
     );
 };
 

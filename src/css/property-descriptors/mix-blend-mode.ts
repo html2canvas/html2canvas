@@ -1,4 +1,4 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 
 export const enum MIX_BLEND_MODE {
     NORMAL = 0,
@@ -16,7 +16,7 @@ export const enum MIX_BLEND_MODE {
     HUE = 12,
     SATURATION = 13,
     COLOR = 14,
-    LUMINOSITY = 15
+    LUMINOSITY = 15,
 }
 
 export const mixBlendMode: IPropertyIdentValueDescriptor<MIX_BLEND_MODE> = {
@@ -60,7 +60,7 @@ export const mixBlendMode: IPropertyIdentValueDescriptor<MIX_BLEND_MODE> = {
             default:
                 return MIX_BLEND_MODE.NORMAL;
         }
-    }
+    },
 };
 
 /** Map enum to the globalCompositeOperation string value */
@@ -80,5 +80,5 @@ export const mixBlendModeToComposite: Record<MIX_BLEND_MODE, GlobalCompositeOper
     [MIX_BLEND_MODE.HUE]: 'hue',
     [MIX_BLEND_MODE.SATURATION]: 'saturation',
     [MIX_BLEND_MODE.COLOR]: 'color',
-    [MIX_BLEND_MODE.LUMINOSITY]: 'luminosity'
+    [MIX_BLEND_MODE.LUMINOSITY]: 'luminosity',
 };

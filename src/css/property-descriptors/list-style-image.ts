@@ -1,8 +1,8 @@
-import {TokenType} from '../syntax/tokenizer';
-import {ICSSImage, image} from '../types/image';
-import {IPropertyValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue} from '../syntax/parser';
-import {Context} from '../../core/context';
+import { TokenType } from '../syntax/tokenizer';
+import { ICSSImage, image } from '../types/image';
+import { IPropertyValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue } from '../syntax/parser';
+import { Context } from '../../core/context';
 
 export const listStyleImage: IPropertyValueDescriptor<ICSSImage | null> = {
     name: 'list-style-image',
@@ -15,5 +15,5 @@ export const listStyleImage: IPropertyValueDescriptor<ICSSImage | null> = {
         }
 
         return image.parse(context, token);
-    }
+    },
 };

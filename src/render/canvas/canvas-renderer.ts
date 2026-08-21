@@ -34,7 +34,7 @@ import {
     INPUT_COLOR,
     InputElementContainer,
     RADIO,
-    RANGE
+    RANGE,
 } from '../../dom/replaced-elements/input-element-container';
 import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
 import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
@@ -46,14 +46,14 @@ import {
     parsePathForBorder,
     parsePathForBorderDoubleInner,
     parsePathForBorderDoubleOuter,
-    parsePathForBorderStroke
+    parsePathForBorderStroke,
 } from '../border';
 import {
     BoundCurves,
     calculateBorderBoxPath,
     calculateContentBoxPath,
     calculatePaddingBoxPath,
-    expandBorderBoxPath
+    expandBorderBoxPath,
 } from '../bound-curves';
 import { contentBox } from '../box-sizing';
 import {
@@ -63,7 +63,7 @@ import {
     isFilterEffect,
     isMixBlendModeEffect,
     isOpacityEffect,
-    isTransformEffect
+    isTransformEffect,
 } from '../effects';
 import { FontMetrics } from '../font-metrics';
 import { calculateObjectFitBounds } from '../object-fit';
@@ -113,7 +113,7 @@ export class CanvasRenderer extends Renderer {
         this.ctx.textBaseline = 'bottom';
         this._activeEffects = [];
         this.context.logger.debug(
-            `Canvas renderer initialized (${options.width}x${options.height}) with scale ${options.scale}`
+            `Canvas renderer initialized (${options.width}x${options.height}) with scale ${options.scale}`,
         );
     }
 
@@ -122,7 +122,7 @@ export class CanvasRenderer extends Renderer {
             this.popEffect();
         }
 
-        effects.forEach((effect) => this.applyEffect(effect));
+        effects.forEach(effect => this.applyEffect(effect));
     }
 
     applyEffect(effect: IElementEffect): void {
@@ -139,7 +139,7 @@ export class CanvasRenderer extends Renderer {
                 effect.matrix[2],
                 effect.matrix[3],
                 effect.matrix[4],
-                effect.matrix[5]
+                effect.matrix[5],
             );
             this.ctx.translate(-effect.offsetX, -effect.offsetY);
         }
@@ -193,7 +193,7 @@ export class CanvasRenderer extends Renderer {
                     switch (f.type) {
                         case FilterType.DROP_SHADOW:
                             filterStrings.push(
-                                `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`
+                                `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`,
                             );
                             break;
                         case FilterType.BLUR:
@@ -285,7 +285,7 @@ export class CanvasRenderer extends Renderer {
         letterSpacing: number,
         baseline: number,
         writingMode: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB,
-        useStroke: boolean = false
+        useStroke: boolean = false,
     ): void {
         const isVertical =
             writingMode === WRITING_MODE.VERTICAL_RL ||
@@ -318,7 +318,7 @@ export class CanvasRenderer extends Renderer {
                 cx - text.bounds.height / 2,
                 cy - text.bounds.width / 2,
                 text.bounds.height,
-                text.bounds.width
+                text.bounds.width,
             );
             const rotatedText = new TextBounds(text.text, rotatedBounds);
 
@@ -328,7 +328,7 @@ export class CanvasRenderer extends Renderer {
                     drawText(
                         rotatedText.text,
                         rotatedText.bounds.left,
-                        rotatedText.bounds.top + rotatedText.bounds.height
+                        rotatedText.bounds.top + rotatedText.bounds.height,
                     );
                 } else {
                     drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + baseline);
@@ -370,7 +370,7 @@ export class CanvasRenderer extends Renderer {
             return cached;
         }
         const fontVariant = styles.fontVariant
-            .filter((variant) => variant === 'normal' || variant === 'small-caps')
+            .filter(variant => variant === 'normal' || variant === 'small-caps')
             .join('');
         const fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
         const fontSize = isDimensionToken(styles.fontSize)
@@ -380,7 +380,7 @@ export class CanvasRenderer extends Renderer {
         const result = [
             [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
             fontFamily,
-            fontSize
+            fontSize,
         ];
         this._fontStyleCache.set(styles, result);
         return result;
@@ -404,10 +404,10 @@ export class CanvasRenderer extends Renderer {
 
         // Use the real measured baseline offset so that Firefox and Chrome both
         // place text at the correct vertical position regardless of line-height.
-        const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
+        const { baseline } = this.fontMetrics.getMetrics(fontFamily, fontSize);
 
-        text.textBounds.forEach((text) => {
-            paintOrder.forEach((paintOrderLayer) => {
+        text.textBounds.forEach(text => {
+            paintOrder.forEach(paintOrderLayer => {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
                         this.ctx.fillStyle = asString(styles.color);
@@ -418,7 +418,7 @@ export class CanvasRenderer extends Renderer {
                             textShadows
                                 .slice(0)
                                 .reverse()
-                                .forEach((textShadow) => {
+                                .forEach(textShadow => {
                                     this.ctx.shadowColor = asString(textShadow.color);
                                     this.ctx.shadowOffsetX = textShadow.offsetX.number * this.options.scale;
                                     this.ctx.shadowOffsetY = textShadow.offsetY.number * this.options.scale;
@@ -435,7 +435,7 @@ export class CanvasRenderer extends Renderer {
 
                         if (styles.textDecorationLine.length) {
                             this.ctx.fillStyle = asString(styles.textDecorationColor || styles.color);
-                            styles.textDecorationLine.forEach((textDecorationLine) => {
+                            styles.textDecorationLine.forEach(textDecorationLine => {
                                 // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
                                 const decorationLineHeight = 1;
                                 if (isVertical) {
@@ -452,14 +452,14 @@ export class CanvasRenderer extends Renderer {
                                                     text.bounds.left,
                                                     text.bounds.top,
                                                     decorationLineHeight,
-                                                    text.bounds.height
+                                                    text.bounds.height,
                                                 );
                                             } else {
                                                 this.ctx.fillRect(
                                                     text.bounds.left + text.bounds.width - decorationLineHeight,
                                                     text.bounds.top,
                                                     decorationLineHeight,
-                                                    text.bounds.height
+                                                    text.bounds.height,
                                                 );
                                             }
                                             break;
@@ -469,14 +469,14 @@ export class CanvasRenderer extends Renderer {
                                                     text.bounds.left + text.bounds.width - decorationLineHeight,
                                                     text.bounds.top,
                                                     decorationLineHeight,
-                                                    text.bounds.height
+                                                    text.bounds.height,
                                                 );
                                             } else {
                                                 this.ctx.fillRect(
                                                     text.bounds.left,
                                                     text.bounds.top,
                                                     decorationLineHeight,
-                                                    text.bounds.height
+                                                    text.bounds.height,
                                                 );
                                             }
                                             break;
@@ -485,7 +485,7 @@ export class CanvasRenderer extends Renderer {
                                                 text.bounds.left + (text.bounds.width / 2 - decorationLineHeight / 2),
                                                 text.bounds.top,
                                                 decorationLineHeight,
-                                                text.bounds.height
+                                                text.bounds.height,
                                             );
                                             break;
                                     }
@@ -496,7 +496,7 @@ export class CanvasRenderer extends Renderer {
                                                 text.bounds.left,
                                                 text.bounds.top + text.bounds.height - decorationLineHeight,
                                                 text.bounds.width,
-                                                decorationLineHeight
+                                                decorationLineHeight,
                                             );
                                             break;
                                         case TEXT_DECORATION_LINE.OVERLINE:
@@ -504,7 +504,7 @@ export class CanvasRenderer extends Renderer {
                                                 text.bounds.left,
                                                 text.bounds.top,
                                                 text.bounds.width,
-                                                decorationLineHeight
+                                                decorationLineHeight,
                                             );
                                             break;
                                         case TEXT_DECORATION_LINE.LINE_THROUGH:
@@ -512,7 +512,7 @@ export class CanvasRenderer extends Renderer {
                                                 text.bounds.left,
                                                 text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
                                                 text.bounds.width,
-                                                decorationLineHeight
+                                                decorationLineHeight,
                                             );
                                             break;
                                     }
@@ -539,7 +539,7 @@ export class CanvasRenderer extends Renderer {
     renderReplacedElement(
         container: ReplacedElementContainer,
         curves: BoundCurves,
-        image: HTMLImageElement | HTMLCanvasElement
+        image: HTMLImageElement | HTMLCanvasElement,
     ): void {
         if (image) {
             const isContainerWSizes = container.intrinsicWidth > 0 && container.intrinsicHeight > 0;
@@ -550,12 +550,12 @@ export class CanvasRenderer extends Renderer {
                 const box = contentBox(container);
                 const path = calculatePaddingBoxPath(curves);
                 this.path(path);
-                const {src, dest} = calculateObjectFitBounds(
+                const { src, dest } = calculateObjectFitBounds(
                     container.styles.objectFit,
                     container.intrinsicWidth,
                     container.intrinsicHeight,
                     box.width,
-                    box.height
+                    box.height,
                 );
                 this.ctx.save();
                 this.ctx.clip();
@@ -569,7 +569,7 @@ export class CanvasRenderer extends Renderer {
                         box.left + dest.left,
                         box.top + dest.top,
                         dest.width,
-                        dest.height
+                        dest.height,
                     );
                 } else {
                     // As usual it won't work in FF. https://bugzilla.mozilla.org/show_bug.cgi?id=700533
@@ -627,7 +627,7 @@ export class CanvasRenderer extends Renderer {
                 x: 0,
                 y: 0,
                 width: container.width,
-                height: container.height
+                height: container.height,
             });
 
             const canvas = await iframeRenderer.render(container.tree);
@@ -641,7 +641,7 @@ export class CanvasRenderer extends Renderer {
                     container.bounds.left,
                     container.bounds.top,
                     container.bounds.width,
-                    container.bounds.height
+                    container.bounds.height,
                 );
             }
         }
@@ -659,7 +659,7 @@ export class CanvasRenderer extends Renderer {
                         new Vector(container.bounds.left + size * 0.39694, container.bounds.top + size * 0.5649),
                         new Vector(container.bounds.left + size * 0.72983, container.bounds.top + size * 0.23),
                         new Vector(container.bounds.left + size * 0.84, container.bounds.top + size * 0.34085),
-                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79)
+                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79),
                     ]);
 
                     this.ctx.fillStyle = asString(INPUT_COLOR);
@@ -676,7 +676,7 @@ export class CanvasRenderer extends Renderer {
                         size / 4,
                         0,
                         Math.PI * 2,
-                        true
+                        true,
                     );
                     this.ctx.fillStyle = asString(INPUT_COLOR);
                     this.ctx.fill();
@@ -802,7 +802,7 @@ export class CanvasRenderer extends Renderer {
 
         if (isTextInputElement(container) && container.value.length) {
             const [font, fontFamily, fontSize] = this.createFontStyle(styles);
-            const {baseline} = this.fontMetrics.getMetrics(fontFamily, fontSize);
+            const { baseline } = this.fontMetrics.getMetrics(fontFamily, fontSize);
 
             this.ctx.font = font;
             this.ctx.fillStyle = asString(styles.color);
@@ -817,7 +817,7 @@ export class CanvasRenderer extends Renderer {
                 new Vector(bounds.left, bounds.top),
                 new Vector(bounds.left + bounds.width, bounds.top),
                 new Vector(bounds.left + bounds.width, bounds.top + bounds.height),
-                new Vector(bounds.left, bounds.top + bounds.height)
+                new Vector(bounds.left, bounds.top + bounds.height),
             ]);
             this.ctx.clip();
 
@@ -973,7 +973,7 @@ export class CanvasRenderer extends Renderer {
                 this.renderTextWithLetterSpacing(
                     new TextBounds(container.value, textBounds),
                     styles.letterSpacing,
-                    baseline
+                    baseline,
                 );
             }
 
@@ -1082,7 +1082,7 @@ export class CanvasRenderer extends Renderer {
                     // Use raw metrics (no browser-specific adjustment) so the marker
                     // sits exactly on the same baseline as the item text on all browsers.
                     const [, fontFamily, fontSize] = this.createFontStyle(styles);
-                    const {baseline} = this.fontMetrics.getRawMetrics(fontFamily, fontSize);
+                    const { baseline } = this.fontMetrics.getRawMetrics(fontFamily, fontSize);
                     const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
                     const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
 
@@ -1091,7 +1091,7 @@ export class CanvasRenderer extends Renderer {
                             container.bounds.top +
                                 getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
                                 leading / 2 +
-                                baseline
+                                baseline,
                         ) - (this._isFirefox ? 1 : 0);
 
                     this.ctx.fillText(paint.listValue, container.bounds.left, markerY);
@@ -1189,7 +1189,7 @@ export class CanvasRenderer extends Renderer {
                     point.endControl.x,
                     point.endControl.y,
                     point.end.x,
-                    point.end.y
+                    point.end.y,
                 );
             }
         });
@@ -1234,11 +1234,11 @@ export class CanvasRenderer extends Renderer {
                     const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [
                         image.width,
                         image.height,
-                        image.width / image.height
+                        image.width / image.height,
                     ]);
                     const pattern = this.ctx.createPattern(
                         this.resizeImage(image, width, height),
-                        'repeat'
+                        'repeat',
                     ) as CanvasPattern;
                     this.renderRepeat(path, pattern, x, y);
                 }
@@ -1252,8 +1252,8 @@ export class CanvasRenderer extends Renderer {
                 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
                 const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
-                processColorStops(backgroundImage.stops, lineLength || 1).forEach((colorStop) =>
-                    gradient.addColorStop(colorStop.stop, asString(colorStop.color))
+                processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
+                    gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
                 );
 
                 ctx.fillStyle = gradient;
@@ -1266,7 +1266,7 @@ export class CanvasRenderer extends Renderer {
                 const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
                     null,
                     null,
-                    null
+                    null,
                 ]);
                 const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                 const x = getAbsoluteValue(position[0], width);
@@ -1276,8 +1276,8 @@ export class CanvasRenderer extends Renderer {
                 if (rx > 0 && ry > 0) {
                     const radialGradient = this.ctx.createRadialGradient(left + x, top + y, 0, left + x, top + y, rx);
 
-                    processColorStops(backgroundImage.stops, rx * 2).forEach((colorStop) =>
-                        radialGradient.addColorStop(colorStop.stop, asString(colorStop.color))
+                    processColorStops(backgroundImage.stops, rx * 2).forEach(colorStop =>
+                        radialGradient.addColorStop(colorStop.stop, asString(colorStop.color)),
                     );
 
                     this.path(path);
@@ -1332,14 +1332,14 @@ export class CanvasRenderer extends Renderer {
         const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
 
         const borders = [
-            {style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth},
-            {style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth},
-            {style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth},
-            {style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth}
+            { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
+            { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
+            { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
+            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
         ];
         const backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(
             getBackgroundValueForIndex(styles.backgroundClip, 0),
-            paint.curves
+            paint.curves,
         );
         if (hasBackground || styles.boxShadow.length) {
             this.ctx.save();
@@ -1356,7 +1356,7 @@ export class CanvasRenderer extends Renderer {
                                 textBound.bounds.left,
                                 textBound.bounds.top,
                                 textBound.bounds.width,
-                                textBound.bounds.height
+                                textBound.bounds.height,
                             );
                         }
                     }
@@ -1372,7 +1372,7 @@ export class CanvasRenderer extends Renderer {
             styles.boxShadow
                 .slice(0)
                 .reverse()
-                .forEach((shadow) => {
+                .forEach(shadow => {
                     this.ctx.save();
                     const borderBoxArea = calculateBorderBoxPath(paint.curves);
                     // Build the painting area by applying offset and spread.
@@ -1384,7 +1384,7 @@ export class CanvasRenderer extends Renderer {
                     // See https://github.com/html2canvas/html2canvas/issues/21
                     const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
                     const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
-                        p.add(shadow.offsetX.number, shadow.offsetY.number)
+                        p.add(shadow.offsetX.number, shadow.offsetY.number),
                     );
                     if (shadow.inset) {
                         this.path(borderBoxArea);
@@ -1413,7 +1413,7 @@ export class CanvasRenderer extends Renderer {
                         border.width,
                         side,
                         paint.curves,
-                        BORDER_STYLE.DASHED
+                        BORDER_STYLE.DASHED,
                     );
                 } else if (border.style === BORDER_STYLE.DOTTED) {
                     await this.renderDashedDottedBorder(
@@ -1421,7 +1421,7 @@ export class CanvasRenderer extends Renderer {
                         border.width,
                         side,
                         paint.curves,
-                        BORDER_STYLE.DOTTED
+                        BORDER_STYLE.DOTTED,
                     );
                 } else if (border.style === BORDER_STYLE.DOUBLE) {
                     await this.renderDoubleBorder(border.color, border.width, side, paint.curves);
@@ -1438,7 +1438,7 @@ export class CanvasRenderer extends Renderer {
         width: number,
         side: number,
         curvePoints: BoundCurves,
-        style: BORDER_STYLE
+        style: BORDER_STYLE,
     ): Promise<void> {
         this.ctx.save();
 
@@ -1558,7 +1558,7 @@ export class CanvasRenderer extends Renderer {
 }
 
 const isTextInputElement = (
-    container: ElementContainer
+    container: ElementContainer,
 ): container is InputElementContainer | TextareaElementContainer | SelectElementContainer => {
     if (container instanceof TextareaElementContainer) {
         return true;
@@ -1604,6 +1604,6 @@ const iOSBrokenFonts = ['-apple-system', 'system-ui'];
 
 const fixIOSSystemFonts = (fontFamilies: string[]): string[] => {
     return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)
-        ? fontFamilies.filter((fontFamily) => iOSBrokenFonts.indexOf(fontFamily) === -1)
+        ? fontFamilies.filter(fontFamily => iOSBrokenFonts.indexOf(fontFamily) === -1)
         : fontFamilies;
 };

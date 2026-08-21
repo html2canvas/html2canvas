@@ -1,9 +1,9 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export enum WORD_BREAK {
     NORMAL = 'normal',
     BREAK_ALL = 'break-all',
-    KEEP_ALL = 'keep-all'
+    KEEP_ALL = 'keep-all',
 }
 
 export const wordBreak: IPropertyIdentValueDescriptor<WORD_BREAK> = {
@@ -21,5 +21,5 @@ export const wordBreak: IPropertyIdentValueDescriptor<WORD_BREAK> = {
             default:
                 return WORD_BREAK.NORMAL;
         }
-    }
+    },
 };

@@ -1,6 +1,6 @@
-import {IPropertyListDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue, isIdentToken} from '../syntax/parser';
-import {Context} from '../../core/context';
+import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue, isIdentToken } from '../syntax/parser';
+import { Context } from '../../core/context';
 export const enum DISPLAY {
     NONE = 0,
     BLOCK = 1 << 1,
@@ -31,7 +31,7 @@ export const enum DISPLAY {
     INLINE_LIST_ITEM = 1 << 26,
     INLINE_TABLE = 1 << 27,
     INLINE_FLEX = 1 << 28,
-    INLINE_GRID = 1 << 29
+    INLINE_GRID = 1 << 29,
 }
 
 export type Display = number;
@@ -45,7 +45,7 @@ export const display: IPropertyListDescriptor<Display> = {
         return tokens.filter(isIdentToken).reduce((bit, token) => {
             return bit | parseDisplayValue(token.value);
         }, DISPLAY.NONE);
-    }
+    },
 };
 
 const parseDisplayValue = (display: string): Display => {

@@ -1,4 +1,4 @@
-import {Context} from '../src/core/context';
+import { Context } from '../src/core/context';
 import {
     AmountFilter,
     BlurFilter,
@@ -6,17 +6,17 @@ import {
     DropShadowFilter,
     filter,
     FilterType,
-    HueRotateFilter
+    HueRotateFilter,
 } from '../src/css/property-descriptors/filter';
-import {Parser} from '../src/css/syntax/parser';
-import {Tokenizer} from '../src/css/syntax/tokenizer';
+import { Parser } from '../src/css/syntax/parser';
+import { Tokenizer } from '../src/css/syntax/tokenizer';
 
 // Minimal context mock for testing
 const createContext = (): Context => {
     return {
-        cache: {_values: {}},
-        logger: {debug: () => {}, error: () => {}, info: () => {}},
-        windowBounds: {left: 0, top: 0, width: 800, height: 600}
+        cache: { _values: {} },
+        logger: { debug: () => {}, error: () => {}, info: () => {} },
+        windowBounds: { left: 0, top: 0, width: 800, height: 600 },
     } as unknown as Context;
 };
 

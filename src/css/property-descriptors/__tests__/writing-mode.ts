@@ -1,6 +1,6 @@
-import {deepStrictEqual} from 'assert';
-import {Context} from '../../../core/context';
-import {writingMode, WRITING_MODE} from '../writing-mode';
+import { deepStrictEqual } from 'assert';
+import { Context } from '../../../core/context';
+import { writingMode, WRITING_MODE } from '../writing-mode';
 
 const parse = (value: string) => writingMode.parse({} as Context, value);
 

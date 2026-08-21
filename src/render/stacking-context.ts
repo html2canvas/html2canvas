@@ -17,7 +17,7 @@ import {
     MixBlendModeEffect,
     OpacityEffect,
     TransformEffect,
-    isClipEffect
+    isClipEffect,
 } from './effects';
 import { equalPath } from './path';
 
@@ -51,7 +51,7 @@ export class ElementPaint {
 
     constructor(
         readonly container: ElementContainer,
-        readonly parent: ElementPaint | null
+        readonly parent: ElementPaint | null,
     ) {
         this.curves = new BoundCurves(this.container);
         if (this.container.styles.opacity < 1) {
@@ -90,7 +90,7 @@ export class ElementPaint {
         if (!this._collectedEffects) {
             this._collectedEffects = this._computeEffects();
         }
-        return this._collectedEffects.filter((effect) => contains(effect.target, target));
+        return this._collectedEffects.filter(effect => contains(effect.target, target));
     }
 
     private _computeEffects(): IElementEffect[] {
@@ -98,7 +98,7 @@ export class ElementPaint {
         let parent = this.parent;
         const effects = this.effects.slice(0);
         while (parent) {
-            const croplessEffects = parent.effects.filter((effect) => !isClipEffect(effect));
+            const croplessEffects = parent.effects.filter(effect => !isClipEffect(effect));
             if (inFlow || parent.container.styles.position !== POSITION.STATIC || !parent.parent) {
                 inFlow = [POSITION.ABSOLUTE, POSITION.FIXED].indexOf(parent.container.styles.position) === -1;
                 if (parent.container.styles.overflowX !== OVERFLOW.VISIBLE) {
@@ -106,7 +106,7 @@ export class ElementPaint {
                     const paddingBox = calculatePaddingBoxPath(parent.curves);
                     if (!equalPath(borderBox, paddingBox)) {
                         effects.unshift(
-                            new ClipEffect(paddingBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT)
+                            new ClipEffect(paddingBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT),
                         );
                     }
                 }
@@ -124,9 +124,9 @@ const parseStackTree = (
     parent: ElementPaint,
     stackingContext: StackingContext,
     realStackingContext: StackingContext,
-    listItems: ElementPaint[]
+    listItems: ElementPaint[],
 ) => {
-    parent.container.elements.forEach((child) => {
+    parent.container.elements.forEach(child => {
         const treatAsRealStackingContext = contains(child.flags, FLAGS.CREATES_REAL_STACKING_CONTEXT);
         const createsStackingContext = contains(child.flags, FLAGS.CREATES_STACKING_CONTEXT);
         const paintContainer = new ElementPaint(child, parent);
@@ -192,7 +192,7 @@ const parseStackTree = (
                 paintContainer,
                 stack,
                 treatAsRealStackingContext ? stack : realStackingContext,
-                listOwnerItems
+                listOwnerItems,
             );
         } else {
             if (child.styles.isInlineLevel()) {

@@ -1,8 +1,8 @@
-import {FEATURES} from './features';
-import {Context} from './context';
+import { FEATURES } from './features';
+import { Context } from './context';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const cache: {[key: string]: Promise<any>} = {};
+export const cache: { [key: string]: Promise<any> } = {};
 
 export class CacheStorage {
     private static _link?: HTMLAnchorElement;
@@ -39,7 +39,7 @@ export interface ResourceOptions {
 export class Cache {
     constructor(
         private readonly context: Context,
-        private readonly _options: ResourceOptions
+        private readonly _options: ResourceOptions,
     ) {}
 
     deleteImage(src: string): boolean {
@@ -120,7 +120,7 @@ export class Cache {
             if (this._options.imageTimeout > 0) {
                 setTimeout(
                     () => reject(`Timed out (${this._options.imageTimeout}ms) loading image`),
-                    this._options.imageTimeout
+                    this._options.imageTimeout,
                 );
             }
         });
@@ -153,7 +153,7 @@ export class Cache {
                     } else {
                         const reader = new FileReader();
                         reader.addEventListener('load', () => resolve(reader.result as string), false);
-                        reader.addEventListener('error', (e) => reject(e), false);
+                        reader.addEventListener('error', e => reject(e), false);
                         reader.readAsDataURL(xhr.response);
                     }
                 } else {

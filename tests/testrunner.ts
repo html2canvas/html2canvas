@@ -1,12 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import {Promise as ES6Promise} from 'es6-promise';
-import {default as platform} from 'platform';
-import {ignoredTests, testList} from '../build/reftests';
-import type {ScreenshotRequest} from './types';
+import { Promise as ES6Promise } from 'es6-promise';
+import { default as platform } from 'platform';
+import { ignoredTests, testList } from '../build/reftests';
+import type { ScreenshotRequest } from './types';
 
 if (typeof window.Promise === 'undefined') {
-    Object.assign(window, {Promise: ES6Promise});
+    Object.assign(window, { Promise: ES6Promise });
 }
 
 const uploadResults = (canvas: HTMLCanvasElement, url: string) => {
@@ -29,11 +29,11 @@ const uploadResults = (canvas: HTMLCanvasElement, url: string) => {
             test: url,
             platform: {
                 name: platform.name || '',
-                version: platform.version || ''
+                version: platform.version || '',
             },
             devicePixelRatio: window.devicePixelRatio || 1,
             windowWidth: window.innerWidth,
-            windowHeight: window.innerHeight
+            windowHeight: window.innerHeight,
         };
 
         xhr.open('POST', 'http://localhost:8000/screenshot', true);
@@ -65,7 +65,7 @@ describe('Rendering Tests', () => {
             return !Array.isArray(ignoredTests[test]) || ignoredTests[test].indexOf(platform.name || '') === -1;
         })
         .forEach((url: string) => {
-            it(`Should render untainted canvas for ${url}`, (done) => {
+            it(`Should render untainted canvas for ${url}`, done => {
                 const hasHistoryApi =
                     typeof window.history !== 'undefined' && typeof window.history.replaceState !== 'undefined';
 
@@ -75,7 +75,7 @@ describe('Rendering Tests', () => {
                         throw new Error('Window not found for iframe');
                     }
 
-                    contentWindow.addEventListener('unhandledrejection', (event) => {
+                    contentWindow.addEventListener('unhandledrejection', event => {
                         console.error(event.reason);
                         throw new Error(`unhandledrejection: ${JSON.stringify(event.reason)}`);
                     });
@@ -83,14 +83,14 @@ describe('Rendering Tests', () => {
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-ignore
                     const canvas: HTMLCanvasElement = await contentWindow.html2canvas(
-                        (contentWindow as unknown as {forceElement: HTMLElement}).forceElement ||
+                        (contentWindow as unknown as { forceElement: HTMLElement }).forceElement ||
                             contentWindow.document.documentElement,
                         {
                             removeContainer: true,
                             backgroundColor: '#ffffff',
                             proxy: 'http://localhost:8081/proxy',
-                            ...((contentWindow as unknown as {h2cOptions: unknown}).h2cOptions || {})
-                        }
+                            ...((contentWindow as unknown as { h2cOptions: unknown }).h2cOptions || {}),
+                        },
                     );
 
                     try {
@@ -98,7 +98,7 @@ describe('Rendering Tests', () => {
                             0,
                             0,
                             canvas.width,
-                            canvas.height
+                            canvas.height,
                         );
                     } catch (e) {
                         throw new Error('Canvas is tainted');

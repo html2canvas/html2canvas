@@ -1,4 +1,4 @@
-import {CSSValue, isIdentToken, isNumberToken, nonFunctionArgSeparator, parseFunctionArgs} from '../../syntax/parser';
+import { CSSValue, isIdentToken, isNumberToken, nonFunctionArgSeparator, parseFunctionArgs } from '../../syntax/parser';
 import {
     CSSImageType,
     CSSLinearGradientImage,
@@ -6,17 +6,17 @@ import {
     CSSRadialGradientImage,
     CSSRadialShape,
     CSSRadialSize,
-    UnprocessedGradientColorStop
+    UnprocessedGradientColorStop,
 } from '../image';
-import {deg} from '../angle';
-import {TokenType} from '../../syntax/tokenizer';
-import {color as colorType} from '../color';
-import {HUNDRED_PERCENT, LengthPercentage, ZERO_LENGTH} from '../length-percentage';
-import {Context} from '../../../core/context';
+import { deg } from '../angle';
+import { TokenType } from '../../syntax/tokenizer';
+import { color as colorType } from '../color';
+import { HUNDRED_PERCENT, LengthPercentage, ZERO_LENGTH } from '../length-percentage';
+import { Context } from '../../../core/context';
 
 export const webkitGradient = (
     context: Context,
-    tokens: CSSValue[]
+    tokens: CSSValue[],
 ): CSSLinearGradientImage | CSSRadialGradientImage => {
     const angle = deg(180);
     const stops: UnprocessedGradientColorStop[] = [];
@@ -39,10 +39,10 @@ export const webkitGradient = (
         if (firstToken.type === TokenType.FUNCTION) {
             if (firstToken.name === 'from') {
                 const color = colorType.parse(context, firstToken.values[0]);
-                stops.push({stop: ZERO_LENGTH, color});
+                stops.push({ stop: ZERO_LENGTH, color });
             } else if (firstToken.name === 'to') {
                 const color = colorType.parse(context, firstToken.values[0]);
-                stops.push({stop: HUNDRED_PERCENT, color});
+                stops.push({ stop: HUNDRED_PERCENT, color });
             } else if (firstToken.name === 'color-stop') {
                 const values = firstToken.values.filter(nonFunctionArgSeparator);
                 if (values.length === 2) {
@@ -50,8 +50,8 @@ export const webkitGradient = (
                     const stop = values[0];
                     if (isNumberToken(stop)) {
                         stops.push({
-                            stop: {type: TokenType.PERCENTAGE_TOKEN, number: stop.number * 100, flags: stop.flags},
-                            color
+                            stop: { type: TokenType.PERCENTAGE_TOKEN, number: stop.number * 100, flags: stop.flags },
+                            color,
                         });
                     }
                 }
@@ -63,7 +63,7 @@ export const webkitGradient = (
         ? {
               angle: (angle + deg(180)) % deg(360),
               stops,
-              type
+              type,
           }
-        : {size, shape, stops, position, type};
+        : { size, shape, stops, position, type };
 };

@@ -1,7 +1,7 @@
-import {PropertyDescriptorParsingType, IPropertyListDescriptor} from '../IPropertyDescriptor';
-import {CSSValue, parseFunctionArgs} from '../syntax/parser';
-import {isLengthPercentage, LengthPercentageTuple, parseLengthPercentageTuple} from '../types/length-percentage';
-import {Context} from '../../core/context';
+import { PropertyDescriptorParsingType, IPropertyListDescriptor } from '../IPropertyDescriptor';
+import { CSSValue, parseFunctionArgs } from '../syntax/parser';
+import { isLengthPercentage, LengthPercentageTuple, parseLengthPercentageTuple } from '../types/length-percentage';
+import { Context } from '../../core/context';
 export type BackgroundPosition = BackgroundImagePosition[];
 
 export type BackgroundImagePosition = LengthPercentageTuple;
@@ -15,5 +15,5 @@ export const backgroundPosition: IPropertyListDescriptor<BackgroundPosition> = {
         return parseFunctionArgs(tokens)
             .map((values: CSSValue[]) => values.filter(isLengthPercentage))
             .map(parseLengthPercentageTuple);
-    }
+    },
 };
