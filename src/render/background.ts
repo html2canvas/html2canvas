@@ -1,14 +1,14 @@
 import { Bounds } from '../css/layout/bounds';
+import { BACKGROUND_CLIP } from '../css/property-descriptors/background-clip';
 import { BACKGROUND_ORIGIN } from '../css/property-descriptors/background-origin';
-import { ElementContainer } from '../dom/element-container';
-import { BACKGROUND_SIZE, BackgroundSizeInfo } from '../css/property-descriptors/background-size';
-import { Vector } from './vector';
 import { BACKGROUND_REPEAT } from '../css/property-descriptors/background-repeat';
-import { getAbsoluteValue, getAbsoluteValueForTuple, isLengthPercentage } from '../css/types/length-percentage';
+import { BACKGROUND_SIZE, BackgroundSizeInfo } from '../css/property-descriptors/background-size';
 import { CSSValue, isIdentToken } from '../css/syntax/parser';
+import { getAbsoluteValue, getAbsoluteValueForTuple, isLengthPercentage } from '../css/types/length-percentage';
+import { ElementContainer } from '../dom/element-container';
 import { contentBox, paddingBox } from './box-sizing';
 import { Path } from './path';
-import { BACKGROUND_CLIP } from '../css/property-descriptors/background-clip';
+import { Vector } from './vector';
 
 export const calculateBackgroundPositioningArea = (
     backgroundOrigin: BACKGROUND_ORIGIN,
@@ -32,6 +32,12 @@ export const calculateBackgroundPaintingArea = (backgroundClip: BACKGROUND_CLIP,
 
     if (backgroundClip === BACKGROUND_CLIP.CONTENT_BOX) {
         return contentBox(element);
+    }
+
+    // For background-clip: text, use padding-box as the initial painting area.
+    // The actual text-shape clipping happens at render time via canvas compositing.
+    if (backgroundClip === BACKGROUND_CLIP.TEXT) {
+        return paddingBox(element);
     }
 
     return paddingBox(element);

@@ -7,7 +7,7 @@ Below is a list of all the supported CSS properties and values.
 
 - background
     - background-blend-mode
-    - background-clip (**Does not support `text`**)
+    - background-clip
     - background-color
     - background-image
         - url()

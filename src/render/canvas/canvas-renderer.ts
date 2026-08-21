@@ -410,6 +410,11 @@ export class CanvasRenderer extends Renderer {
             paintOrder.forEach(paintOrderLayer => {
                 switch (paintOrderLayer) {
                     case PAINT_ORDER_LAYER.FILL:
+                        // When background-clip: text is active, the text fill is handled
+                        // by the background compositing — skip normal text rendering.
+                        if (getBackgroundValueForIndex(styles.backgroundClip, 0) === BACKGROUND_CLIP.TEXT) {
+                            break;
+                        }
                         this.ctx.fillStyle = asString(styles.color);
                         this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                         const textShadows: TextShadow = styles.textShadow;
@@ -1333,6 +1338,140 @@ export class CanvasRenderer extends Renderer {
         this.ctx.fill();
     }
 
+    /**
+     * Renders background clipped to text shapes using an offscreen canvas.
+     * Steps:
+     * 1. Create an offscreen canvas the size of the element's border box.
+     * 2. Draw the background (color + images) normally onto the offscreen canvas.
+     * 3. Create a text mask canvas with all text shapes drawn as opaque black.
+     * 4. Apply 'destination-in' with the mask canvas to clip the background to text.
+     * 5. Composite the offscreen canvas back onto the main canvas.
+     */
+    private async renderBackgroundClipText(paint: ElementPaint): Promise<void> {
+        const container = paint.container;
+        const styles = container.styles;
+        const bounds = container.bounds;
+
+        if (container.textNodes.length === 0) {
+            return;
+        }
+
+        // Create offscreen canvas sized to element (in device pixels)
+        const width = Math.ceil(bounds.width * this.options.scale);
+        const height = Math.ceil(bounds.height * this.options.scale);
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        const offscreen = document.createElement('canvas');
+        offscreen.width = width;
+        offscreen.height = height;
+        const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
+
+        // Apply the same transform so absolute coordinates work correctly.
+        offCtx.scale(this.options.scale, this.options.scale);
+        offCtx.translate(-bounds.left, -bounds.top);
+
+        // Step 1: Draw the background onto the offscreen canvas.
+        // Temporarily swap this.ctx so rendering methods target the offscreen canvas.
+        const mainCtx = this.ctx;
+        this.ctx = offCtx;
+
+        if (!isTransparent(styles.backgroundColor)) {
+            this.ctx.fillStyle = asString(styles.backgroundColor);
+            this.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+        }
+
+        await this.renderBackgroundImage(container);
+
+        this.ctx = mainCtx;
+
+        // Step 2: Create a text mask canvas.
+        // All text is drawn as opaque black on a separate canvas so we can apply
+        // the mask in a single 'destination-in' operation (avoiding the problem
+        // where multiple fillText calls with destination-in erase each other).
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = width;
+        maskCanvas.height = height;
+        const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D;
+        maskCtx.scale(this.options.scale, this.options.scale);
+        maskCtx.translate(-bounds.left, -bounds.top);
+
+        const [font, fontFamily, fontSize] = this.createFontStyle(styles);
+        maskCtx.font = font;
+        maskCtx.direction = styles.direction === DIRECTION.RTL ? 'rtl' : 'ltr';
+        maskCtx.textAlign = 'left';
+        maskCtx.fillStyle = '#000000';
+
+        const wm = styles.writingMode;
+        const { baseline } = this.fontMetrics.getMetrics(fontFamily, fontSize);
+        const isVertical =
+            wm === WRITING_MODE.VERTICAL_RL ||
+            wm === WRITING_MODE.VERTICAL_LR ||
+            wm === WRITING_MODE.SIDEWAYS_RL ||
+            wm === WRITING_MODE.SIDEWAYS_LR;
+
+        for (const textNode of container.textNodes) {
+            for (const textBound of textNode.textBounds) {
+                if (isVertical) {
+                    const cx = textBound.bounds.left + textBound.bounds.width / 2;
+                    const cy = textBound.bounds.top + textBound.bounds.height / 2;
+                    const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+                    const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+                    maskCtx.save();
+                    maskCtx.translate(cx, cy);
+                    maskCtx.rotate(angle);
+                    maskCtx.translate(-cx, -cy);
+                    const rotatedBounds = new Bounds(
+                        cx - textBound.bounds.height / 2,
+                        cy - textBound.bounds.width / 2,
+                        textBound.bounds.height,
+                        textBound.bounds.width,
+                    );
+                    if (!this._isFirefox) {
+                        maskCtx.textBaseline = 'ideographic';
+                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + rotatedBounds.height);
+                    } else {
+                        maskCtx.textBaseline = 'alphabetic';
+                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + baseline);
+                    }
+                    maskCtx.restore();
+                } else {
+                    if (styles.letterSpacing === 0) {
+                        if (!this._isFirefox) {
+                            maskCtx.textBaseline = 'ideographic';
+                            maskCtx.fillText(
+                                textBound.text,
+                                textBound.bounds.left,
+                                textBound.bounds.top + textBound.bounds.height,
+                            );
+                        } else {
+                            maskCtx.textBaseline = 'alphabetic';
+                            maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + baseline);
+                        }
+                    } else {
+                        maskCtx.textBaseline = 'alphabetic';
+                        const letters = segmentGraphemes(textBound.text);
+                        letters.reduce((left, letter, index) => {
+                            maskCtx.fillText(letter, left, textBound.bounds.top + baseline);
+                            const isLast = index === letters.length - 1;
+                            return left + maskCtx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
+                        }, textBound.bounds.left);
+                    }
+                }
+            }
+        }
+
+        // Step 3: Apply the text mask to the background using 'destination-in'.
+        // This is a single drawImage call so it clips the entire background at once.
+        offCtx.globalCompositeOperation = 'destination-in';
+        offCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pixel-to-pixel copy
+        offCtx.drawImage(maskCanvas, 0, 0);
+
+        // Step 4: Draw the clipped result onto the main canvas
+        this.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
+    }
+
     async renderNodeBackgroundAndBorders(paint: ElementPaint): Promise<void> {
         this.applyEffects(paint.getEffects(EffectTarget.BACKGROUND_BORDERS));
         const styles = paint.container.styles;
@@ -1349,32 +1488,40 @@ export class CanvasRenderer extends Renderer {
             paint.curves,
         );
         if (hasBackground || styles.boxShadow.length) {
-            this.ctx.save();
-            this.path(backgroundPaintingArea);
-            this.ctx.clip();
+            const isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === BACKGROUND_CLIP.TEXT;
 
-            if (!isTransparent(styles.backgroundColor)) {
-                this.ctx.fillStyle = asString(styles.backgroundColor);
+            if (isBackgroundClipText && hasBackground) {
+                // background-clip: text — render background clipped to text shapes
+                // using an offscreen canvas with composite operations.
+                await this.renderBackgroundClipText(paint);
+            } else if (hasBackground) {
+                this.ctx.save();
+                this.path(backgroundPaintingArea);
+                this.ctx.clip();
 
-                if (styles.display === DISPLAY.INLINE) {
-                    for (const textNode of paint.container.textNodes) {
-                        for (const textBound of textNode.textBounds) {
-                            this.ctx.fillRect(
-                                textBound.bounds.left,
-                                textBound.bounds.top,
-                                textBound.bounds.width,
-                                textBound.bounds.height,
-                            );
+                if (!isTransparent(styles.backgroundColor)) {
+                    this.ctx.fillStyle = asString(styles.backgroundColor);
+
+                    if (styles.display === DISPLAY.INLINE) {
+                        for (const textNode of paint.container.textNodes) {
+                            for (const textBound of textNode.textBounds) {
+                                this.ctx.fillRect(
+                                    textBound.bounds.left,
+                                    textBound.bounds.top,
+                                    textBound.bounds.width,
+                                    textBound.bounds.height,
+                                );
+                            }
                         }
+                    } else {
+                        this.ctx.fill();
                     }
-                } else {
-                    this.ctx.fill();
                 }
+
+                await this.renderBackgroundImage(paint.container);
+
+                this.ctx.restore();
             }
-
-            await this.renderBackgroundImage(paint.container);
-
-            this.ctx.restore();
 
             styles.boxShadow
                 .slice(0)
@@ -1588,6 +1735,11 @@ const calculateBackgroundCurvedPaintingArea = (clip: BACKGROUND_CLIP, curves: Bo
             return calculateBorderBoxPath(curves);
         case BACKGROUND_CLIP.CONTENT_BOX:
             return calculateContentBoxPath(curves);
+        case BACKGROUND_CLIP.TEXT:
+            // For background-clip: text, use padding-box as the initial painting area.
+            // The actual text-shape clipping is handled in renderNodeBackgroundAndBorders
+            // via offscreen canvas compositing.
+            return calculatePaddingBoxPath(curves);
         case BACKGROUND_CLIP.PADDING_BOX:
         default:
             return calculatePaddingBoxPath(curves);
