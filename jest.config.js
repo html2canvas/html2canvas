@@ -1,7 +1,7 @@
 module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'jsdom',
-    roots: ['src'],
+    roots: ['src', 'tests'],
     moduleNameMapper: {
         '^colorjs\\.io$': '<rootDir>/node_modules/colorjs.io/dist/color.cjs',
         './colorjs-minimal': '<rootDir>/node_modules/colorjs.io/dist/color.cjs'

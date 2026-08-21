@@ -7,6 +7,7 @@ import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
 import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
 import {DIRECTION} from '../../css/property-descriptors/direction';
 import {DISPLAY} from '../../css/property-descriptors/display';
+import {FilterType} from '../../css/property-descriptors/filter';
 import {computeLineHeight} from '../../css/property-descriptors/line-height';
 import {LIST_STYLE_POSITION} from '../../css/property-descriptors/list-style-position';
 import {LIST_STYLE_TYPE} from '../../css/property-descriptors/list-style-type';
@@ -54,7 +55,14 @@ import {
     expandBorderBoxPath
 } from '../bound-curves';
 import {contentBox} from '../box-sizing';
-import {EffectTarget, IElementEffect, isClipEffect, isOpacityEffect, isTransformEffect} from '../effects';
+import {
+    EffectTarget,
+    IElementEffect,
+    isClipEffect,
+    isFilterEffect,
+    isOpacityEffect,
+    isTransformEffect
+} from '../effects';
 import {FontMetrics} from '../font-metrics';
 import {calculateObjectFitBounds} from '../object-fit';
 import {Path, reversePath} from '../path';
@@ -137,6 +145,49 @@ export class CanvasRenderer extends Renderer {
         if (isClipEffect(effect)) {
             this.path(effect.path);
             this.ctx.clip();
+        }
+
+        if (isFilterEffect(effect)) {
+            const filterStrings: string[] = [];
+            for (const f of effect.filter) {
+                switch (f.type) {
+                    case FilterType.DROP_SHADOW:
+                        filterStrings.push(
+                            `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`
+                        );
+                        break;
+                    case FilterType.BLUR:
+                        filterStrings.push(`blur(${f.radius.number}px)`);
+                        break;
+                    case FilterType.BRIGHTNESS:
+                        filterStrings.push(`brightness(${f.amount})`);
+                        break;
+                    case FilterType.CONTRAST:
+                        filterStrings.push(`contrast(${f.amount})`);
+                        break;
+                    case FilterType.GRAYSCALE:
+                        filterStrings.push(`grayscale(${f.amount})`);
+                        break;
+                    case FilterType.HUE_ROTATE:
+                        filterStrings.push(`hue-rotate(${f.angle}deg)`);
+                        break;
+                    case FilterType.INVERT:
+                        filterStrings.push(`invert(${f.amount})`);
+                        break;
+                    case FilterType.OPACITY:
+                        filterStrings.push(`opacity(${f.amount})`);
+                        break;
+                    case FilterType.SATURATE:
+                        filterStrings.push(`saturate(${f.amount})`);
+                        break;
+                    case FilterType.SEPIA:
+                        filterStrings.push(`sepia(${f.amount})`);
+                        break;
+                }
+            }
+            if (filterStrings.length) {
+                this.ctx.filter = filterStrings.join(' ');
+            }
         }
 
         this._activeEffects.push(effect);
