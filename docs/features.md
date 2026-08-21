@@ -21,10 +21,22 @@ Below is a list of all the supported CSS properties and values.
     - border-style
     - border-width
 - bottom
+- box-shadow
 - box-sizing
 - content
 - color
 - display
+- filter (**Chromium only** — Firefox does not support `CanvasRenderingContext2D.filter`)
+    - blur()
+    - brightness()
+    - contrast()
+    - drop-shadow()
+    - grayscale()
+    - hue-rotate()
+    - invert()
+    - opacity()
+    - saturate()
+    - sepia()
 - flex
 - float
 - font
@@ -64,6 +76,7 @@ Below is a list of all the supported CSS properties and values.
 - transform (**Limited support**)
 - visibility
 - white-space
+- writing-mode (**Limited support**)
 - width
 - webkit-text-stroke
 - word-break
@@ -79,11 +92,8 @@ These CSS properties are **NOT** currently supported
 - [background-blend-mode](https://github.com/niklasvh/html2canvas/issues/966)
 - [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
 - [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
-- [box-shadow](https://github.com/niklasvh/html2canvas/pull/1086)
-- [filter](https://github.com/niklasvh/html2canvas/issues/493)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
 - [mix-blend-mode](https://github.com/niklasvh/html2canvas/issues/580)
 - object-position
 - [repeating-linear-gradient()](https://github.com/niklasvh/html2canvas/issues/1162)
-- [writing-mode](https://github.com/niklasvh/html2canvas/issues/1258)
 - [zoom](https://github.com/niklasvh/html2canvas/issues/732)
