@@ -1,12 +1,14 @@
-import {useState} from 'react';
+import { useState } from 'react';
+
+const BASE_PATH = '/html2canvas';
 
 const links = [
-    {href: '/documentation', text: 'About'},
-    {href: '/getting-started', text: 'Getting started'},
-    {href: '/configuration', text: 'Configuration'},
-    {href: '/features', text: 'Features'},
-    {href: '/proxy', text: 'Proxy'},
-    {href: '/faq', text: 'FAQ'}
+    {href: `${BASE_PATH}/documentation`, text: 'About'},
+    {href: `${BASE_PATH}/getting-started`, text: 'Getting started'},
+    {href: `${BASE_PATH}/configuration`, text: 'Configuration'},
+    {href: `${BASE_PATH}/features`, text: 'Features'},
+    {href: `${BASE_PATH}/proxy`, text: 'Proxy'},
+    {href: `${BASE_PATH}/faq`, text: 'FAQ'}
 ];
 
 export default function Navigation() {
@@ -32,7 +34,7 @@ export default function Navigation() {
                 className="nav-header"
             >
                 <img
-                    src="/ic_menu_black_24px.svg"
+                    src={`${BASE_PATH}/ic_menu_black_24px.svg`}
                     onClick={() => setOpen((s) => !s)}
                     alt="Menu"
                     style={{
@@ -42,8 +44,8 @@ export default function Navigation() {
                     }}
                     className="nav-menu-icon"
                 />
-                <a href="/">
-                    <img src="/logo.svg" style={{margin: 0}} alt="html2canvas" />
+                <a href={BASE_PATH + '/'}>
+                    <img src={`${BASE_PATH}/logo.svg`} style={{margin: 0}} alt="html2canvas" />
                 </a>
             </div>
 

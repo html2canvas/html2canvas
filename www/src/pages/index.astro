@@ -16,6 +16,7 @@ try {
 }
 
 const sizeKb = Math.round(packageSize / 1024);
+const base = import.meta.env.BASE_URL;
 
 const codeStyle = {
     backgroundColor: '#7cb342',
@@ -49,7 +50,7 @@ const linkStyle = {
             >
                 <!-- Logo + title -->
                 <div style="display: flex; align-items: center; justify-content: center;">
-                    <img src="/logo_icon.svg" alt="html2canvas" />
+                    <img src={`${base}/logo_icon.svg`} alt="html2canvas" />
                     <h1 style="color: #fff; margin-left: 12px;">html2canvas</h1>
                 </div>
                 <h4 style="color: rgba(255, 255, 255, 0.6); font-weight: 300;">Screenshots with JavaScript</h4>
@@ -81,14 +82,14 @@ const linkStyle = {
                 <!-- CTAs -->
                 <div style="margin: 20px;">
                     <a
-                        href="/documentation"
+                        href={`${base}/documentation`}
                         style={linkStyle}
                         id="try-link"
                         onclick="event.preventDefault(); document.getElementById('tryhtml2canvas')?.click();"
                     >
                         Try it out
                     </a>
-                    <a href="/documentation" style={linkStyle}>Documentation</a>
+                    <a href={`${base}/documentation`} style={linkStyle}>Documentation</a>
                 </div>
 
                 <!-- Cards -->
@@ -105,8 +106,8 @@ const linkStyle = {
                         <h6>Install Yarn</h6>
                         <code style={codeStyle}>yarn add @html2canvas/html2canvas</code>
                         <div style="margin-top: 25px;">
-                            <a href="/dist/html2canvas.js" style={linkStyle}>html2canvas.js</a>
-                            <a href="/dist/html2canvas.min.js" style={linkStyle}>html2canvas.min.js</a>
+                            <a href={`${base}/dist/html2canvas.js`} style={linkStyle}>html2canvas.js</a>
+                            <a href={`${base}/dist/html2canvas.min.js`} style={linkStyle}>html2canvas.min.js</a>
                         </div>
                         {sizeKb > 0 && (
                             <div style="text-align: center; margin-top: 10px;">{sizeKb}kb gzipped</div>

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+const base = import.meta.env.BASE_URL;
 ---
 
 <BaseLayout title="404 - Page not found | html2canvas">
@@ -11,7 +12,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             You just hit a route that doesn't exist... the sadness.
         </p>
         <a
-            href="/"
+            href={`${base}/`}
             style="margin-top: 20px; padding: 8px 20px; background: #7cb342; color: #fff; border-radius: 3px; text-decoration: none;"
         >
             Back to home

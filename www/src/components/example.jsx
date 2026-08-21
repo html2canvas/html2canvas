@@ -1,4 +1,6 @@
-import {useEffect, useRef, useState} from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const BASE_PATH = '/html2canvas';
 
 function CanvasOverlay({canvas, onClose}) {
     const containerRef = useRef(null);
@@ -28,7 +30,7 @@ function CanvasOverlay({canvas, onClose}) {
             onClick={onClose}
         >
             <img
-                src="/ic_close_black_24px.svg"
+                src={`${BASE_PATH}/ic_close_black_24px.svg`}
                 alt="Close"
                 style={{position: 'absolute', right: '20px', top: '20px', cursor: 'pointer'}}
             />
@@ -122,7 +124,7 @@ export default function Example() {
                         }}
                     >
                         <img
-                            src="/ic_camera_alt_black_24px.svg"
+                            src={`${BASE_PATH}/ic_camera_alt_black_24px.svg`}
                             style={{width: '30px', height: '30px', flex: 1, margin: 0}}
                             alt="Try html2canvas"
                         />
