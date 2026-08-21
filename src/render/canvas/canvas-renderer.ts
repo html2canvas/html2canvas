@@ -11,6 +11,7 @@ import { FilterType } from '../../css/property-descriptors/filter';
 import { computeLineHeight } from '../../css/property-descriptors/line-height';
 import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
 import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blend-mode';
 import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
 import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
 import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
@@ -60,6 +61,7 @@ import {
     IElementEffect,
     isClipEffect,
     isFilterEffect,
+    isMixBlendModeEffect,
     isOpacityEffect,
     isTransformEffect
 } from '../effects';
@@ -150,6 +152,10 @@ export class CanvasRenderer extends Renderer {
         if (isFilterEffect(effect)) {
             // All filters are now handled via offscreen canvas in renderStack.
             // This block is kept as a no-op for the effect to be tracked in _activeEffects.
+        }
+
+        if (isMixBlendModeEffect(effect)) {
+            this.ctx.globalCompositeOperation = mixBlendModeToComposite[effect.mixBlendMode];
         }
 
         this._activeEffects.push(effect);

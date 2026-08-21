@@ -1,23 +1,25 @@
-import {contains} from '../core/bitwise';
-import {DISPLAY} from '../css/property-descriptors/display';
-import {OVERFLOW} from '../css/property-descriptors/overflow';
-import {POSITION} from '../css/property-descriptors/position';
-import {createCounterText} from '../css/types/functions/counter';
-import {getNumber} from '../css/types/length-percentage';
-import {ElementContainer, FLAGS} from '../dom/element-container';
-import {LIElementContainer} from '../dom/elements/li-element-container';
-import {OLElementContainer} from '../dom/elements/ol-element-container';
-import {BoundCurves, calculateBorderBoxPath, calculatePaddingBoxPath} from './bound-curves';
+import { contains } from '../core/bitwise';
+import { DISPLAY } from '../css/property-descriptors/display';
+import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
+import { OVERFLOW } from '../css/property-descriptors/overflow';
+import { POSITION } from '../css/property-descriptors/position';
+import { createCounterText } from '../css/types/functions/counter';
+import { getNumber } from '../css/types/length-percentage';
+import { ElementContainer, FLAGS } from '../dom/element-container';
+import { LIElementContainer } from '../dom/elements/li-element-container';
+import { OLElementContainer } from '../dom/elements/ol-element-container';
+import { BoundCurves, calculateBorderBoxPath, calculatePaddingBoxPath } from './bound-curves';
 import {
     ClipEffect,
     EffectTarget,
     FilterEffect,
     IElementEffect,
+    MixBlendModeEffect,
     OpacityEffect,
     TransformEffect,
     isClipEffect
 } from './effects';
-import {equalPath} from './path';
+import { equalPath } from './path';
 
 export class StackingContext {
     element: ElementPaint;
@@ -77,6 +79,10 @@ export class ElementPaint {
 
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
+        }
+
+        if (this.container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL) {
+            this.effects.push(new MixBlendModeEffect(this.container.styles.mixBlendMode));
         }
     }
 
@@ -140,7 +146,8 @@ const parseStackTree = (
                 child.styles.isPositioned() ||
                 child.styles.opacity < 1 ||
                 child.styles.isTransformed() ||
-                child.styles.isFiltered()
+                child.styles.isFiltered() ||
+                child.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL
             ) {
                 const order = child.styles.zIndex.order;
                 if (order < 0) {

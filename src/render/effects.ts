@@ -1,12 +1,14 @@
-import {CSSFilterList} from '../css/property-descriptors/filter';
-import {Matrix} from '../css/property-descriptors/transform';
-import {Path} from './path';
+import { CSSFilterList } from '../css/property-descriptors/filter';
+import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
+import { Matrix } from '../css/property-descriptors/transform';
+import { Path } from './path';
 
 export const enum EffectType {
     TRANSFORM = 0,
     CLIP = 1,
     OPACITY = 2,
-    FILTER = 3
+    FILTER = 3,
+    MIX_BLEND_MODE = 4
 }
 
 export const enum EffectTarget {
@@ -53,8 +55,17 @@ export class FilterEffect implements IElementEffect {
     constructor(readonly filter: CSSFilterList) {}
 }
 
+export class MixBlendModeEffect implements IElementEffect {
+    readonly type: EffectType = EffectType.MIX_BLEND_MODE;
+    readonly target: number = EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT;
+
+    constructor(readonly mixBlendMode: MIX_BLEND_MODE) {}
+}
+
 export const isTransformEffect = (effect: IElementEffect): effect is TransformEffect =>
     effect.type === EffectType.TRANSFORM;
 export const isClipEffect = (effect: IElementEffect): effect is ClipEffect => effect.type === EffectType.CLIP;
 export const isOpacityEffect = (effect: IElementEffect): effect is OpacityEffect => effect.type === EffectType.OPACITY;
 export const isFilterEffect = (effect: IElementEffect): effect is FilterEffect => effect.type === EffectType.FILTER;
+export const isMixBlendModeEffect = (effect: IElementEffect): effect is MixBlendModeEffect =>
+    effect.type === EffectType.MIX_BLEND_MODE;

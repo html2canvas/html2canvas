@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+    <head>
+        <title>CSS mix-blend-mode</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../test.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background: #fff;
+            }
+            .container {
+                display: inline-block;
+                width: 140px;
+                height: 140px;
+                margin: 8px;
+                vertical-align: top;
+                text-align: center;
+                background: linear-gradient(to right, #3498db, #e74c3c);
+                border-radius: 8px;
+                position: relative;
+            }
+            .blend {
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(to bottom, #000, #fff);
+                border-radius: 8px;
+            }
+            .label {
+                font-size: 11px;
+                color: #333;
+                margin-top: 4px;
+                display: block;
+            }
+            .item {
+                display: inline-block;
+                vertical-align: top;
+                margin: 5px;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: normal"></div>
+            </div>
+            <span class="label">normal</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: multiply"></div>
+            </div>
+            <span class="label">multiply</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: screen"></div>
+            </div>
+            <span class="label">screen</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: overlay"></div>
+            </div>
+            <span class="label">overlay</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: darken"></div>
+            </div>
+            <span class="label">darken</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: lighten"></div>
+            </div>
+            <span class="label">lighten</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: color-dodge"></div>
+            </div>
+            <span class="label">color-dodge</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: color-burn"></div>
+            </div>
+            <span class="label">color-burn</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: hard-light"></div>
+            </div>
+            <span class="label">hard-light</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: soft-light"></div>
+            </div>
+            <span class="label">soft-light</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: difference"></div>
+            </div>
+            <span class="label">difference</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: exclusion"></div>
+            </div>
+            <span class="label">exclusion</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: hue"></div>
+            </div>
+            <span class="label">hue</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: saturation"></div>
+            </div>
+            <span class="label">saturation</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: color"></div>
+            </div>
+            <span class="label">color</span>
+        </div>
+
+        <div class="item">
+            <div class="container">
+                <div class="blend" style="mix-blend-mode: luminosity"></div>
+            </div>
+            <span class="label">luminosity</span>
+        </div>
+    </body>
+</html>
