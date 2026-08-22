@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "target": "ES2017",
+        "module": "commonjs",
+        "lib": ["ES2017", "DOM"],
+        "strict": true,
+        "strictNullChecks": true,
+        "allowJs": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "outDir": "./static/tests"
+    },
+    "include": ["src/preview.ts"]
+}

@@ -1,7 +1,7 @@
-import {IPropertyListDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue, isIdentToken} from '../syntax/parser';
-import {Context} from '../../core/context';
-import {TokenType} from '../syntax/tokenizer';
+import { Context } from '../../core/context';
+import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue, isIdentToken } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
 
 export const enum BACKGROUND_BLEND_MODE {
     NORMAL = 'source-over',
@@ -19,7 +19,7 @@ export const enum BACKGROUND_BLEND_MODE {
     HUE = 'hue',
     SATURATION = 'saturation',
     COLOR = 'color',
-    LUMINOSITY = 'luminosity'
+    LUMINOSITY = 'luminosity',
 }
 
 const parseBlendMode = (value: string): BACKGROUND_BLEND_MODE => {
@@ -75,5 +75,5 @@ export const backgroundBlendMode: IPropertyListDescriptor<BACKGROUND_BLEND_MODE[
             }
         }
         return modes.length ? modes : [BACKGROUND_BLEND_MODE.NORMAL];
-    }
+    },
 };

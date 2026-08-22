@@ -5,72 +5,105 @@ const path = require('path');
 const listenAddress = 'localhost';
 const port = 9876;
 
-// Use Chromium bundled with puppeteer for local headless runs
-const {executablePath} = require('puppeteer');
-process.env.CHROME_BIN = executablePath();
+// Use Chromium bundled with puppeteer for local headless runs.
+// puppeteer v20+ made executablePath() async; use @puppeteer/browsers
+// computeExecutablePath() synchronously instead.
+const { computeExecutablePath } = require('@puppeteer/browsers');
+const { join } = require('path');
+const { homedir } = require('os');
+const fs = require('fs');
+
+const puppeteerCacheDir = process.env['PUPPETEER_CACHE_DIR'] ?? join(homedir(), '.cache', 'puppeteer');
+
+// Resolve the Chrome buildId synchronously, without requiring any ESM module.
+// Strategy 1: parse the pinned version from puppeteer-core's revisions JS file (regex).
+// Strategy 2: pick the most recently installed version from the cache dir.
+function getChromeBuildId() {
+    // revisions.js is ESM, so parse it with a regex instead of require().
+    const revisionCandidates = [
+        join(__dirname, 'node_modules/puppeteer/node_modules/puppeteer-core/lib/puppeteer/revisions.js'),
+        join(__dirname, 'node_modules/puppeteer-core/lib/puppeteer/revisions.js'),
+    ];
+    for (const p of revisionCandidates) {
+        if (fs.existsSync(p)) {
+            try {
+                const src = fs.readFileSync(p, 'utf8');
+                const m = src.match(/chrome:\s*'([^']+)'/);
+                if (m) {
+                    return m[1];
+                }
+            } catch (_) {
+                // continue to next candidate
+            }
+        }
+    }
+    const chromeCache = join(puppeteerCacheDir, 'chrome');
+    if (fs.existsSync(chromeCache)) {
+        const versions = fs
+            .readdirSync(chromeCache)
+            .filter(d => d.startsWith('linux-'))
+            .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+        if (versions.length) {
+            return versions[0].replace('linux-', '');
+        }
+    }
+    throw new Error(
+        'Could not determine Puppeteer Chrome buildId automatically. ' +
+            'Set the CHROME_BIN environment variable manually.',
+    );
+}
+
+process.env.CHROME_BIN = computeExecutablePath({
+    cacheDir: puppeteerCacheDir,
+    browser: 'chrome',
+    buildId: getChromeBuildId(),
+});
 
 const log = require('karma/lib/logger').create('launcher:MobileSafari');
 
 module.exports = function (config) {
     // https://github.com/actions/virtual-environments/blob/master/images/macos/macos-10.15-Readme.md
     const launchers = {
-        Safari_IOS_9: {
-            base: 'MobileSafari',
-            name: 'iPhone 5s',
-            platform: 'iOS',
-            sdk: '9.0'
-        },
-        Safari_IOS_10: {
-            base: 'MobileSafari',
-            name: 'iPhone 5s',
-            platform: 'iOS',
-            sdk: '10.0'
-        },
-        Safari_IOS_12: {
-            base: 'MobileSafari',
-            name: 'iPhone 5s',
-            platform: 'iOS',
-            sdk: '12.4'
-        },
-        Safari_IOS_13: {
-            base: 'MobileSafari',
-            name: 'iPhone 8',
-            platform: 'iOS',
-            sdk: '13.7'
-        },
-        Safari_IOS_14: {
-            base: 'MobileSafari',
-            name: 'iPhone 8',
-            platform: 'iOS',
-            sdk: '14.4'
-        },
         Safari_IOS_15_0: {
             base: 'MobileSafari',
             name: 'iPhone 13',
             platform: 'iOS',
-            sdk: '15.0'
+            sdk: '15.0',
         },
         Safari_IOS_15: {
             base: 'MobileSafari',
             name: 'iPhone 13',
             platform: 'iOS',
-            sdk: '15.2'
+            sdk: '15.2',
+        },
+        Safari_IOS_16: {
+            base: 'MobileSafari',
+            name: 'iPhone 14',
+            platform: 'iOS',
+            sdk: '16.4',
+        },
+        Safari_IOS_17: {
+            base: 'MobileSafari',
+            name: 'iPhone 15',
+            platform: 'iOS',
+            sdk: '17.0',
         },
         Safari_Stable: {
-            base: 'SafariNative'
+            base: 'SafariNative',
         },
         Chrome_Stable: {
-            base: 'ChromeHeadless'
+            base: 'ChromeHeadless',
+            flags: ['--no-sandbox', '--disable-setuid-sandbox'],
         },
         Firefox_Stable: {
-            base: 'Firefox'
-        }
+            base: 'Firefox',
+        },
     };
 
     const ciLauncher = launchers[process.env.TARGET_BROWSER];
 
     const customLaunchers = ciLauncher
-        ? {target_browser: ciLauncher}
+        ? { target_browser: ciLauncher }
         : {
               // stable_chrome and stable_firefox require karma-chrome-launcher /
               // karma-firefox-launcher which are not installed locally.
@@ -78,8 +111,8 @@ module.exports = function (config) {
               // the right browser via TARGET_BROWSER.
               ChromeHeadless_Puppeteer: {
                   base: 'ChromeHeadless',
-                  flags: ['--no-sandbox', '--disable-setuid-sandbox']
-              }
+                  flags: ['--no-sandbox', '--disable-setuid-sandbox'],
+              },
           };
 
     const injectTypedArrayPolyfills = function (files) {
@@ -87,7 +120,7 @@ module.exports = function (config) {
             pattern: path.resolve(__dirname, './node_modules/js-polyfills/typedarray.js'),
             included: true,
             served: true,
-            watched: false
+            watched: false,
         });
     };
 
@@ -100,14 +133,14 @@ module.exports = function (config) {
             return;
         }
         baseBrowserDecorator(this);
-        this.on('start', (url) => {
+        this.on('start', url => {
             // lazy-load iOS simulator deps only when the launcher is actually used
             const simctl = require('node-simctl');
             const iosSimulator = require('appium-ios-simulator');
             simctl
                 .getDevices(args.sdk, args.platform)
-                .then((devices) => {
-                    const d = devices.find((d) => {
+                .then(devices => {
+                    const d = devices.find(d => {
                         return d.name === args.name;
                     });
 
@@ -120,16 +153,16 @@ module.exports = function (config) {
 
                     return iosSimulator
                         .getSimulator(d.udid)
-                        .then((device) => {
+                        .then(device => {
                             return simctl.bootDevice(d.udid).then(() => device);
                         })
-                        .then((device) => {
+                        .then(device => {
                             return device.waitForBoot(60 * 5 * 1000).then(() => {
                                 return device.openUrl(url);
                             });
                         });
                 })
-                .catch((e) => {
+                .catch(e => {
                     console.log('err,', e);
                 });
         });
@@ -138,9 +171,9 @@ module.exports = function (config) {
     MobileSafari.prototype = {
         name: 'MobileSafari',
         DEFAULT_CMD: {
-            darwin: '/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/Contents/MacOS/Simulator'
+            darwin: '/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/Contents/MacOS/Simulator',
         },
-        ENV_CMD: null
+        ENV_CMD: null,
     };
 
     MobileSafari.$inject = ['baseBrowserDecorator', 'args'];
@@ -156,16 +189,16 @@ module.exports = function (config) {
         // list of files / patterns to load in the browser
         files: [
             'build/testrunner.js',
-            {pattern: './tests/**/*', watched: true, included: false, served: true},
-            {pattern: './dist/**/*', watched: true, included: false, served: true},
-            {pattern: './node_modules/**/*', watched: true, included: false, served: true}
+            { pattern: './tests/**/*', watched: true, included: false, served: true },
+            { pattern: './dist/**/*', watched: true, included: false, served: true },
+            { pattern: './node_modules/**/*', watched: true, included: false, served: true },
         ],
 
         plugins: [
             'karma-*',
             {
-                'launcher:MobileSafari': ['type', MobileSafari]
-            }
+                'launcher:MobileSafari': ['type', MobileSafari],
+            },
         ],
 
         // list of files to exclude
@@ -181,7 +214,7 @@ module.exports = function (config) {
         reporters: ['dots', 'junit'],
 
         junitReporter: {
-            outputDir: 'tmp/junit/'
+            outputDir: 'tmp/junit/',
         },
 
         // web server listen address,
@@ -218,13 +251,13 @@ module.exports = function (config) {
             '/dist': `http://localhost:${port}/base/dist`,
             '/node_modules': `http://localhost:${port}/base/node_modules`,
             '/tests': `http://localhost:${port}/base/tests`,
-            '/assets': `http://localhost:${port}/base/tests/assets`
+            '/assets': `http://localhost:${port}/base/tests/assets`,
         },
 
         captureTimeout: 300000,
 
         browserDisconnectTimeout: 60000,
 
-        browserNoActivityTimeout: 1200000
+        browserNoActivityTimeout: 1200000,
     });
 };
