@@ -10733,19 +10733,196 @@
             return null;
         },
     };
+    // ─── helpers ────────────────────────────────────────────────────────────────
+    /** Extract numeric values from a token list (NUMBER_TOKEN only). */
+    var numbers = function (args) {
+        return args.filter(function (arg) { return arg.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(function (arg) { return arg.number; });
+    };
+    /** Parse a length token to pixels. Browsers always resolve lengths to px before
+     *  exposing them via getComputedStyle, so the unit is virtually always 'px'.
+     *  Falls back to 0 for unrecognised units. */
+    var lengthToPx = function (token) {
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            return token.number;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            return token.number;
+        }
+        return 0;
+    };
+    /** Parse an angle token (deg / grad / rad / turn) and return radians. */
+    var angleToRad = function (token) {
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            var dim = token;
+            switch (dim.unit) {
+                case 'deg':
+                    return (Math.PI * dim.number) / 180;
+                case 'grad':
+                    return (Math.PI / 200) * dim.number;
+                case 'rad':
+                    return dim.number;
+                case 'turn':
+                    return Math.PI * 2 * dim.number;
+            }
+        }
+        // <number> 0 is a valid angle
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            return token.number;
+        }
+        return 0;
+    };
+    /** Find the first length/dimension token in a list. */
+    var firstLength = function (args) {
+        var t = args.find(function (a) { return a.type === 15 /* TokenType.DIMENSION_TOKEN */ || a.type === 17 /* TokenType.NUMBER_TOKEN */; });
+        return t ? lengthToPx(t) : 0;
+    };
+    /** Find all length/dimension tokens in a list. */
+    var allLengths = function (args) {
+        return args.filter(function (a) { return a.type === 15 /* TokenType.DIMENSION_TOKEN */ || a.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(lengthToPx);
+    };
+    /** Find the first angle token in a list. */
+    var firstAngle = function (args) {
+        var t = args.find(function (a) { return isAngle(a) || a.type === 17 /* TokenType.NUMBER_TOKEN */; });
+        return t ? angleToRad(t) : 0;
+    };
+    /** Find all angle tokens in a list. */
+    var allAngles = function (args) {
+        return args.filter(function (a) { return isAngle(a) || a.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(angleToRad);
+    };
+    // ─── CSS Transform Level 1 ──────────────────────────────────────────────────
+    /** matrix(a, b, c, d, e, f) */
     var matrix = function (args) {
-        var values = args.filter(function (arg) { return arg.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(function (arg) { return arg.number; });
+        var values = numbers(args);
         return values.length === 6 ? values : null;
     };
-    // doesn't support 3D transforms at the moment
+    /** translate(tx, ty?) — ty defaults to 0 */
+    var translate = function (args) {
+        var _a, _b;
+        var values = allLengths(args);
+        var tx = (_a = values[0]) !== null && _a !== void 0 ? _a : 0;
+        var ty = (_b = values[1]) !== null && _b !== void 0 ? _b : 0;
+        return [1, 0, 0, 1, tx, ty];
+    };
+    /** translateX(tx) */
+    var translateX = function (args) { return [1, 0, 0, 1, firstLength(args), 0]; };
+    /** translateY(ty) */
+    var translateY = function (args) { return [1, 0, 0, 1, 0, firstLength(args)]; };
+    /** scale(sx, sy?) — sy defaults to sx */
+    var scale = function (args) {
+        var _a, _b;
+        var values = numbers(args);
+        var sx = (_a = values[0]) !== null && _a !== void 0 ? _a : 1;
+        var sy = (_b = values[1]) !== null && _b !== void 0 ? _b : sx;
+        return [sx, 0, 0, sy, 0, 0];
+    };
+    /** scaleX(sx) */
+    var scaleX = function (args) {
+        var _a;
+        var sx = (_a = numbers(args)[0]) !== null && _a !== void 0 ? _a : 1;
+        return [sx, 0, 0, 1, 0, 0];
+    };
+    /** scaleY(sy) */
+    var scaleY = function (args) {
+        var _a;
+        var sy = (_a = numbers(args)[0]) !== null && _a !== void 0 ? _a : 1;
+        return [1, 0, 0, sy, 0, 0];
+    };
+    /** rotate(angle) */
+    var rotate = function (args) {
+        var a = firstAngle(args);
+        var c = Math.cos(a);
+        // Math.sin(0) returns -0 on some engines; normalize to avoid -0 in output
+        var s = a === 0 ? 0 : Math.sin(a);
+        return [c, s, -s, c, 0, 0];
+    };
+    /** skew(ax, ay?) — ay defaults to 0 */
+    var skew = function (args) {
+        var _a, _b;
+        var angles = allAngles(args);
+        var ax = (_a = angles[0]) !== null && _a !== void 0 ? _a : 0;
+        var ay = (_b = angles[1]) !== null && _b !== void 0 ? _b : 0;
+        return [1, Math.tan(ay), Math.tan(ax), 1, 0, 0];
+    };
+    /** skewX(angle) */
+    var skewX = function (args) { return [1, 0, Math.tan(firstAngle(args)), 1, 0, 0]; };
+    /** skewY(angle) */
+    var skewY = function (args) { return [1, Math.tan(firstAngle(args)), 0, 1, 0, 0]; };
+    // ─── CSS Transform Level 2 (3D — projected to 2D) ───────────────────────────
+    /** matrix3d(…16 values…) — extract the 2D-relevant components */
     var matrix3d = function (args) {
-        var values = args.filter(function (arg) { return arg.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(function (arg) { return arg.number; });
-        var a1 = values[0], b1 = values[1]; values[2]; values[3]; var a2 = values[4], b2 = values[5]; values[6]; values[7]; values[8]; values[9]; values[10]; values[11]; var a4 = values[12], b4 = values[13]; values[14]; values[15];
+        var values = numbers(args);
+        var a1 = values[0], b1 = values[1], a2 = values[4], b2 = values[5], a4 = values[12], b4 = values[13];
         return values.length === 16 ? [a1, b1, a2, b2, a4, b4] : null;
     };
+    /** translate3d(tx, ty, tz) — tz is ignored (no depth in 2D canvas) */
+    var translate3d = function (args) {
+        var _a, _b;
+        var values = allLengths(args);
+        return [1, 0, 0, 1, (_a = values[0]) !== null && _a !== void 0 ? _a : 0, (_b = values[1]) !== null && _b !== void 0 ? _b : 0];
+    };
+    /** translateZ(tz) — no-op in 2D */
+    var translateZ = function (_args) { return [1, 0, 0, 1, 0, 0]; };
+    /** scale3d(sx, sy, sz) — sz is ignored */
+    var scale3d = function (args) {
+        var _a, _b;
+        var values = numbers(args);
+        return [(_a = values[0]) !== null && _a !== void 0 ? _a : 1, 0, 0, (_b = values[1]) !== null && _b !== void 0 ? _b : 1, 0, 0];
+    };
+    /** scaleZ(sz) — no-op in 2D */
+    var scaleZ = function (_args) { return [1, 0, 0, 1, 0, 0]; };
+    /** rotateZ(angle) — identical to rotate() */
+    var rotateZ = function (args) { return rotate(args); };
+    /** rotateX(angle) — no visible effect when projected to 2D */
+    var rotateX = function (_args) { return [1, 0, 0, 1, 0, 0]; };
+    /** rotateY(angle) — no visible effect when projected to 2D */
+    var rotateY = function (_args) { return [1, 0, 0, 1, 0, 0]; };
+    /** rotate3d(x, y, z, angle)
+     *  Only the common case x=0,y=0,z≠0 maps cleanly to a 2D rotation.
+     *  All other axis combinations produce a partial projection and are treated
+     *  as identity. */
+    var rotate3d = function (args) {
+        var nums = numbers(args);
+        // The angle is always a DIMENSION_TOKEN (deg/rad/…); NUMBER_TOKEN values
+        // are the x/y/z components — so we must NOT use allAngles() which would
+        // also pick up the plain NUMBER_TOKENs.
+        var angleDim = args.find(function (a) { return isAngle(a); });
+        var a = angleDim ? angleToRad(angleDim) : 0;
+        var x = nums[0], y = nums[1], z = nums[2];
+        // z-axis rotation maps directly to 2D rotate
+        if (x === 0 && y === 0 && z !== 0) {
+            var c = Math.cos(a);
+            var s = Math.sin(a);
+            return [c, s, -s, c, 0, 0];
+        }
+        return [1, 0, 0, 1, 0, 0];
+    };
+    /** perspective(d) — no-op in 2D canvas rendering */
+    var perspective = function (_args) { return [1, 0, 0, 1, 0, 0]; };
+    // ─── function map ────────────────────────────────────────────────────────────
     var SUPPORTED_TRANSFORM_FUNCTIONS = {
+        // Level 1
         matrix: matrix,
+        translate: translate,
+        translateX: translateX,
+        translateY: translateY,
+        scale: scale,
+        scaleX: scaleX,
+        scaleY: scaleY,
+        rotate: rotate,
+        skew: skew,
+        skewX: skewX,
+        skewY: skewY,
+        // Level 2
         matrix3d: matrix3d,
+        translate3d: translate3d,
+        translateZ: translateZ,
+        scale3d: scale3d,
+        scaleZ: scaleZ,
+        rotateZ: rotateZ,
+        rotateX: rotateX,
+        rotateY: rotateY,
+        rotate3d: rotate3d,
+        perspective: perspective,
     };
 
     var DEFAULT_VALUE = {

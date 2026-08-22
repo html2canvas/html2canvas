@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Scale transform tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #fff;
+            }
+            .container {
+                position: relative;
+                height: 120px;
+                margin-bottom: 20px;
+            }
+            .box {
+                position: absolute;
+                width: 80px;
+                height: 80px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: #fff;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- scale(sx, sy) — uniform and non-uniform -->
+        <div class="container">
+            <div class="box" style="background: #e74c3c; left: 10px; top: 10px; transform-origin: left top; transform: scale(1.5, 1.0);">scale(1.5,1)</div>
+            <div class="box" style="background: #3498db; left: 160px; top: 10px; transform-origin: left top; transform: scale(1.0, 1.5);">scale(1,1.5)</div>
+            <div class="box" style="background: #2ecc71; left: 310px; top: 10px; transform-origin: left top; transform: scale(1.5);">scale(1.5)</div>
+            <div class="box" style="background: #9b59b6; left: 460px; top: 10px; transform-origin: left top; transform: scale(0.5);">scale(0.5)</div>
+        </div>
+
+        <!-- scaleX / scaleY -->
+        <div class="container">
+            <div class="box" style="background: #e67e22; left: 10px; top: 10px; transform-origin: left top; transform: scaleX(2);">scaleX(2)</div>
+            <div class="box" style="background: #1abc9c; left: 200px; top: 10px; transform-origin: left top; transform: scaleY(2);">scaleY(2)</div>
+            <div class="box" style="background: #e74c3c; left: 390px; top: 10px; transform-origin: left top; transform: scaleX(0.5) scaleY(2);">sX(0.5) sY(2)</div>
+        </div>
+
+        <!-- scale with transform-origin: center (default) -->
+        <div class="container">
+            <div class="box" style="background: #34495e; left: 60px; top: 10px; transform: scale(1.5);">center scale</div>
+            <div class="box" style="background: #16a085; left: 250px; top: 10px; transform-origin: right bottom; transform: scale(1.5);">origin: right bottom</div>
+        </div>
+
+        <!-- negative scale (mirror) -->
+        <div class="container" style="height: 80px;">
+            <div class="box" style="background: #c0392b; left: 10px; top: 0; transform-origin: left top; transform: scaleX(-1);">scaleX(-1)</div>
+            <div class="box" style="background: #2980b9; left: 160px; top: 0; transform-origin: left top; transform: scaleY(-1);">scaleY(-1)</div>
+            <div class="box" style="background: #8e44ad; left: 310px; top: 0; transform-origin: left top; transform: scale(-1, 1);">scale(-1,1)</div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,389 @@
+<!doctype html>
+<html>
+    <head>
+        <title>CSS transform functions — complete coverage</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                background: #f5f5f5;
+                padding: 10px;
+            }
+            h2 {
+                font-size: 13px;
+                margin: 14px 0 6px;
+                color: #333;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 3px;
+            }
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 16px;
+                margin-bottom: 8px;
+                align-items: flex-end;
+            }
+            .cell {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .label {
+                font-size: 10px;
+                color: #555;
+                white-space: nowrap;
+            }
+            /* reference box shown without transform */
+            .ref {
+                width: 60px;
+                height: 40px;
+                background: #ddd;
+                border: 1px solid #aaa;
+                opacity: 0.4;
+            }
+            /* transformed box */
+            .box {
+                width: 60px;
+                height: 40px;
+                background: #3498db;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            /* wrapper gives each demo a fixed area so boxes don't push each other */
+            .demo {
+                width: 90px;
+                height: 80px;
+                position: relative;
+                overflow: visible;
+            }
+            .demo .ref, .demo .box {
+                position: absolute;
+                top: 20px;
+                left: 15px;
+            }
+        </style>
+    </head>
+    <body>
+
+        <!-- ── Level 1: translate ─────────────────────────────────────────── -->
+        <h2>translate / translateX / translateY</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">translate(20px,10px)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate(20px, 10px);">tx</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">translate(30px) — ty=0</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate(30px);">tx</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">translateX(25px)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translateX(25px);">tX</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">translateY(20px)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translateY(20px);">tY</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">translate(-15px,-10px)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate(-15px, -10px);">-tx</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Level 1: scale ────────────────────────────────────────────── -->
+        <h2>scale / scaleX / scaleY</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">scale(1.5)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scale(1.5);">sc</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scale(1.5, 0.8)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scale(1.5, 0.8);">sc</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scaleX(2)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scaleX(2);">sX</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scaleY(1.5)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scaleY(1.5);">sY</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scaleX(-1) mirror</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scaleX(-1);">mir</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Level 1: rotate ───────────────────────────────────────────── -->
+        <h2>rotate</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">rotate(45deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(45deg);">45°</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate(-30deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(-30deg);">-30°</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate(90deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(90deg);">90°</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate(0.5turn)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(0.5turn);">½t</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate(1rad)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(1rad);">1r</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Level 1: skew ─────────────────────────────────────────────── -->
+        <h2>skew / skewX / skewY</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">skewX(20deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: skewX(20deg);">kX</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">skewY(20deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: skewY(20deg);">kY</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">skew(15deg,10deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: skew(15deg, 10deg);">kk</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">skew(-15deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: skew(-15deg);">-k</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Level 1: matrix ───────────────────────────────────────────── -->
+        <h2>matrix</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">matrix(1,0,0,1,30,20)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: matrix(1, 0, 0, 1, 30, 20);">m</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">matrix(0.87,0.5,-0.5,0.87,0,0)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: matrix(0.87, 0.5, -0.5, 0.87, 0, 0);">m30°</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Level 2: 3D functions (projected to 2D) ───────────────────── -->
+        <h2>3D functions — projected to 2D (tz / rotateX / rotateY / perspective ignored)</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">translate3d(20px,10px,50px)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate3d(20px, 10px, 50px);">t3d</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">translateZ(50px) — no-op</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translateZ(50px);">tZ</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scale3d(1.5,1.2,2)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scale3d(1.5, 1.2, 2);">s3d</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scaleZ(3) — no-op</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scaleZ(3);">sZ</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotateZ(45deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotateZ(45deg);">rZ</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotateX(45deg) — no-op</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotateX(45deg);">rX</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotateY(45deg) — no-op</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotateY(45deg);">rY</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate3d(0,0,1,45deg)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate3d(0, 0, 1, 45deg);">r3d</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">perspective(200px) — no-op</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: perspective(200px);">persp</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">matrix3d identity</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 20,15,0,1);">m3d</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Chained transforms ────────────────────────────────────────── -->
+        <h2>Chained transforms</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">translate+rotate</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate(15px, 5px) rotate(30deg);">t+r</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">rotate+scale</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(20deg) scale(1.4);">r+s</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">scale+skewX</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scale(1.2) skewX(15deg);">s+k</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">t+r+s</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: translate(10px,5px) rotate(15deg) scale(1.2);">t+r+s</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── transform-origin ──────────────────────────────────────────── -->
+        <h2>transform-origin</h2>
+        <div class="row">
+            <div class="cell">
+                <span class="label">origin: top left</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(30deg); transform-origin: top left;">TL</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">origin: center (default)</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(30deg);">C</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">origin: bottom right</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: rotate(30deg); transform-origin: bottom right;">BR</div>
+                </div>
+            </div>
+            <div class="cell">
+                <span class="label">origin: 0px 0px + scale</span>
+                <div class="demo">
+                    <div class="ref"></div>
+                    <div class="box" style="transform: scale(1.5); transform-origin: 0px 0px;">0,0</div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
