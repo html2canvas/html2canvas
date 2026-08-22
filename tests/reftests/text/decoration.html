@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <title>text-decoration-style and text-decoration-thickness tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 18px;
+        background: #fff;
+      }
+
+      .row {
+        margin: 12px 20px;
+      }
+
+      .label {
+        display: inline-block;
+        width: 260px;
+        color: #666;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- text-decoration-style variations -->
+    <div class="row">
+      <span class="label">solid (default)</span>
+      <span style="text-decoration: underline; text-decoration-style: solid; text-decoration-color: red">
+        Underline solid
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">double</span>
+      <span style="text-decoration: underline; text-decoration-style: double; text-decoration-color: blue">
+        Underline double
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">dotted</span>
+      <span style="text-decoration: underline; text-decoration-style: dotted; text-decoration-color: green">
+        Underline dotted
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">dashed</span>
+      <span style="text-decoration: underline; text-decoration-style: dashed; text-decoration-color: purple">
+        Underline dashed
+      </span>
+    </div>
+
+    <!-- overline and line-through with styles -->
+    <div class="row">
+      <span class="label">overline double</span>
+      <span style="text-decoration: overline; text-decoration-style: double; text-decoration-color: orange">
+        Overline double
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">line-through dashed</span>
+      <span style="text-decoration: line-through; text-decoration-style: dashed; text-decoration-color: teal">
+        Line-through dashed
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">line-through dotted</span>
+      <span style="text-decoration: line-through; text-decoration-style: dotted; text-decoration-color: #c00">
+        Line-through dotted
+      </span>
+    </div>
+
+    <!-- multiple lines with same style -->
+    <div class="row">
+      <span class="label">underline + overline dashed</span>
+      <span
+        style="
+          text-decoration: underline overline;
+          text-decoration-style: dashed;
+          text-decoration-color: navy;
+        "
+      >
+        Under + overline dashed
+      </span>
+    </div>
+
+    <!-- text-decoration-thickness -->
+    <div class="row">
+      <span class="label">thickness 1px (default)</span>
+      <span style="text-decoration: underline; text-decoration-color: red"> Underline 1px </span>
+    </div>
+
+    <div class="row">
+      <span class="label">thickness 3px solid</span>
+      <span style="text-decoration: underline; text-decoration-color: blue; text-decoration-thickness: 3px">
+        Underline 3px
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">thickness 3px double</span>
+      <span
+        style="
+          text-decoration: underline;
+          text-decoration-style: double;
+          text-decoration-color: green;
+          text-decoration-thickness: 3px;
+        "
+      >
+        Underline double 3px
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">thickness 2px dotted</span>
+      <span
+        style="
+          text-decoration: underline;
+          text-decoration-style: dotted;
+          text-decoration-color: purple;
+          text-decoration-thickness: 2px;
+        "
+      >
+        Underline dotted 2px
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">thickness 2px dashed</span>
+      <span
+        style="
+          text-decoration: underline;
+          text-decoration-style: dashed;
+          text-decoration-color: darkorange;
+          text-decoration-thickness: 2px;
+        "
+      >
+        Underline dashed 2px
+      </span>
+    </div>
+
+    <!-- larger font to make styles clearly visible -->
+    <div class="row" style="font-size: 32px">
+      <span class="label" style="font-size: 13px">32px solid red</span>
+      <span style="text-decoration: underline; text-decoration-color: red"> Big solid </span>
+    </div>
+
+    <div class="row" style="font-size: 32px">
+      <span class="label" style="font-size: 13px">32px double blue 4px</span>
+      <span
+        style="
+          text-decoration: underline;
+          text-decoration-style: double;
+          text-decoration-color: blue;
+          text-decoration-thickness: 4px;
+        "
+      >
+        Big double
+      </span>
+    </div>
+
+    <div class="row" style="font-size: 32px">
+      <span class="label" style="font-size: 13px">32px dashed green 3px</span>
+      <span
+        style="
+          text-decoration: underline;
+          text-decoration-style: dashed;
+          text-decoration-color: green;
+          text-decoration-thickness: 3px;
+        "
+      >
+        Big dashed
+      </span>
+    </div>
+  </body>
+</html>

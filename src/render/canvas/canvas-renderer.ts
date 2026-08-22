@@ -15,6 +15,7 @@ import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blen
 import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
 import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
 import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
 import { TextShadow } from '../../css/property-descriptors/text-shadow';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { isDimensionToken } from '../../css/syntax/parser';
@@ -386,6 +387,84 @@ export class CanvasRenderer extends Renderer {
         return result;
     }
 
+    /**
+     * Draws a single text-decoration line segment using the given style.
+     * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
+     * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
+     * The `isVertical` flag swaps the semantics of w/h for dotted/dashed segment sizing.
+     */
+    renderDecorationLine(
+        style: number,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        isVertical: boolean,
+        textDecorationLine: TEXT_DECORATION_LINE,
+    ): void {
+        switch (style) {
+            case TEXT_DECORATION_STYLE.DOUBLE: {
+                // For double, `h` (or `w` in vertical) is the thickness of each individual line.
+                // Gap between the two lines = max(1, round(thickness / 2)).
+                if (isVertical) {
+                    const lineW = Math.max(1, w);
+                    const gap = Math.max(1, Math.round(w / 2));
+                    this.ctx.fillRect(x, y, lineW, h);
+                    if (textDecorationLine === TEXT_DECORATION_LINE.OVERLINE) {
+                        this.ctx.fillRect(x - lineW - gap, y, lineW, h);
+                    } else {
+                        this.ctx.fillRect(x + lineW + gap, y, lineW, h);
+                    }
+                } else {
+                    const lineH = Math.max(1, h);
+                    const gap = Math.max(1, Math.trunc(h / 2));
+                    this.ctx.fillRect(x, y, w, lineH);
+                    if (textDecorationLine === TEXT_DECORATION_LINE.OVERLINE) {
+                        this.ctx.fillRect(x, y - lineH - gap, w, lineH);
+                    } else {
+                        this.ctx.fillRect(x, y + lineH + gap, w, lineH);
+                    }
+                }
+                break;
+            }
+            case TEXT_DECORATION_STYLE.DOTTED: {
+                // Dots (squares) with diameter = thickness, spaced by one dot width.
+                const dotSize = isVertical ? w : h;
+                const length = isVertical ? h : w;
+                const step = dotSize * 2;
+                for (let pos = 0; pos < length; pos += step) {
+                    if (isVertical) {
+                        this.ctx.fillRect(x, y + pos, w, Math.min(dotSize, length - pos));
+                    } else {
+                        this.ctx.fillRect(x + pos, y, Math.min(dotSize, length - pos), h);
+                    }
+                }
+                break;
+            }
+            case TEXT_DECORATION_STYLE.DASHED: {
+                // Dashes 3× the thickness long, with a gap equal to the dash length.
+                const thickness = isVertical ? w : h;
+                const dashLen = thickness * 3;
+                const length = isVertical ? h : w;
+                const step = dashLen * 2;
+                for (let pos = 0; pos < length; pos += step) {
+                    if (isVertical) {
+                        this.ctx.fillRect(x, y + pos, w, Math.min(dashLen, length - pos));
+                    } else {
+                        this.ctx.fillRect(x + pos, y, Math.min(dashLen, length - pos), h);
+                    }
+                }
+                break;
+            }
+            case TEXT_DECORATION_STYLE.SOLID:
+            case TEXT_DECORATION_STYLE.WAVY:
+            default:
+                // solid (and unimplemented wavy) fall back to a simple filled rectangle.
+                this.ctx.fillRect(x, y, w, h);
+                break;
+        }
+    }
+
     async renderTextNode(text: TextContainer, styles: CSSParsedDeclaration): Promise<void> {
         const [font, fontFamily, fontSize] = this.createFontStyle(styles);
 
@@ -483,89 +562,66 @@ export class CanvasRenderer extends Renderer {
                             this.ctx.fillStyle = asString(
                                 isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor,
                             );
+                            // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
+                            const thickness =
+                                typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
                             styles.textDecorationLine.forEach(textDecorationLine => {
-                                // Fix the issue where textDecorationLine exhibits x-axis positioning errors on
-                                // high-resolution devices due to varying devicePixelRatio, corrected by using relative
-                                // values of element heights.
-                                const decorationLineHeight = 1;
                                 if (isVertical) {
-                                    // In vertical writing modes underline/overline become vertical bars.
-                                    // The side depends on the writing mode:
-                                    //   vertical-lr: underline=left, overline=right
-                                    //   vertical-rl, sideways-rl, sideways-lr: underline=right, overline=left
                                     const underlineOnLeft =
                                         wm === WRITING_MODE.VERTICAL_LR || wm === WRITING_MODE.VERTICAL_RL;
+                                    let lineX: number;
                                     switch (textDecorationLine) {
                                         case TEXT_DECORATION_LINE.UNDERLINE:
-                                            if (underlineOnLeft) {
-                                                this.ctx.fillRect(
-                                                    text.bounds.left,
-                                                    text.bounds.top,
-                                                    decorationLineHeight,
-                                                    text.bounds.height,
-                                                );
-                                            } else {
-                                                this.ctx.fillRect(
-                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
-                                                    text.bounds.top,
-                                                    decorationLineHeight,
-                                                    text.bounds.height,
-                                                );
-                                            }
+                                            lineX = underlineOnLeft
+                                                ? text.bounds.left
+                                                : text.bounds.left + text.bounds.width - thickness;
                                             break;
                                         case TEXT_DECORATION_LINE.OVERLINE:
-                                            if (underlineOnLeft) {
-                                                this.ctx.fillRect(
-                                                    text.bounds.left + text.bounds.width - decorationLineHeight,
-                                                    text.bounds.top,
-                                                    decorationLineHeight,
-                                                    text.bounds.height,
-                                                );
-                                            } else {
-                                                this.ctx.fillRect(
-                                                    text.bounds.left,
-                                                    text.bounds.top,
-                                                    decorationLineHeight,
-                                                    text.bounds.height,
-                                                );
-                                            }
+                                            lineX = underlineOnLeft
+                                                ? text.bounds.left + text.bounds.width - thickness
+                                                : text.bounds.left;
                                             break;
                                         case TEXT_DECORATION_LINE.LINE_THROUGH:
-                                            this.ctx.fillRect(
-                                                text.bounds.left + (text.bounds.width / 2 - decorationLineHeight / 2),
-                                                text.bounds.top,
-                                                decorationLineHeight,
-                                                text.bounds.height,
-                                            );
+                                        default:
+                                            lineX = text.bounds.left + text.bounds.width / 2 - thickness / 2;
                                             break;
                                     }
+                                    this.renderDecorationLine(
+                                        styles.textDecorationStyle,
+                                        lineX,
+                                        text.bounds.top,
+                                        thickness,
+                                        text.bounds.height,
+                                        true,
+                                        textDecorationLine,
+                                    );
                                 } else {
+                                    // baseline = distance from bounds.top to the alphabetic baseline.
+                                    // Use it to position decorations relative to actual glyph positions
+                                    // rather than the full line-height bounding box.
+                                    const baselineY = text.bounds.top + baseline;
+                                    let lineY: number;
                                     switch (textDecorationLine) {
                                         case TEXT_DECORATION_LINE.UNDERLINE:
-                                            this.ctx.fillRect(
-                                                text.bounds.left,
-                                                text.bounds.top + text.bounds.height - decorationLineHeight,
-                                                text.bounds.width,
-                                                decorationLineHeight,
-                                            );
+                                            lineY = baselineY + 2;
                                             break;
                                         case TEXT_DECORATION_LINE.OVERLINE:
-                                            this.ctx.fillRect(
-                                                text.bounds.left,
-                                                text.bounds.top,
-                                                text.bounds.width,
-                                                decorationLineHeight,
-                                            );
+                                            lineY = Math.round(text.bounds.top + (text.bounds.height - baseline) * 0.1);
                                             break;
                                         case TEXT_DECORATION_LINE.LINE_THROUGH:
-                                            this.ctx.fillRect(
-                                                text.bounds.left,
-                                                text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2),
-                                                text.bounds.width,
-                                                decorationLineHeight,
-                                            );
+                                        default:
+                                            lineY = Math.round(baselineY - baseline * 0.4) + 2;
                                             break;
                                     }
+                                    this.renderDecorationLine(
+                                        styles.textDecorationStyle,
+                                        text.bounds.left,
+                                        lineY,
+                                        text.bounds.width,
+                                        thickness,
+                                        false,
+                                        textDecorationLine,
+                                    );
                                 }
                             });
                         }

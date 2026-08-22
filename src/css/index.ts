@@ -70,6 +70,8 @@ import { quotes } from './property-descriptors/quotes';
 import { textAlign } from './property-descriptors/text-align';
 import { textDecorationColor } from './property-descriptors/text-decoration-color';
 import { textDecorationLine } from './property-descriptors/text-decoration-line';
+import { TEXT_DECORATION_STYLE, textDecorationStyle } from './property-descriptors/text-decoration-style';
+import { TextDecorationThickness, textDecorationThickness } from './property-descriptors/text-decoration-thickness';
 import { textShadow } from './property-descriptors/text-shadow';
 import { textTransform } from './property-descriptors/text-transform';
 import { transform } from './property-descriptors/transform';
@@ -151,6 +153,8 @@ export class CSSParsedDeclaration {
     textAlign: ReturnType<typeof textAlign.parse>;
     textDecorationColor: Color;
     textDecorationLine: ReturnType<typeof textDecorationLine.parse>;
+    textDecorationStyle: TEXT_DECORATION_STYLE;
+    textDecorationThickness: TextDecorationThickness;
     textShadow: ReturnType<typeof textShadow.parse>;
     textTransform: ReturnType<typeof textTransform.parse>;
     transform: ReturnType<typeof transform.parse>;
@@ -233,6 +237,8 @@ export class CSSParsedDeclaration {
             textDecorationLine,
             declaration.textDecorationLine ?? declaration.textDecoration,
         );
+        this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
+        this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
         this.transform = parse(context, transform, declaration.transform);
