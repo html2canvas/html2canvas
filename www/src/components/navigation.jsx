@@ -1,125 +1,47 @@
 import { useState } from 'react';
 
-const BASE_PATH = '/html2canvas';
-
-const links = [
-    {href: `${BASE_PATH}/documentation`, text: 'About'},
-    {href: `${BASE_PATH}/getting-started`, text: 'Getting started'},
-    {href: `${BASE_PATH}/configuration`, text: 'Configuration'},
-    {href: `${BASE_PATH}/features`, text: 'Features'},
-    {href: `${BASE_PATH}/proxy`, text: 'Proxy'},
-    {href: `${BASE_PATH}/faq`, text: 'FAQ'}
+const makeLinks = base => [
+    { href: `${base}/documentation`, text: 'About' },
+    { href: `${base}/getting-started`, text: 'Getting started' },
+    { href: `${base}/configuration`, text: 'Configuration' },
+    { href: `${base}/features`, text: 'Features' },
+    { href: `${base}/examples`, text: 'Examples' },
+    { href: `${base}/proxy`, text: 'Proxy' },
+    { href: `${base}/faq`, text: 'FAQ' },
 ];
 
-export default function Navigation() {
+export default function Navigation({ base = '' }) {
     const [open, setOpen] = useState(false);
 
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const links = makeLinks(base);
 
     return (
-        <nav
-            style={{
-                fontSize: '13px',
-                backgroundColor: '#fff'
-            }}
-            className="nav-sidebar"
-        >
-            <div
-                style={{
-                    background: '#558b2f',
-                    alignItems: 'center',
-                    padding: '24px 30px 24px 0px',
-                    display: 'flex'
-                }}
-                className="nav-header"
-            >
+        <nav className="nav-sidebar">
+            <div className="nav-header">
                 <img
-                    src={`${BASE_PATH}/ic_menu_black_24px.svg`}
-                    onClick={() => setOpen((s) => !s)}
+                    src={`${base}/ic_menu_black_24px.svg`}
+                    onClick={() => setOpen(s => !s)}
                     alt="Menu"
-                    style={{
-                        width: '50px',
-                        cursor: 'pointer',
-                        margin: '0 20px 0'
-                    }}
                     className="nav-menu-icon"
                 />
-                <a href={BASE_PATH + '/'}>
-                    <img src={`${BASE_PATH}/logo.svg`} style={{margin: 0}} alt="html2canvas" />
+                <a href={base + '/'}>
+                    <img className="nav-logo" src={`${base}/logo.svg`} alt="html2canvas" />
                 </a>
             </div>
 
-            <ul
-                style={{
-                    listStyle: 'none',
-                    margin: 0,
-                    padding: 0
-                }}
-                className={open ? 'nav-links nav-links--open' : 'nav-links'}
-            >
-                {links.map(({href, text}) => {
+            <ul className={open ? 'nav-links nav-links--open' : 'nav-links'}>
+                {links.map(({ href, text }) => {
                     const isActive = currentPath === href || currentPath.startsWith(href + '/');
                     return (
-                        <li key={href} style={{padding: 0, margin: 0}}>
-                            <a
-                                href={href}
-                                style={{
-                                    lineHeight: '44px',
-                                    height: '44px',
-                                    padding: '0 30px',
-                                    display: 'block',
-                                    fontWeight: '500',
-                                    transition: '.3s ease-out',
-                                    backgroundColor: isActive ? '#7cb342' : undefined,
-                                    color: isActive ? '#fff' : 'rgba(0,0,0,0.87)',
-                                    textDecoration: 'none'
-                                }}
-                                className="nav-link"
-                            >
+                        <li key={href} className="nav-item">
+                            <a href={href} className={isActive ? 'nav-link nav-link--active' : 'nav-link'}>
                                 {text}
                             </a>
                         </li>
                     );
                 })}
             </ul>
-
-            <style>{`
-                .nav-sidebar {
-                    position: relative;
-                }
-                .nav-menu-icon {
-                    display: block;
-                }
-                .nav-links {
-                    display: none;
-                }
-                .nav-links--open {
-                    display: block !important;
-                }
-                .nav-link:hover {
-                    background-color: rgba(0,0,0,0.05);
-                }
-                @media (min-width: 1000px) {
-                    .nav-sidebar {
-                        position: fixed !important;
-                        top: 0;
-                        left: 0;
-                        width: 300px;
-                        box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12), 0 3px 1px -2px rgba(0,0,0,0.2);
-                        height: 100%;
-                        z-index: 100;
-                    }
-                    .nav-header {
-                        padding: 24px 30px 24px 30px !important;
-                    }
-                    .nav-menu-icon {
-                        display: none !important;
-                    }
-                    .nav-links {
-                        display: block !important;
-                    }
-                }
-            `}</style>
         </nav>
     );
 }

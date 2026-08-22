@@ -1,6 +1,10 @@
 ---
 title: 'Features'
 description: 'Discover the different features supported by html2canvas'
+previousUrl: './configuration'
+previousTitle: 'Configuration'
+nextUrl: './examples'
+nextTitle: 'Examples'
 ---
 
 Below is a list of all the supported CSS properties and values.

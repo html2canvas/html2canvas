@@ -5,49 +5,66 @@ description: 'Explore Frequently Asked Questions regarding html2canvas'
 
 ## Why aren't my images rendered?
 
-html2canvas does not get around content policy restrictions set by your browser. Drawing images that reside outside of
-the [origin](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy) of the current page [taint the
-canvas](https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image#What_is_a_tainted_canvas) that they are drawn upon. If the canvas gets tainted, it cannot be read anymore. As such, html2canvas implements
-methods to check whether an image would taint the canvas before applying it. If you have set the `allowTaint`
-[option](./configuration) to `false`, it will not draw the image.
+html2canvas cannot circumvent content policy restrictions set by your browser. Drawing images that
+reside outside of the [origin](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy)
+of the current page [taints the canvas](https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image),
+making it unreadable. html2canvas checks whether an image would taint the canvas before applying it,
+and skips it if `allowTaint` is `false` (the default).
 
-If you wish to load images that reside outside of your pages origin, you can use a [proxy](./proxy) to load the images.
+To include cross-origin images, either:
+
+- Enable `useCORS: true` if the image server sends the appropriate `Access-Control-Allow-Origin` header, or
+- Use a [proxy](./proxy) to fetch the image through the same origin.
 
 ## Why is the produced canvas empty or cuts off half way through?
 
-Make sure that `canvas` element doesn't hit [browser limitations](https://stackoverflow.com/questions/6081483/maximum-size-of-a-canvas-element) for the `canvas` size or use the window configuration options to set a custom window size based on the `canvas` element:
+The canvas may hit [browser size limits](https://stackoverflow.com/questions/6081483/maximum-size-of-a-canvas-element).
+Use the `windowWidth` / `windowHeight` options to match the element's scroll dimensions:
 
-```
+```javascript
 await html2canvas(element, {
     windowWidth: element.scrollWidth,
-    windowHeight: element.scrollHeight
+    windowHeight: element.scrollHeight,
 });
 ```
 
-The window limitations vary by browser, operating system and system hardware.
+Size limits vary by browser and platform. Rather than documenting fixed numbers that change
+with browser updates, the [`canvas-size`](https://github.com/jhildenbiddle/canvas-size) library
+maintains up-to-date test results for each browser/platform combination.
 
-### Chrome
+As a rough guide based on current evergreen browsers:
 
-> Maximum height/width: 32,767 pixels
-> Maximum area: 268,435,456 pixels (e.g., 16,384 x 16,384)
+| Browser           | Max dimension | Notes                                   |
+| ----------------- | ------------- | --------------------------------------- |
+| Chrome / Chromium | ~32,767 px    | Max area ~268 Mpx; varies by GPU and OS |
+| Firefox           | ~32,767 px    | Max area ~472 Mpx                       |
+| Safari (desktop)  | ~32,767 px    | Similar to Chrome                       |
+| Safari (iOS)      | lower         | Depends on device RAM                   |
 
-### Firefox
-
-> Maximum height/width: 32,767 pixels
-> Maximum area: 472,907,776 pixels (e.g., 22,528 x 20,992)
-
-### iOS
-
-> The maximum size for a canvas element is 3 megapixels for devices with less than 256 MB RAM and 5 megapixels for devices with greater or equal than 256 MB RAM
+When a canvas exceeds the limit, the browser silently produces a blank or partially rendered
+output without throwing an error — which is why this is hard to debug.
 
 ## Why doesn't CSS property X render correctly or only partially?
 
-As each CSS property needs to be manually coded to render correctly, html2canvas will _never_ have full CSS support.
-The library tries to support the most [commonly used CSS properties](./features) to the extent that it can. If some CSS property
-is missing or incomplete and you feel that it should be part of the library, create test cases for it and a new issue for it.
+Every CSS property must be manually implemented to render correctly, so html2canvas will never
+have full CSS support. The library targets the most
+[commonly used CSS properties](./features). If a property is missing or incomplete, create
+a test case and open an issue.
 
 ## How do I get html2canvas to work in a browser extension?
 
-You shouldn't use html2canvas in a browser extension. Most browsers have native support for capturing screenshots from
-tabs within extensions. Relevant information for [Chrome](https://developer.chrome.com/extensions/tabs#method-captureVisibleTab) and
-[Firefox](<https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D#drawWindow()>).
+You should not use html2canvas in a browser extension. All major browsers expose a native
+screenshot API in their extension APIs that is more reliable and does not have canvas size limits:
+
+- **Chrome / Edge / Opera** — [`chrome.tabs.captureVisibleTab()`](https://developer.chrome.com/docs/extensions/reference/api/tabs#method-captureVisibleTab)
+- **Firefox** — [`browser.tabs.captureVisibleTab()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/captureVisibleTab)
+  (note: `CanvasRenderingContext2D.drawWindow()` was removed in Firefox 70)
+
+## Why doesn't html2canvas work in Node.js?
+
+html2canvas relies on browser APIs (`window`, `document`, computed styles, etc.) that do not
+exist in Node.js. It is a client-side only library and cannot be used server-side.
+
+If you need server-side screenshot generation, consider tools like
+[Puppeteer](https://pptr.dev/) or [Playwright](https://playwright.dev/) which drive a real
+browser headlessly.

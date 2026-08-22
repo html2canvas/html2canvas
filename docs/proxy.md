@@ -1,6 +1,8 @@
 ---
 title: 'Proxy'
 description: 'Browse different proxies available for supporting CORS content'
+previousUrl: './examples'
+previousTitle: 'Examples'
 ---
 
 html2canvas does not get around content policy restrictions set by your browser. Drawing images that reside outside of

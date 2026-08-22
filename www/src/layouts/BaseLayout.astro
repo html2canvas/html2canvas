@@ -1,6 +1,6 @@
 ---
-import '../styles/global.css';
 import Example from '../components/example.jsx';
+import '../styles/global.css';
 
 interface Props {
     title?: string;
@@ -9,8 +9,10 @@ interface Props {
 
 const {
     title = 'html2canvas - Screenshots with JavaScript',
-    description = 'Take screenshots with JavaScript using html2canvas'
+    description = 'Take screenshots with JavaScript using html2canvas',
 } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <!doctype html>
@@ -20,10 +22,10 @@ const {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={description} />
         <title>{title}</title>
-        <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/logo_icon.svg`} />
+        <link rel="icon" type="image/svg+xml" href={`${base}/logo_icon.svg`} />
     </head>
     <body>
         <slot />
-        <Example client:load />
+        <Example client:load base={base} />
     </body>
 </html>
