@@ -1,14 +1,14 @@
+import { Context } from '../../core/context';
+import { ITypeDescriptor } from '../ITypeDescriptor';
 import { CSSValue } from '../syntax/parser';
 import { TokenType } from '../syntax/tokenizer';
 import { Color } from './color';
-import { linearGradient } from './functions/linear-gradient';
 import { prefixLinearGradient } from './functions/-prefix-linear-gradient';
-import { ITypeDescriptor } from '../ITypeDescriptor';
-import { LengthPercentage } from './length-percentage';
-import { webkitGradient } from './functions/-webkit-gradient';
-import { radialGradient } from './functions/radial-gradient';
 import { prefixRadialGradient } from './functions/-prefix-radial-gradient';
-import { Context } from '../../core/context';
+import { webkitGradient } from './functions/-webkit-gradient';
+import { linearGradient } from './functions/linear-gradient';
+import { radialGradient } from './functions/radial-gradient';
+import { LengthPercentage } from './length-percentage';
 
 export const enum CSSImageType {
     URL,
@@ -108,13 +108,9 @@ export function isSupportedImage(value: CSSValue): boolean {
 const SUPPORTED_IMAGE_FUNCTIONS: Record<string, (context: Context, args: CSSValue[]) => ICSSImage> = {
     'linear-gradient': linearGradient,
     '-moz-linear-gradient': prefixLinearGradient,
-    '-ms-linear-gradient': prefixLinearGradient,
-    '-o-linear-gradient': prefixLinearGradient,
     '-webkit-linear-gradient': prefixLinearGradient,
     'radial-gradient': radialGradient,
     '-moz-radial-gradient': prefixRadialGradient,
-    '-ms-radial-gradient': prefixRadialGradient,
-    '-o-radial-gradient': prefixRadialGradient,
     '-webkit-radial-gradient': prefixRadialGradient,
     '-webkit-gradient': webkitGradient,
 };

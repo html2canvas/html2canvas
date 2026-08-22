@@ -1,6 +1,6 @@
+import { Context } from '../../core/context';
 import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 import { CSSValue, isIdentToken } from '../syntax/parser';
-import { Context } from '../../core/context';
 export const enum DISPLAY {
     NONE = 0,
     BLOCK = 1 << 1,
@@ -67,7 +67,6 @@ const parseDisplayValue = (display: string): Display => {
         case '-webkit-flex':
             return DISPLAY.FLEX;
         case 'grid':
-        case '-ms-grid':
             return DISPLAY.GRID;
         case 'ruby':
             return DISPLAY.RUBY;
