@@ -1780,27 +1780,6 @@ var calculateRadius = function (gradient, x, y, width, height) {
     return [rx, ry];
 };
 
-var linearGradient = function (context, tokens) {
-    var angle$1 = deg(180);
-    var stops = [];
-    parseFunctionArgs(tokens).forEach(function (arg, i) {
-        if (i === 0) {
-            var firstToken = arg[0];
-            if (firstToken.type === 20 /* TokenType.IDENT_TOKEN */ && firstToken.value === 'to') {
-                angle$1 = parseNamedSide(arg);
-                return;
-            }
-            else if (isAngle(firstToken)) {
-                angle$1 = angle.parse(context, firstToken);
-                return;
-            }
-        }
-        var colorStop = parseColorStop(context, arg);
-        stops.push(colorStop);
-    });
-    return { angle: angle$1, stops: stops, type: 1 /* CSSImageType.LINEAR_GRADIENT */ };
-};
-
 var prefixLinearGradient = function (context, tokens) {
     var angle$1 = deg(180);
     var stops = [];
@@ -1825,58 +1804,6 @@ var prefixLinearGradient = function (context, tokens) {
         stops: stops,
         type: 1 /* CSSImageType.LINEAR_GRADIENT */,
     };
-};
-
-var webkitGradient = function (context, tokens) {
-    var angle = deg(180);
-    var stops = [];
-    var type = 1 /* CSSImageType.LINEAR_GRADIENT */;
-    var shape = 0 /* CSSRadialShape.CIRCLE */;
-    var size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
-    var position = [];
-    parseFunctionArgs(tokens).forEach(function (arg, i) {
-        var firstToken = arg[0];
-        if (i === 0) {
-            if (isIdentToken(firstToken) && firstToken.value === 'linear') {
-                type = 1 /* CSSImageType.LINEAR_GRADIENT */;
-                return;
-            }
-            else if (isIdentToken(firstToken) && firstToken.value === 'radial') {
-                type = 2 /* CSSImageType.RADIAL_GRADIENT */;
-                return;
-            }
-        }
-        if (firstToken.type === 18 /* TokenType.FUNCTION */) {
-            if (firstToken.name === 'from') {
-                var color = color$1.parse(context, firstToken.values[0]);
-                stops.push({ stop: ZERO_LENGTH, color: color });
-            }
-            else if (firstToken.name === 'to') {
-                var color = color$1.parse(context, firstToken.values[0]);
-                stops.push({ stop: HUNDRED_PERCENT, color: color });
-            }
-            else if (firstToken.name === 'color-stop') {
-                var values = firstToken.values.filter(nonFunctionArgSeparator);
-                if (values.length === 2) {
-                    var color = color$1.parse(context, values[1]);
-                    var stop_1 = values[0];
-                    if (isNumberToken(stop_1)) {
-                        stops.push({
-                            stop: { type: 16 /* TokenType.PERCENTAGE_TOKEN */, number: stop_1.number * 100, flags: stop_1.flags },
-                            color: color,
-                        });
-                    }
-                }
-            }
-        }
-    });
-    return type === 1 /* CSSImageType.LINEAR_GRADIENT */
-        ? {
-            angle: (angle + deg(180)) % deg(360),
-            stops: stops,
-            type: type,
-        }
-        : { size: size, shape: shape, stops: stops, position: position, type: type };
 };
 
 var CLOSEST_SIDE = 'closest-side';
@@ -2037,6 +1964,79 @@ var prefixRadialGradient = function (context, tokens) {
     return { size: size, shape: shape, stops: stops, position: position, type: 2 /* CSSImageType.RADIAL_GRADIENT */ };
 };
 
+var webkitGradient = function (context, tokens) {
+    var angle = deg(180);
+    var stops = [];
+    var type = 1 /* CSSImageType.LINEAR_GRADIENT */;
+    var shape = 0 /* CSSRadialShape.CIRCLE */;
+    var size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+    var position = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        var firstToken = arg[0];
+        if (i === 0) {
+            if (isIdentToken(firstToken) && firstToken.value === 'linear') {
+                type = 1 /* CSSImageType.LINEAR_GRADIENT */;
+                return;
+            }
+            else if (isIdentToken(firstToken) && firstToken.value === 'radial') {
+                type = 2 /* CSSImageType.RADIAL_GRADIENT */;
+                return;
+            }
+        }
+        if (firstToken.type === 18 /* TokenType.FUNCTION */) {
+            if (firstToken.name === 'from') {
+                var color = color$1.parse(context, firstToken.values[0]);
+                stops.push({ stop: ZERO_LENGTH, color: color });
+            }
+            else if (firstToken.name === 'to') {
+                var color = color$1.parse(context, firstToken.values[0]);
+                stops.push({ stop: HUNDRED_PERCENT, color: color });
+            }
+            else if (firstToken.name === 'color-stop') {
+                var values = firstToken.values.filter(nonFunctionArgSeparator);
+                if (values.length === 2) {
+                    var color = color$1.parse(context, values[1]);
+                    var stop_1 = values[0];
+                    if (isNumberToken(stop_1)) {
+                        stops.push({
+                            stop: { type: 16 /* TokenType.PERCENTAGE_TOKEN */, number: stop_1.number * 100, flags: stop_1.flags },
+                            color: color,
+                        });
+                    }
+                }
+            }
+        }
+    });
+    return type === 1 /* CSSImageType.LINEAR_GRADIENT */
+        ? {
+            angle: (angle + deg(180)) % deg(360),
+            stops: stops,
+            type: type,
+        }
+        : { size: size, shape: shape, stops: stops, position: position, type: type };
+};
+
+var linearGradient = function (context, tokens) {
+    var angle$1 = deg(180);
+    var stops = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        if (i === 0) {
+            var firstToken = arg[0];
+            if (firstToken.type === 20 /* TokenType.IDENT_TOKEN */ && firstToken.value === 'to') {
+                angle$1 = parseNamedSide(arg);
+                return;
+            }
+            else if (isAngle(firstToken)) {
+                angle$1 = angle.parse(context, firstToken);
+                return;
+            }
+        }
+        var colorStop = parseColorStop(context, arg);
+        stops.push(colorStop);
+    });
+    return { angle: angle$1, stops: stops, type: 1 /* CSSImageType.LINEAR_GRADIENT */ };
+};
+
 var isLinearGradient = function (background) {
     return background.type === 1 /* CSSImageType.LINEAR_GRADIENT */;
 };
@@ -2068,13 +2068,9 @@ function isSupportedImage(value) {
 var SUPPORTED_IMAGE_FUNCTIONS = {
     'linear-gradient': linearGradient,
     '-moz-linear-gradient': prefixLinearGradient,
-    '-ms-linear-gradient': prefixLinearGradient,
-    '-o-linear-gradient': prefixLinearGradient,
     '-webkit-linear-gradient': prefixLinearGradient,
     'radial-gradient': radialGradient,
     '-moz-radial-gradient': prefixRadialGradient,
-    '-ms-radial-gradient': prefixRadialGradient,
-    '-o-radial-gradient': prefixRadialGradient,
     '-webkit-radial-gradient': prefixRadialGradient,
     '-webkit-gradient': webkitGradient,
 };
@@ -2417,7 +2413,6 @@ var parseDisplayValue = function (display) {
         case '-webkit-flex':
             return 128 /* DISPLAY.FLEX */;
         case 'grid':
-        case '-ms-grid':
             return 256 /* DISPLAY.GRID */;
         case 'ruby':
             return 512 /* DISPLAY.RUBY */;
