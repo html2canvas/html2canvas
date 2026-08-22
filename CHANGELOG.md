@@ -1,4 +1,27 @@
 # Changelog
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [1.8.0](https://github.com/html2canvas/html2canvas/compare/v1.7.1...v1.8.0) (2026-08-22)
+
+### Features
+
+* add background-blend-mode support ([32ef597](https://github.com/html2canvas/html2canvas/commit/32ef59741670294f32b1142dfb1685b558f6dd7e))
+* add background-clip: text support ([6ffc3a2](https://github.com/html2canvas/html2canvas/commit/6ffc3a223ec51bb3b5c7355cda15d80974e6fd79))
+* add full CSS filter property support (drop-shadow, blur, brightness, contrast, grayscale, hue-rotate, invert, opacity, saturate, sepia) ([012b161](https://github.com/html2canvas/html2canvas/commit/012b161a0c8460dc0d3097be5839bd1a12b766ef))
+* add mix-blend-mode support ([c8ba021](https://github.com/html2canvas/html2canvas/commit/c8ba02194023eecfa49bbd20820ad7f239efa0c3))
+* add text-decoration-style and text-decoration-thickness support ([c6ba375](https://github.com/html2canvas/html2canvas/commit/c6ba3759801ee5d28684fac105294e93d9e36b1c))
+* add text-transform full-width, full-size-kana & math-auto ([3da2f5f](https://github.com/html2canvas/html2canvas/commit/3da2f5fb6c7cafd4940ef4e9fb1598da9c2e76f5))
+
+### Bug Fixes
+
+* add site and base to astro config for github.io/html2canvas subpath ([68f563e](https://github.com/html2canvas/html2canvas/commit/68f563e08016a9eb8add6a96864f8f6ec5b7fc23))
+* **filter:** render all CSS filters via offscreen canvas ([739f0f8](https://github.com/html2canvas/html2canvas/commit/739f0f8f44902e8a590a35b247278e53f397ae8b))
+* improve text-shadow and text-decoration-color rendering ([b5f9aa2](https://github.com/html2canvas/html2canvas/commit/b5f9aa25131b4e9d4d0508c902db2901dc3e44c1))
+* prefix all links and assets with /html2canvas base path ([84101e0](https://github.com/html2canvas/html2canvas/commit/84101e04e014be518872fbbf5dbb36b7c4378a60))
+* rename webpack.config to .cjs, lazy-load iOS deps in karma, remove Safari iOS CI job ([0103dae](https://github.com/html2canvas/html2canvas/commit/0103dae1bcc01d09309d80f6d4715317705f194e))
+* update jest matchers to use toHaveBeenCalled() with jest.Mock cast ([7f63ed5](https://github.com/html2canvas/html2canvas/commit/7f63ed567eb97837e58d10b866c466f4edf340ec))
+
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
