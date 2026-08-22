@@ -1,8 +1,8 @@
-import {getAbsoluteValue, getAbsoluteValueForTuple} from '../css/types/length-percentage';
-import {ElementContainer} from '../dom/element-container';
-import {BezierCurve, isBezierCurve} from './bezier-curve';
-import {Path} from './path';
-import {Vector} from './vector';
+import { getAbsoluteValue, getAbsoluteValueForTuple } from '../css/types/length-percentage';
+import { ElementContainer } from '../dom/element-container';
+import { BezierCurve, isBezierCurve } from './bezier-curve';
+import { Path } from './path';
+import { Vector } from './vector';
 
 export class BoundCurves {
     readonly topLeftBorderDoubleOuterBox: Path;
@@ -79,7 +79,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth / 3,
                       tlh - borderLeftWidth / 3,
                       tlv - borderTopWidth / 3,
-                      CORNER.TOP_LEFT
+                      CORNER.TOP_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth / 3, bounds.top + borderTopWidth / 3);
         this.topRightBorderDoubleOuterBox =
@@ -89,7 +89,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth / 3,
                       trh - borderRightWidth / 3,
                       trv - borderTopWidth / 3,
-                      CORNER.TOP_RIGHT
+                      CORNER.TOP_RIGHT,
                   )
                 : new Vector(bounds.left + bounds.width - borderRightWidth / 3, bounds.top + borderTopWidth / 3);
         this.bottomRightBorderDoubleOuterBox =
@@ -99,11 +99,11 @@ export class BoundCurves {
                       bounds.top + rightHeight,
                       brh - borderRightWidth / 3,
                       brv - borderBottomWidth / 3,
-                      CORNER.BOTTOM_RIGHT
+                      CORNER.BOTTOM_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - borderRightWidth / 3,
-                      bounds.top + bounds.height - borderBottomWidth / 3
+                      bounds.top + bounds.height - borderBottomWidth / 3,
                   );
         this.bottomLeftBorderDoubleOuterBox =
             blh > 0 || blv > 0
@@ -112,7 +112,7 @@ export class BoundCurves {
                       bounds.top + leftHeight,
                       blh - borderLeftWidth / 3,
                       blv - borderBottomWidth / 3,
-                      CORNER.BOTTOM_LEFT
+                      CORNER.BOTTOM_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth / 3, bounds.top + bounds.height - borderBottomWidth / 3);
         this.topLeftBorderDoubleInnerBox =
@@ -122,7 +122,7 @@ export class BoundCurves {
                       bounds.top + (borderTopWidth * 2) / 3,
                       tlh - (borderLeftWidth * 2) / 3,
                       tlv - (borderTopWidth * 2) / 3,
-                      CORNER.TOP_LEFT
+                      CORNER.TOP_LEFT,
                   )
                 : new Vector(bounds.left + (borderLeftWidth * 2) / 3, bounds.top + (borderTopWidth * 2) / 3);
         this.topRightBorderDoubleInnerBox =
@@ -132,11 +132,11 @@ export class BoundCurves {
                       bounds.top + (borderTopWidth * 2) / 3,
                       trh - (borderRightWidth * 2) / 3,
                       trv - (borderTopWidth * 2) / 3,
-                      CORNER.TOP_RIGHT
+                      CORNER.TOP_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - (borderRightWidth * 2) / 3,
-                      bounds.top + (borderTopWidth * 2) / 3
+                      bounds.top + (borderTopWidth * 2) / 3,
                   );
         this.bottomRightBorderDoubleInnerBox =
             brh > 0 || brv > 0
@@ -145,11 +145,11 @@ export class BoundCurves {
                       bounds.top + rightHeight,
                       brh - (borderRightWidth * 2) / 3,
                       brv - (borderBottomWidth * 2) / 3,
-                      CORNER.BOTTOM_RIGHT
+                      CORNER.BOTTOM_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - (borderRightWidth * 2) / 3,
-                      bounds.top + bounds.height - (borderBottomWidth * 2) / 3
+                      bounds.top + bounds.height - (borderBottomWidth * 2) / 3,
                   );
         this.bottomLeftBorderDoubleInnerBox =
             blh > 0 || blv > 0
@@ -158,11 +158,11 @@ export class BoundCurves {
                       bounds.top + leftHeight,
                       blh - (borderLeftWidth * 2) / 3,
                       blv - (borderBottomWidth * 2) / 3,
-                      CORNER.BOTTOM_LEFT
+                      CORNER.BOTTOM_LEFT,
                   )
                 : new Vector(
                       bounds.left + (borderLeftWidth * 2) / 3,
-                      bounds.top + bounds.height - (borderBottomWidth * 2) / 3
+                      bounds.top + bounds.height - (borderBottomWidth * 2) / 3,
                   );
         this.topLeftBorderStroke =
             tlh > 0 || tlv > 0
@@ -171,7 +171,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth / 2,
                       tlh - borderLeftWidth / 2,
                       tlv - borderTopWidth / 2,
-                      CORNER.TOP_LEFT
+                      CORNER.TOP_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth / 2, bounds.top + borderTopWidth / 2);
         this.topRightBorderStroke =
@@ -181,7 +181,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth / 2,
                       trh - borderRightWidth / 2,
                       trv - borderTopWidth / 2,
-                      CORNER.TOP_RIGHT
+                      CORNER.TOP_RIGHT,
                   )
                 : new Vector(bounds.left + bounds.width - borderRightWidth / 2, bounds.top + borderTopWidth / 2);
         this.bottomRightBorderStroke =
@@ -191,11 +191,11 @@ export class BoundCurves {
                       bounds.top + rightHeight,
                       brh - borderRightWidth / 2,
                       brv - borderBottomWidth / 2,
-                      CORNER.BOTTOM_RIGHT
+                      CORNER.BOTTOM_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - borderRightWidth / 2,
-                      bounds.top + bounds.height - borderBottomWidth / 2
+                      bounds.top + bounds.height - borderBottomWidth / 2,
                   );
         this.bottomLeftBorderStroke =
             blh > 0 || blv > 0
@@ -204,7 +204,7 @@ export class BoundCurves {
                       bounds.top + leftHeight,
                       blh - borderLeftWidth / 2,
                       blv - borderBottomWidth / 2,
-                      CORNER.BOTTOM_LEFT
+                      CORNER.BOTTOM_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth / 2, bounds.top + bounds.height - borderBottomWidth / 2);
         this.topLeftBorderBox =
@@ -230,7 +230,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth,
                       Math.max(0, tlh - borderLeftWidth),
                       Math.max(0, tlv - borderTopWidth),
-                      CORNER.TOP_LEFT
+                      CORNER.TOP_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth, bounds.top + borderTopWidth);
         this.topRightPaddingBox =
@@ -240,7 +240,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth,
                       topWidth > bounds.width + borderRightWidth ? 0 : Math.max(0, trh - borderRightWidth),
                       Math.max(0, trv - borderTopWidth),
-                      CORNER.TOP_RIGHT
+                      CORNER.TOP_RIGHT,
                   )
                 : new Vector(bounds.left + bounds.width - borderRightWidth, bounds.top + borderTopWidth);
         this.bottomRightPaddingBox =
@@ -250,11 +250,11 @@ export class BoundCurves {
                       bounds.top + Math.min(rightHeight, bounds.height - borderBottomWidth),
                       Math.max(0, brh - borderRightWidth),
                       Math.max(0, brv - borderBottomWidth),
-                      CORNER.BOTTOM_RIGHT
+                      CORNER.BOTTOM_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - borderRightWidth,
-                      bounds.top + bounds.height - borderBottomWidth
+                      bounds.top + bounds.height - borderBottomWidth,
                   );
         this.bottomLeftPaddingBox =
             blh > 0 || blv > 0
@@ -263,7 +263,7 @@ export class BoundCurves {
                       bounds.top + Math.min(leftHeight, bounds.height - borderBottomWidth),
                       Math.max(0, blh - borderLeftWidth),
                       Math.max(0, blv - borderBottomWidth),
-                      CORNER.BOTTOM_LEFT
+                      CORNER.BOTTOM_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth, bounds.top + bounds.height - borderBottomWidth);
         this.topLeftContentBox =
@@ -273,7 +273,7 @@ export class BoundCurves {
                       bounds.top + borderTopWidth + paddingTop,
                       Math.max(0, tlh - (borderLeftWidth + paddingLeft)),
                       Math.max(0, tlv - (borderTopWidth + paddingTop)),
-                      CORNER.TOP_LEFT
+                      CORNER.TOP_LEFT,
                   )
                 : new Vector(bounds.left + borderLeftWidth + paddingLeft, bounds.top + borderTopWidth + paddingTop);
         this.topRightContentBox =
@@ -283,11 +283,11 @@ export class BoundCurves {
                       bounds.top + borderTopWidth + paddingTop,
                       topWidth > bounds.width + borderLeftWidth + paddingLeft ? 0 : trh - borderLeftWidth + paddingLeft,
                       trv - (borderTopWidth + paddingTop),
-                      CORNER.TOP_RIGHT
+                      CORNER.TOP_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - (borderRightWidth + paddingRight),
-                      bounds.top + borderTopWidth + paddingTop
+                      bounds.top + borderTopWidth + paddingTop,
                   );
         this.bottomRightContentBox =
             brh > 0 || brv > 0
@@ -296,11 +296,11 @@ export class BoundCurves {
                       bounds.top + Math.min(rightHeight, bounds.height + borderTopWidth + paddingTop),
                       Math.max(0, brh - (borderRightWidth + paddingRight)),
                       brv - (borderBottomWidth + paddingBottom),
-                      CORNER.BOTTOM_RIGHT
+                      CORNER.BOTTOM_RIGHT,
                   )
                 : new Vector(
                       bounds.left + bounds.width - (borderRightWidth + paddingRight),
-                      bounds.top + bounds.height - (borderBottomWidth + paddingBottom)
+                      bounds.top + bounds.height - (borderBottomWidth + paddingBottom),
                   );
         this.bottomLeftContentBox =
             blh > 0 || blv > 0
@@ -309,11 +309,11 @@ export class BoundCurves {
                       bounds.top + leftHeight,
                       Math.max(0, blh - (borderLeftWidth + paddingLeft)),
                       blv - (borderBottomWidth + paddingBottom),
-                      CORNER.BOTTOM_LEFT
+                      CORNER.BOTTOM_LEFT,
                   )
                 : new Vector(
                       bounds.left + borderLeftWidth + paddingLeft,
-                      bounds.top + bounds.height - (borderBottomWidth + paddingBottom)
+                      bounds.top + bounds.height - (borderBottomWidth + paddingBottom),
                   );
     }
 }
@@ -322,7 +322,7 @@ enum CORNER {
     TOP_LEFT = 0,
     TOP_RIGHT = 1,
     BOTTOM_RIGHT = 2,
-    BOTTOM_LEFT = 3
+    BOTTOM_LEFT = 3,
 }
 
 const getCurvePoints = (x: number, y: number, r1: number, r2: number, position: CORNER): BezierCurve => {
@@ -338,21 +338,21 @@ const getCurvePoints = (x: number, y: number, r1: number, r2: number, position: 
                 new Vector(x, ym),
                 new Vector(x, ym - oy),
                 new Vector(xm - ox, y),
-                new Vector(xm, y)
+                new Vector(xm, y),
             );
         case CORNER.TOP_RIGHT:
             return new BezierCurve(
                 new Vector(x, y),
                 new Vector(x + ox, y),
                 new Vector(xm, ym - oy),
-                new Vector(xm, ym)
+                new Vector(xm, ym),
             );
         case CORNER.BOTTOM_RIGHT:
             return new BezierCurve(
                 new Vector(xm, y),
                 new Vector(xm, y + oy),
                 new Vector(x + ox, ym),
-                new Vector(x, ym)
+                new Vector(x, ym),
             );
         case CORNER.BOTTOM_LEFT:
         default:
@@ -360,7 +360,7 @@ const getCurvePoints = (x: number, y: number, r1: number, r2: number, position: 
                 new Vector(xm, ym),
                 new Vector(xm - ox, ym),
                 new Vector(x, y + oy),
-                new Vector(x, y)
+                new Vector(x, y),
             );
     }
 };
@@ -449,7 +449,7 @@ export const expandBorderBoxPath = (curves: BoundCurves, spread: number): Path[]
             : new Vector(newLeft + newWidth, newTop + newHeight),
         newBlH > 0 || newBlV > 0
             ? getCurvePoints(newLeft, newTop + leftHeight, newBlH, newBlV, CORNER.BOTTOM_LEFT)
-            : new Vector(newLeft, newTop + newHeight)
+            : new Vector(newLeft, newTop + newHeight),
     ];
 };
 
@@ -458,7 +458,7 @@ export const calculateContentBoxPath = (curves: BoundCurves): Path[] => {
         curves.topLeftContentBox,
         curves.topRightContentBox,
         curves.bottomRightContentBox,
-        curves.bottomLeftContentBox
+        curves.bottomLeftContentBox,
     ];
 };
 
@@ -467,6 +467,6 @@ export const calculatePaddingBoxPath = (curves: BoundCurves): Path[] => {
         curves.topLeftPaddingBox,
         curves.topRightPaddingBox,
         curves.bottomRightPaddingBox,
-        curves.bottomLeftPaddingBox
+        curves.bottomLeftPaddingBox,
     ];
 };

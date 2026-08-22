@@ -1,7 +1,7 @@
-import {ElementContainer} from '../element-container';
-import {parseTree} from '../node-parser';
-import {Color, parseColor, COLORS, isTransparent} from '../../css/types/color';
-import {Context} from '../../core/context';
+import { ElementContainer } from '../element-container';
+import { parseTree } from '../node-parser';
+import { Color, parseColor, COLORS, isTransparent } from '../../css/types/color';
+import { Context } from '../../core/context';
 
 export class IFrameElementContainer extends ElementContainer {
     src: string;
@@ -28,13 +28,13 @@ export class IFrameElementContainer extends ElementContainer {
                 const documentBackgroundColor = iframe.contentWindow.document.documentElement
                     ? parseColor(
                           context,
-                          getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor as string
+                          getComputedStyle(iframe.contentWindow.document.documentElement).backgroundColor as string,
                       )
                     : COLORS.TRANSPARENT;
                 const bodyBackgroundColor = iframe.contentWindow.document.body
                     ? parseColor(
                           context,
-                          getComputedStyle(iframe.contentWindow.document.body).backgroundColor as string
+                          getComputedStyle(iframe.contentWindow.document.body).backgroundColor as string,
                       )
                     : COLORS.TRANSPARENT;
 

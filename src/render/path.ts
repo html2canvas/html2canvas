@@ -1,8 +1,8 @@
-import {BezierCurve} from './bezier-curve';
-import {Vector} from './vector';
+import { BezierCurve } from './bezier-curve';
+import { Vector } from './vector';
 export enum PathType {
     VECTOR = 0,
-    BEZIER_CURVE = 1
+    BEZIER_CURVE = 1,
 }
 export interface IPath {
     type: PathType;
@@ -36,7 +36,7 @@ export const reversePath = (path: Path[]): Path[] => {
     return path
         .slice(0)
         .reverse()
-        .map((point) => {
+        .map(point => {
             return point.reverse();
         });
 };

@@ -1,19 +1,19 @@
-import {CSSValue} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {Color} from './color';
-import {linearGradient} from './functions/linear-gradient';
-import {prefixLinearGradient} from './functions/-prefix-linear-gradient';
-import {ITypeDescriptor} from '../ITypeDescriptor';
-import {LengthPercentage} from './length-percentage';
-import {webkitGradient} from './functions/-webkit-gradient';
-import {radialGradient} from './functions/radial-gradient';
-import {prefixRadialGradient} from './functions/-prefix-radial-gradient';
-import {Context} from '../../core/context';
+import { CSSValue } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { Color } from './color';
+import { linearGradient } from './functions/linear-gradient';
+import { prefixLinearGradient } from './functions/-prefix-linear-gradient';
+import { ITypeDescriptor } from '../ITypeDescriptor';
+import { LengthPercentage } from './length-percentage';
+import { webkitGradient } from './functions/-webkit-gradient';
+import { radialGradient } from './functions/radial-gradient';
+import { prefixRadialGradient } from './functions/-prefix-radial-gradient';
+import { Context } from '../../core/context';
 
 export const enum CSSImageType {
     URL,
     LINEAR_GRADIENT,
-    RADIAL_GRADIENT
+    RADIAL_GRADIENT,
 }
 
 export const isLinearGradient = (background: ICSSImage): background is CSSLinearGradientImage => {
@@ -58,14 +58,14 @@ export interface CSSLinearGradientImage extends ICSSGradientImage {
 
 export const enum CSSRadialShape {
     CIRCLE,
-    ELLIPSE
+    ELLIPSE,
 }
 
 export const enum CSSRadialExtent {
     CLOSEST_SIDE,
     FARTHEST_SIDE,
     CLOSEST_CORNER,
-    FARTHEST_CORNER
+    FARTHEST_CORNER,
 }
 
 export type CSSRadialSize = CSSRadialExtent | LengthPercentage[];
@@ -81,7 +81,7 @@ export const image: ITypeDescriptor<ICSSImage> = {
     name: 'image',
     parse: (context: Context, value: CSSValue): ICSSImage => {
         if (value.type === TokenType.URL_TOKEN) {
-            const image: CSSURLImage = {url: value.value, type: CSSImageType.URL};
+            const image: CSSURLImage = { url: value.value, type: CSSImageType.URL };
             context.cache.addImage(value.value);
             return image;
         }
@@ -95,7 +95,7 @@ export const image: ITypeDescriptor<ICSSImage> = {
         }
 
         throw new Error(`Unsupported image type ${value.type}`);
-    }
+    },
 };
 
 export function isSupportedImage(value: CSSValue): boolean {
@@ -116,5 +116,5 @@ const SUPPORTED_IMAGE_FUNCTIONS: Record<string, (context: Context, args: CSSValu
     '-ms-radial-gradient': prefixRadialGradient,
     '-o-radial-gradient': prefixRadialGradient,
     '-webkit-radial-gradient': prefixRadialGradient,
-    '-webkit-gradient': webkitGradient
+    '-webkit-gradient': webkitGradient,
 };

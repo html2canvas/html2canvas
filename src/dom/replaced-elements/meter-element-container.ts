@@ -1,10 +1,10 @@
-import {Context} from '../../core/context';
-import {ElementContainer} from '../element-container';
+import { Context } from '../../core/context';
+import { ElementContainer } from '../element-container';
 
 export const enum METER_STATE {
     OPTIMUM = 0,
     SUBOPTIMUM = 1,
-    CRITICAL = 2
+    CRITICAL = 2,
 }
 
 export class MeterElementContainer extends ElementContainer {
@@ -32,7 +32,7 @@ export class MeterElementContainer extends ElementContainer {
 
     get state(): METER_STATE {
         // Determine the meter state based on CSS meter pseudo-class semantics
-        const {value, low, high, optimum} = this;
+        const { value, low, high, optimum } = this;
 
         // Determine which region the optimum is in
         const optimumInLow = optimum <= low;

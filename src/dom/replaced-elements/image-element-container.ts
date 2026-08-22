@@ -1,6 +1,6 @@
-import {ElementContainer} from '../element-container';
-import {Context} from '../../core/context';
-import {serializeSvg, deserializeSvg} from '../../core/features';
+import { ElementContainer } from '../element-container';
+import { Context } from '../../core/context';
+import { serializeSvg, deserializeSvg } from '../../core/features';
 
 export class ImageElementContainer extends ElementContainer {
     src: string;
@@ -23,14 +23,14 @@ export class ImageElementContainer extends ElementContainer {
     private isSvg = () => ImageElementContainer.SVG.test(this.src);
 
     setup(img: HTMLImageElement): Promise<void> {
-        return new Promise<void>((resolve) => {
+        return new Promise<void>(resolve => {
             if (this.isSvg()) {
                 resolve();
             } else if (this.isInlinedSvg()) {
                 const svgElement = deserializeSvg(this.src);
                 const {
-                    width: {baseVal: widthBaseVal},
-                    height: {baseVal: heightBaseVal}
+                    width: { baseVal: widthBaseVal },
+                    height: { baseVal: heightBaseVal },
                 } = svgElement;
 
                 if (ImageElementContainer.IS_FIRE_FOX) {
@@ -50,7 +50,7 @@ export class ImageElementContainer extends ElementContainer {
                     resolve();
                 } else {
                     //This might never happen, as the image is already loaded after the cache is awaited in canvas-renderer.ts/renderNodeContent, cache-storage.ts/Cache.loadImage does it
-                    img.addEventListener('load', (_event) => {
+                    img.addEventListener('load', _event => {
                         this.intrinsicWidth = img.naturalWidth;
                         this.intrinsicHeight = img.naturalHeight;
                         resolve();

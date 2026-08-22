@@ -1,9 +1,9 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum VISIBILITY {
     VISIBLE = 0,
     HIDDEN = 1,
-    COLLAPSE = 2
+    COLLAPSE = 2,
 }
 
 export const visibility: IPropertyIdentValueDescriptor<VISIBILITY> = {
@@ -21,5 +21,5 @@ export const visibility: IPropertyIdentValueDescriptor<VISIBILITY> = {
             default:
                 return VISIBILITY.VISIBLE;
         }
-    }
+    },
 };

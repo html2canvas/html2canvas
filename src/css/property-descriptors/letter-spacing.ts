@@ -1,7 +1,7 @@
-import {IPropertyValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {Context} from '../../core/context';
+import { IPropertyValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { Context } from '../../core/context';
 export const letterSpacing: IPropertyValueDescriptor<number> = {
     name: 'letter-spacing',
     initialValue: '0',
@@ -21,5 +21,5 @@ export const letterSpacing: IPropertyValueDescriptor<number> = {
         }
 
         return 0;
-    }
+    },
 };

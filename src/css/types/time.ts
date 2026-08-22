@@ -1,7 +1,7 @@
-import {CSSValue} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {ITypeDescriptor} from '../ITypeDescriptor';
-import {Context} from '../../core/context';
+import { CSSValue } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { ITypeDescriptor } from '../ITypeDescriptor';
+import { Context } from '../../core/context';
 
 export const time: ITypeDescriptor<number> = {
     name: 'time',
@@ -16,5 +16,5 @@ export const time: ITypeDescriptor<number> = {
         }
 
         throw new Error(`Unsupported time type`);
-    }
+    },
 };

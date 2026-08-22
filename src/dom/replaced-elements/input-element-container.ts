@@ -1,27 +1,27 @@
-import {Context} from '../../core/context';
-import {Bounds} from '../../css/layout/bounds';
-import {BACKGROUND_CLIP} from '../../css/property-descriptors/background-clip';
-import {BACKGROUND_ORIGIN} from '../../css/property-descriptors/background-origin';
-import {BORDER_STYLE} from '../../css/property-descriptors/border-style';
-import {TokenType} from '../../css/syntax/tokenizer';
-import {LengthPercentageTuple} from '../../css/types/length-percentage';
-import {ElementContainer} from '../element-container';
+import { Context } from '../../core/context';
+import { Bounds } from '../../css/layout/bounds';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BACKGROUND_ORIGIN } from '../../css/property-descriptors/background-origin';
+import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { TokenType } from '../../css/syntax/tokenizer';
+import { LengthPercentageTuple } from '../../css/types/length-percentage';
+import { ElementContainer } from '../element-container';
 
 const CHECKBOX_BORDER_RADIUS: LengthPercentageTuple = [
     {
         type: TokenType.DIMENSION_TOKEN,
         flags: 0,
         unit: 'px',
-        number: 3
-    }
+        number: 3,
+    },
 ];
 
 const RADIO_BORDER_RADIUS: LengthPercentageTuple = [
     {
         type: TokenType.PERCENTAGE_TOKEN,
         flags: 0,
-        number: 50
-    }
+        number: 50,
+    },
 ];
 
 const reformatInputBounds = (bounds: Bounds): Bounds => {

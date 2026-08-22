@@ -1,0 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+    <head>
+        <title>Z-order positioning</title>
+        <style type="text/css">
+            .pile {
+                position: absolute;
+                left: 2in;
+                top: 2in;
+                width: 3in;
+                height: 3in;
+            }
+            body {
+                font-family: Arial;
+            }
+        </style>
+        <script type="text/javascript" src="../../test.js"></script>
+    </head>
+    <body>
+        <p>
+            <img id="image" class="pile" src="../../assets/image.jpg" alt="A butterfly image" style="z-index: 1" />
+        </p>
+
+        <div id="text1" class="pile" style="z-index: 3">This text will overlay the butterfly image.</div>
+
+        <div id="text2">This text will be beneath everything.</div>
+
+        <div id="text3" class="pile" style="z-index: 2">
+            This text will underlay text1, but overlay the butterfly image
+        </div>
+    </body>
+</html>

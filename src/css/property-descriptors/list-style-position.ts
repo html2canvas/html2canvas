@@ -1,8 +1,8 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum LIST_STYLE_POSITION {
     INSIDE = 0,
-    OUTSIDE = 1
+    OUTSIDE = 1,
 }
 
 export const listStylePosition: IPropertyIdentValueDescriptor<LIST_STYLE_POSITION> = {
@@ -18,5 +18,5 @@ export const listStylePosition: IPropertyIdentValueDescriptor<LIST_STYLE_POSITIO
             default:
                 return LIST_STYLE_POSITION.OUTSIDE;
         }
-    }
+    },
 };

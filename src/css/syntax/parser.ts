@@ -5,7 +5,7 @@ import {
     NumberValueToken,
     StringValueToken,
     Tokenizer,
-    TokenType
+    TokenType,
 } from './tokenizer';
 
 export type CSSBlockType =
@@ -98,7 +98,7 @@ export class Parser {
     }
 
     private consumeSimpleBlock(type: CSSBlockType): CSSBlock {
-        const block: CSSBlock = {type, values: []};
+        const block: CSSBlock = { type, values: [] };
 
         let token = this.consumeToken();
         while (true) {
@@ -116,7 +116,7 @@ export class Parser {
         const cssFunction: CSSFunction = {
             name: functionToken.value,
             values: [],
-            type: TokenType.FUNCTION
+            type: TokenType.FUNCTION,
         };
 
         while (true) {
@@ -158,7 +158,7 @@ export const nonFunctionArgSeparator = (token: CSSValue): boolean =>
 export const parseFunctionArgs = (tokens: CSSValue[]): CSSValue[][] => {
     const args: CSSValue[][] = [];
     let arg: CSSValue[] = [];
-    tokens.forEach((token) => {
+    tokens.forEach(token => {
         if (token.type === TokenType.COMMA_TOKEN) {
             if (arg.length === 0) {
                 throw new Error(`Error parsing function args, zero tokens for arg`);

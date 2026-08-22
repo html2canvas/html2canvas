@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS filter property</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../test.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .box {
+            width: 100px;
+            height: 100px;
+            margin: 20px;
+            display: inline-block;
+            background: #3498db;
+            border-radius: 8px;
+        }
+        .label {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 5px;
+            color: #333;
+        }
+        .row {
+            margin-bottom: 20px;
+        }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .item {
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="row">
+    <div class="row-title">drop-shadow()</div>
+    <div class="item">
+        <div class="box" style="filter: drop-shadow(4px 4px 4px rgba(0,0,0,0.5));"></div>
+        <div class="label">4px 4px 4px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: drop-shadow(8px 8px 12px red);"></div>
+        <div class="label">8px 8px 12px red</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: drop-shadow(0px 0px 10px blue);"></div>
+        <div class="label">0 0 10px blue</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: drop-shadow(-4px -4px 6px green);"></div>
+        <div class="label">-4px -4px 6px green</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">blur()</div>
+    <div class="item">
+        <div class="box" style="filter: blur(0px);"></div>
+        <div class="label">0px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: blur(2px);"></div>
+        <div class="label">2px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: blur(5px);"></div>
+        <div class="label">5px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: blur(10px);"></div>
+        <div class="label">10px</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">brightness()</div>
+    <div class="item">
+        <div class="box" style="filter: brightness(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: brightness(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: brightness(150%);"></div>
+        <div class="label">150%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: brightness(200%);"></div>
+        <div class="label">200%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">contrast()</div>
+    <div class="item">
+        <div class="box" style="filter: contrast(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: contrast(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: contrast(150%);"></div>
+        <div class="label">150%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: contrast(200%);"></div>
+        <div class="label">200%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">grayscale()</div>
+    <div class="item">
+        <div class="box" style="filter: grayscale(0%);"></div>
+        <div class="label">0%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: grayscale(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: grayscale(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">hue-rotate()</div>
+    <div class="item">
+        <div class="box" style="filter: hue-rotate(0deg);"></div>
+        <div class="label">0deg</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: hue-rotate(90deg);"></div>
+        <div class="label">90deg</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: hue-rotate(180deg);"></div>
+        <div class="label">180deg</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: hue-rotate(270deg);"></div>
+        <div class="label">270deg</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">invert()</div>
+    <div class="item">
+        <div class="box" style="filter: invert(0%);"></div>
+        <div class="label">0%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: invert(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: invert(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">opacity()</div>
+    <div class="item">
+        <div class="box" style="filter: opacity(25%);"></div>
+        <div class="label">25%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: opacity(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: opacity(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">saturate()</div>
+    <div class="item">
+        <div class="box" style="filter: saturate(0%);"></div>
+        <div class="label">0%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: saturate(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: saturate(300%);"></div>
+        <div class="label">300%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">sepia()</div>
+    <div class="item">
+        <div class="box" style="filter: sepia(0%);"></div>
+        <div class="label">0%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: sepia(50%);"></div>
+        <div class="label">50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: sepia(100%);"></div>
+        <div class="label">100%</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Combined filters</div>
+    <div class="item">
+        <div class="box" style="filter: blur(1px) grayscale(50%);"></div>
+        <div class="label">blur + grayscale</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: drop-shadow(4px 4px 4px black) sepia(80%);"></div>
+        <div class="label">shadow + sepia</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: hue-rotate(90deg) brightness(120%) contrast(110%);"></div>
+        <div class="label">hue + bright + contrast</div>
+    </div>
+    <div class="item">
+        <div class="box" style="filter: invert(100%) hue-rotate(180deg);"></div>
+        <div class="label">invert + hue-rotate</div>
+    </div>
+</div>
+
+</body>
+</html>

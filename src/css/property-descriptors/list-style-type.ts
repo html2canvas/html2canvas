@@ -1,5 +1,5 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 export const enum LIST_STYLE_TYPE {
     NONE = -1,
     DISC = 0,
@@ -54,7 +54,7 @@ export const enum LIST_STYLE_TYPE {
     TRAD_CHINESE_INFORMAL = 49,
     UPPER_ARMENIAN = 50,
     DISCLOSURE_OPEN = 51,
-    DISCLOSURE_CLOSED = 52
+    DISCLOSURE_CLOSED = 52,
 }
 
 export const listStyleType: IPropertyIdentValueDescriptor<LIST_STYLE_TYPE> = {
@@ -174,5 +174,5 @@ export const listStyleType: IPropertyIdentValueDescriptor<LIST_STYLE_TYPE> = {
             default:
                 return LIST_STYLE_TYPE.NONE;
         }
-    }
+    },
 };

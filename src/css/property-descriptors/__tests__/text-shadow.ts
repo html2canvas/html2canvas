@@ -1,10 +1,10 @@
-import {deepStrictEqual} from 'assert';
-import {Parser} from '../../syntax/parser';
-import {color, COLORS} from '../../types/color';
-import {textShadow} from '../text-shadow';
-import {FLAG_INTEGER, DimensionToken, TokenType} from '../../syntax/tokenizer';
-import {ZERO_LENGTH} from '../../types/length-percentage';
-import {Context} from '../../../core/context';
+import { deepStrictEqual } from 'assert';
+import { Parser } from '../../syntax/parser';
+import { color, COLORS } from '../../types/color';
+import { textShadow } from '../text-shadow';
+import { FLAG_INTEGER, DimensionToken, TokenType } from '../../syntax/tokenizer';
+import { ZERO_LENGTH } from '../../types/length-percentage';
+import { Context } from '../../../core/context';
 
 const textShadowParse = (value: string) => textShadow.parse({} as Context, Parser.parseValues(value));
 const colorParse = (value: string) => color.parse({} as Context, Parser.parseValue(value));
@@ -12,7 +12,7 @@ const dimension = (number: number, unit: string): DimensionToken => ({
     flags: FLAG_INTEGER,
     number,
     unit,
-    type: TokenType.DIMENSION_TOKEN
+    type: TokenType.DIMENSION_TOKEN,
 });
 
 describe('property-descriptors', () => {
@@ -25,8 +25,8 @@ describe('property-descriptors', () => {
                     color: colorParse('pink'),
                     offsetX: dimension(1, 'px'),
                     offsetY: dimension(1, 'px'),
-                    blur: dimension(2, 'px')
-                }
+                    blur: dimension(2, 'px'),
+                },
             ]));
 
         it('#fc0 1px 0 10px', () =>
@@ -35,8 +35,8 @@ describe('property-descriptors', () => {
                     color: colorParse('#fc0'),
                     offsetX: dimension(1, 'px'),
                     offsetY: ZERO_LENGTH,
-                    blur: dimension(10, 'px')
-                }
+                    blur: dimension(10, 'px'),
+                },
             ]));
 
         it('5px 5px #558abb', () =>
@@ -45,8 +45,8 @@ describe('property-descriptors', () => {
                     color: colorParse('#558abb'),
                     offsetX: dimension(5, 'px'),
                     offsetY: dimension(5, 'px'),
-                    blur: ZERO_LENGTH
-                }
+                    blur: ZERO_LENGTH,
+                },
             ]));
 
         it('white 2px 5px', () =>
@@ -55,8 +55,8 @@ describe('property-descriptors', () => {
                     color: colorParse('#fff'),
                     offsetX: dimension(2, 'px'),
                     offsetY: dimension(5, 'px'),
-                    blur: ZERO_LENGTH
-                }
+                    blur: ZERO_LENGTH,
+                },
             ]));
 
         it('white 2px 5px', () =>
@@ -65,8 +65,8 @@ describe('property-descriptors', () => {
                     color: COLORS.TRANSPARENT,
                     offsetX: dimension(5, 'px'),
                     offsetY: dimension(10, 'px'),
-                    blur: ZERO_LENGTH
-                }
+                    blur: ZERO_LENGTH,
+                },
             ]));
 
         it('1px 1px 2px red, 0 0 1em blue, 0 0 2em blue', () =>
@@ -75,20 +75,20 @@ describe('property-descriptors', () => {
                     color: colorParse('red'),
                     offsetX: dimension(1, 'px'),
                     offsetY: dimension(1, 'px'),
-                    blur: dimension(2, 'px')
+                    blur: dimension(2, 'px'),
                 },
                 {
                     color: colorParse('blue'),
                     offsetX: ZERO_LENGTH,
                     offsetY: ZERO_LENGTH,
-                    blur: dimension(1, 'em')
+                    blur: dimension(1, 'em'),
                 },
                 {
                     color: colorParse('blue'),
                     offsetX: ZERO_LENGTH,
                     offsetY: ZERO_LENGTH,
-                    blur: dimension(2, 'em')
-                }
+                    blur: dimension(2, 'em'),
+                },
             ]));
     });
 });

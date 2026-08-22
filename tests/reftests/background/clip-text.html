@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background-clip: text tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        background-color: #fff;
+        font-family: Arial, sans-serif;
+      }
+
+      .test {
+        margin: 20px;
+        clear: both;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Linear gradient with background-clip: text -->
+    <div class="test">
+      <h1
+        style="
+          background-image: linear-gradient(to right, #ff0000, #0000ff);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 48px;
+          font-weight: bold;
+        "
+      >
+        Gradient Text
+      </h1>
+    </div>
+
+    <!-- Solid color with background-clip: text -->
+    <div class="test">
+      <p
+        style="
+          background-color: #ff6600;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 32px;
+          font-weight: bold;
+        "
+      >
+        Solid Color Text
+      </p>
+    </div>
+
+    <!-- Radial gradient with background-clip: text -->
+    <div class="test">
+      <h2
+        style="
+          background-image: radial-gradient(circle, #ff0000, #00ff00, #0000ff);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 40px;
+          font-weight: bold;
+        "
+      >
+        Radial Gradient
+      </h2>
+    </div>
+
+    <!-- Background image with background-clip: text -->
+    <div class="test">
+      <h2
+        style="
+          background-image: url(../../assets/image.jpg);
+          background-size: cover;
+          background-position: center;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 60px;
+          font-weight: bold;
+        "
+      >
+        Image Text
+      </h2>
+    </div>
+
+    <!-- Multiple lines -->
+    <div class="test">
+      <p
+        style="
+          background-image: linear-gradient(135deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 24px;
+          line-height: 1.5;
+          max-width: 400px;
+        "
+      >
+        Multiple lines of text with background-clip text applied to test wrapping behavior.
+      </p>
+    </div>
+
+    <!-- With letter-spacing -->
+    <div class="test">
+      <h2
+        style="
+          background-image: linear-gradient(to right, #f093fb, #f5576c);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 36px;
+          letter-spacing: 5px;
+          font-weight: bold;
+        "
+      >
+        LETTER SPACING
+      </h2>
+    </div>
+
+    <!-- Italic text -->
+    <div class="test">
+      <p
+        style="
+          background-image: linear-gradient(to right, #11998e, #38ef7d);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 32px;
+          font-style: italic;
+        "
+      >
+        Italic gradient text
+      </p>
+    </div>
+
+    <!-- Text with text-transform: uppercase -->
+    <div class="test">
+      <p
+        style="
+          background-image: linear-gradient(to bottom, #fc5c7d, #6a82fb);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 28px;
+          text-transform: uppercase;
+          font-weight: bold;
+        "
+      >
+        uppercase transform
+      </p>
+    </div>
+
+    <!-- Text with text-decoration -->
+    <div class="test">
+      <p
+        style="
+          background-image: linear-gradient(to right, #f7971e, #ffd200);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 28px;
+          text-decoration: underline;
+        "
+      >
+        Underlined gradient text
+      </p>
+    </div>
+
+    <!-- Transform: rotate -->
+    <div class="test" style="height: 120px">
+      <p
+        style="
+          background-image: linear-gradient(45deg, #ee0979, #ff6a00);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 30px;
+          font-weight: bold;
+          transform: rotate(-5deg);
+          display: inline-block;
+        "
+      >
+        Rotated text
+      </p>
+    </div>
+
+    <!-- Transform: scale -->
+    <div class="test" style="height: 80px">
+      <p
+        style="
+          background-image: linear-gradient(to right, #7f00ff, #e100ff);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 24px;
+          font-weight: bold;
+          transform: scale(1.5);
+          transform-origin: left top;
+          display: inline-block;
+        "
+      >
+        Scaled text
+      </p>
+    </div>
+
+    <!-- Small-caps font variant -->
+    <div class="test">
+      <p
+        style="
+          background-image: linear-gradient(to right, #2193b0, #6dd5ed);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 28px;
+          font-variant: small-caps;
+        "
+      >
+        Small Caps Variant
+      </p>
+    </div>
+  </body>
+</html>

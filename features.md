@@ -1,0 +1,133 @@
+---
+title: 'Features'
+description: 'Discover the different features supported by html2canvas'
+---
+
+Below is a list of all the supported CSS properties and values.
+
+## Properties
+
+- background
+    - background-blend-mode
+    - background-clip
+    - background-color
+    - background-image
+        - url()
+        - linear-gradient()
+        - radial-gradient()
+    - background-origin
+    - background-position
+    - background-size
+- border
+    - border-color
+    - border-radius
+    - border-style
+    - border-width
+- bottom
+- box-shadow
+- box-sizing
+- content
+- color
+- display
+- filter
+    - blur()
+    - brightness()
+    - contrast()
+    - drop-shadow()
+    - grayscale()
+    - hue-rotate()
+    - invert()
+    - opacity()
+    - saturate()
+    - sepia()
+- flex
+- float
+- font
+    - font-family
+    - font-size
+    - font-style
+    - font-variant
+    - font-weight
+- height
+- left
+- letter-spacing
+- line-break
+- list-style
+    - list-style-image
+    - list-style-position
+    - list-style-type
+- margin
+- max-height
+- max-width
+- min-height
+- min-width
+- mix-blend-mode
+- opacity
+- overflow
+- overflow-wrap
+- padding
+- paint-order
+- position
+- right
+- text-align
+- text-decoration
+    - text-decoration-color
+    - text-decoration-line
+    - text-decoration-style (**Only `solid`, `double`, `dotted` and `dashed` are supported**)
+    - text-decoration-thickness
+- text-shadow
+- text-transform
+- top
+- transform (**Limited support**)
+- visibility
+- white-space
+- writing-mode (**Limited support**)
+- width
+- webkit-text-stroke
+- word-break
+- word-spacing
+- word-wrap
+- z-index
+- object-fit
+
+## Values
+
+- bend-mode
+    - multiply
+    - screen
+    - overlay
+    - darken
+    - lighten
+    - color-dodge
+    - color-burn
+    - hard-light
+    - soft-light
+    - difference
+    - exclusion
+    - hue
+    - saturation
+    - color
+    - luminosity
+- color
+    - color name
+    - hexa
+    - rgb()
+    - hsl()
+    - lch()
+    - lab()
+    - oklch()
+    - oklab()
+    - hwb()
+    - color()
+    - color-mix()
+
+## Unsupported CSS properties
+
+These CSS properties are **NOT** currently supported
+
+- [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
+- [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
+- [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
+- object-position
+- [repeating-linear-gradient()](https://github.com/niklasvh/html2canvas/issues/1162)
+- [zoom](https://github.com/niklasvh/html2canvas/issues/732)

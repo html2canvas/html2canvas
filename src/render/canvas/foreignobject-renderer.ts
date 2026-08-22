@@ -1,8 +1,8 @@
-import {RenderConfigurations} from './canvas-renderer';
-import {createForeignObjectSVG, loadSerializedSVG} from '../../core/features';
-import {asString} from '../../css/types/color';
-import {Renderer} from '../renderer';
-import {Context} from '../../core/context';
+import { RenderConfigurations } from './canvas-renderer';
+import { createForeignObjectSVG, loadSerializedSVG } from '../../core/features';
+import { asString } from '../../css/types/color';
+import { Renderer } from '../renderer';
+import { Context } from '../../core/context';
 
 export class ForeignObjectRenderer extends Renderer {
     canvas: HTMLCanvasElement;
@@ -22,7 +22,7 @@ export class ForeignObjectRenderer extends Renderer {
         this.ctx.scale(this.options.scale, this.options.scale);
         this.ctx.translate(-options.x, -options.y);
         this.context.logger.debug(
-            `EXPERIMENTAL ForeignObject renderer initialized (${options.width}x${options.height} at ${options.x},${options.y}) with scale ${options.scale}`
+            `EXPERIMENTAL ForeignObject renderer initialized (${options.width}x${options.height} at ${options.x},${options.y}) with scale ${options.scale}`,
         );
     }
 
@@ -32,7 +32,7 @@ export class ForeignObjectRenderer extends Renderer {
             this.options.height * this.options.scale,
             this.options.scale,
             this.options.scale,
-            element
+            element,
         );
 
         const img = await loadSerializedSVG(svg);

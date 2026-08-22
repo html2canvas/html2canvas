@@ -4,5 +4,5 @@ export const FEATURES = {
     SUPPORT_FOREIGNOBJECT_DRAWING: true,
     SUPPORT_CORS_IMAGES: true,
     SUPPORT_RESPONSE_TYPE: true,
-    SUPPORT_CORS_XHR: true
+    SUPPORT_CORS_XHR: true,
 };

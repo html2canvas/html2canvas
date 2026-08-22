@@ -6,9 +6,9 @@ export class DocumentCloner {
             ownerDocument: {
                 defaultView: {
                     pageXOffset: 12,
-                    pageYOffset: 34
-                }
-            }
+                    pageYOffset: 34,
+                },
+            },
         } as HTMLElement;
     }
 

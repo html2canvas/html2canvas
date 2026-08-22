@@ -1,15 +1,15 @@
-import {CSSParsedDeclaration} from '../css/index';
-import {TextContainer} from './text-container';
-import {Bounds, parseBounds} from '../css/layout/bounds';
-import {isHTMLElementNode} from './node-parser';
-import {Context} from '../core/context';
-import {DebuggerType, isDebugging} from '../core/debugger';
+import { CSSParsedDeclaration } from '../css/index';
+import { TextContainer } from './text-container';
+import { Bounds, parseBounds } from '../css/layout/bounds';
+import { isHTMLElementNode } from './node-parser';
+import { Context } from '../core/context';
+import { DebuggerType, isDebugging } from '../core/debugger';
 
 export const enum FLAGS {
     CREATES_STACKING_CONTEXT = 1 << 1,
     CREATES_REAL_STACKING_CONTEXT = 1 << 2,
     IS_LIST_OWNER = 1 << 3,
-    DEBUG_RENDER = 1 << 4
+    DEBUG_RENDER = 1 << 4,
 }
 
 export class ElementContainer {
@@ -21,7 +21,7 @@ export class ElementContainer {
 
     constructor(
         protected readonly context: Context,
-        element: Element
+        element: Element,
     ) {
         if (isDebugging(element, DebuggerType.PARSE)) {
             debugger;
@@ -30,7 +30,7 @@ export class ElementContainer {
         this.styles = new CSSParsedDeclaration(context, window.getComputedStyle(element, null));
 
         if (isHTMLElementNode(element)) {
-            if (this.styles.animationDuration.some((duration) => duration > 0)) {
+            if (this.styles.animationDuration.some(duration => duration > 0)) {
                 element.style.animationDuration = '0s';
             }
 

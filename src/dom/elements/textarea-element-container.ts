@@ -1,5 +1,5 @@
-import {Context} from '../../core/context';
-import {ElementContainer} from '../element-container';
+import { Context } from '../../core/context';
+import { ElementContainer } from '../element-container';
 export class TextareaElementContainer extends ElementContainer {
     readonly value: string;
     readonly scrollTop: number;

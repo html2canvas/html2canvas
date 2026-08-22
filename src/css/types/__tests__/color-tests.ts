@@ -1,7 +1,7 @@
-import {strictEqual} from 'assert';
-import {Context} from '../../../core/context';
-import {Parser} from '../../syntax/parser';
-import {asString, color, isTransparent, pack} from '../color';
+import { strictEqual } from 'assert';
+import { Context } from '../../../core/context';
+import { Parser } from '../../syntax/parser';
+import { asString, color, isTransparent, pack } from '../color';
 
 const parse = (value: string) => color.parse({} as Context, Parser.parseValue(value));
 
@@ -74,7 +74,7 @@ describe('types', () => {
             it('color-mix(in hsl, hsl(120 100% 50%) 25%, hsl(30 100% 50%) 75%)', () =>
                 strictEqual(
                     parse('color-mix(in hsl, hsl(120 100% 50%) 25%, hsl(30 100% 50%) 75%)'),
-                    pack(255, 223, 0, 1)
+                    pack(255, 223, 0, 1),
                 ));
         });
         describe('util', () => {

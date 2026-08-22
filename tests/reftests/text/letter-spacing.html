@@ -1,0 +1,254 @@
+<!doctype html>
+<html>
+    <head>
+        <title>letter-spacing tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Arial, Helvetica, 'Liberation Sans', sans-serif;
+                font-size: 14px;
+            }
+
+            section {
+                margin-bottom: 24px;
+            }
+
+            h2 {
+                font-size: 16px;
+                margin: 8px 0 4px;
+            }
+
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .box {
+                border: 1px solid #999;
+                padding: 4px 6px;
+                min-width: 120px;
+            }
+
+            label {
+                display: block;
+                font-size: 11px;
+                color: #555;
+                margin-bottom: 2px;
+            }
+
+            textarea, input[type="text"] {
+                font-family: Arial, Helvetica, 'Liberation Sans', sans-serif;
+                font-size: 14px;
+                display: block;
+            }
+
+            textarea {
+                width: 10em;
+                height: 80px;
+                resize: none;
+            }
+
+            input[type="text"] {
+                width: 14em;
+            }
+        </style>
+    </head>
+    <body>
+
+        <!-- 1. Plain text at various spacings -->
+        <section>
+            <h2>1. Plain text — various letter-spacing values</h2>
+            <div class="row">
+                <div class="box">
+                    <label>none (0px)</label>
+                    <span>AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>1px</label>
+                    <span style="letter-spacing: 1px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>2px</label>
+                    <span style="letter-spacing: 2px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>5px</label>
+                    <span style="letter-spacing: 5px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>10px</label>
+                    <span style="letter-spacing: 10px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>-1px (negative)</label>
+                    <span style="letter-spacing: -1px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+                <div class="box">
+                    <label>0.9px (sub-pixel)</label>
+                    <span style="letter-spacing: 0.9px">AVAVAVAV TeTeTe YaYaYa</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Kerning pairs -->
+        <section>
+            <h2>2. Kerning pairs with letter-spacing</h2>
+            <div class="row">
+                <div class="box">
+                    <label>0px — kerning only</label>
+                    <div>AVAVAVAVAVAVAVAV</div>
+                    <div>TeTeTeTeTeTeTeTe</div>
+                    <div>YaYaYaYaYaYaYaYa</div>
+                </div>
+                <div class="box">
+                    <label>1px</label>
+                    <div style="letter-spacing: 1px">AVAVAVAVAVAVAV</div>
+                    <div style="letter-spacing: 1px">TeTeTeTeTeTeTeTe</div>
+                    <div style="letter-spacing: 1px">YaYaYaYaYaYaYaY</div>
+                </div>
+                <div class="box">
+                    <label>5px</label>
+                    <div style="letter-spacing: 5px">AVAVAVAVAV</div>
+                    <div style="letter-spacing: 5px">TeTeTeTeTeT</div>
+                    <div style="letter-spacing: 5px">YaYaYaYaYa</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Multi-line wrapping in a block element -->
+        <section>
+            <h2>3. Block wrap with letter-spacing</h2>
+            <div class="row">
+                <div>
+                    <label>0px</label>
+                    <div class="box" style="width: 10em">
+                        A long text with many words that should be wrapped on various lines.
+                    </div>
+                </div>
+                <div>
+                    <label>2px</label>
+                    <div class="box" style="width: 10em; letter-spacing: 2px">
+                        A long text with many words that should be wrapped on various lines.
+                    </div>
+                </div>
+                <div>
+                    <label>5px</label>
+                    <div class="box" style="width: 10em; letter-spacing: 5px">
+                        A long text with many words that should be wrapped on various lines.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. input[type=text] -->
+        <section>
+            <h2>4. input[type=text] with letter-spacing</h2>
+            <div class="row">
+                <div>
+                    <label>0px</label>
+                    <input type="text" value="Hello World input">
+                </div>
+                <div>
+                    <label>2px</label>
+                    <input type="text" style="letter-spacing: 2px" value="Hello World input">
+                </div>
+                <div>
+                    <label>5px</label>
+                    <input type="text" style="letter-spacing: 5px" value="Hello World input">
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. textarea — word wrap + letter spacing -->
+        <section>
+            <h2>5. textarea — word wrap with letter-spacing</h2>
+            <div class="row">
+                <div>
+                    <label>0px</label>
+                    <textarea>A long text with many words that should be wrapped on various lines.</textarea>
+                </div>
+                <div>
+                    <label>1px</label>
+                    <textarea style="letter-spacing: 1px">AVAVAVAVAVAVAV TeTeTeTeTeTeTeTe YaYaYaYaYaYaYaY</textarea>
+                </div>
+                <div>
+                    <label>5px</label>
+                    <textarea style="letter-spacing: 5px">AVAVAVAVAV TeTeTeTeTeT YaYaYaYaYa</textarea>
+                </div>
+                <div>
+                    <label>5px — words</label>
+                    <textarea style="letter-spacing: 5px">A long text with many words that should be wrapped on various lines.</textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. textarea — newlines + letter spacing -->
+        <section>
+            <h2>6. textarea — explicit newlines with letter-spacing</h2>
+            <div class="row">
+                <div>
+                    <label>2px</label>
+                    <textarea style="letter-spacing: 2px">Line one
+Line two
+A longer third line here
+Line four</textarea>
+                </div>
+                <div>
+                    <label>5px</label>
+                    <textarea style="letter-spacing: 5px">Line one
+Line two
+A longer third line here
+Line four</textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. Emoji + letter-spacing -->
+        <section>
+            <h2>7. Emoji with letter-spacing</h2>
+            <div class="row">
+                <div class="box">
+                    <label>0px</label>
+                    <span>Emojis 🤷🏾‍♂️👨‍👩‍👧‍👦 :)</span>
+                </div>
+                <div class="box">
+                    <label>2px</label>
+                    <span style="letter-spacing: 2px">Emojis 🤷🏾‍♂️👨‍👩‍👧‍👦 :)</span>
+                </div>
+                <div class="box">
+                    <label>5px</label>
+                    <span style="letter-spacing: 5px">Emojis 🤷🏾‍♂️👨‍👩‍👧‍👦 :)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. letter-spacing + text-align -->
+        <section>
+            <h2>8. letter-spacing + text-align</h2>
+            <div class="row">
+                <div>
+                    <label>left (default)</label>
+                    <div class="box" style="width: 200px; letter-spacing: 3px; text-align: left">
+                        Hello World
+                    </div>
+                </div>
+                <div>
+                    <label>center</label>
+                    <div class="box" style="width: 200px; letter-spacing: 3px; text-align: center">
+                        Hello World
+                    </div>
+                </div>
+                <div>
+                    <label>right</label>
+                    <div class="box" style="width: 200px; letter-spacing: 3px; text-align: right">
+                        Hello World
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </body>
+</html>

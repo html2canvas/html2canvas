@@ -1,7 +1,7 @@
-import {IPropertyValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue} from '../syntax/parser';
-import {NumberValueToken, TokenType} from '../syntax/tokenizer';
-import {Context} from '../../core/context';
+import { IPropertyValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue } from '../syntax/parser';
+import { NumberValueToken, TokenType } from '../syntax/tokenizer';
+import { Context } from '../../core/context';
 export type Matrix = [number, number, number, number, number, number];
 export type Transform = Matrix | null;
 
@@ -24,18 +24,18 @@ export const transform: IPropertyValueDescriptor<Transform> = {
         }
 
         return null;
-    }
+    },
 };
 
 const matrix = (args: CSSValue[]): Transform => {
-    const values = args.filter((arg) => arg.type === TokenType.NUMBER_TOKEN).map((arg: NumberValueToken) => arg.number);
+    const values = args.filter(arg => arg.type === TokenType.NUMBER_TOKEN).map((arg: NumberValueToken) => arg.number);
 
     return values.length === 6 ? (values as Matrix) : null;
 };
 
 // doesn't support 3D transforms at the moment
 const matrix3d = (args: CSSValue[]): Transform => {
-    const values = args.filter((arg) => arg.type === TokenType.NUMBER_TOKEN).map((arg: NumberValueToken) => arg.number);
+    const values = args.filter(arg => arg.type === TokenType.NUMBER_TOKEN).map((arg: NumberValueToken) => arg.number);
 
     const [a1, b1, {}, {}, a2, b2, {}, {}, {}, {}, {}, {}, a4, b4, {}, {}] = values;
 
@@ -46,5 +46,5 @@ const SUPPORTED_TRANSFORM_FUNCTIONS: {
     [key: string]: (args: CSSValue[]) => Transform;
 } = {
     matrix: matrix,
-    matrix3d: matrix3d
+    matrix3d: matrix3d,
 };

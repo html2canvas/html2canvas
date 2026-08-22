@@ -1,5 +1,5 @@
 /*!
- * html2canvas 1.7.1 <>
+ * html2canvas 1.8.0 <>
  * Copyright (c) 2026 Niklas von Hertzen <https://hertzen.com>
  * Released under MIT License
  */
@@ -274,10 +274,10 @@ var stringToNumber = function (codePoints) {
     return sign * (int + frac * Math.pow(10, -fracd)) * Math.pow(10, expsign * exp);
 };
 var LEFT_PARENTHESIS_TOKEN = {
-    type: 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */
+    type: 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */,
 };
 var RIGHT_PARENTHESIS_TOKEN = {
-    type: 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */
+    type: 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */,
 };
 var COMMA_TOKEN = { type: 4 /* TokenType.COMMA_TOKEN */ };
 var SUFFIX_MATCH_TOKEN = { type: 13 /* TokenType.SUFFIX_MATCH_TOKEN */ };
@@ -286,10 +286,10 @@ var COLUMN_TOKEN = { type: 21 /* TokenType.COLUMN_TOKEN */ };
 var DASH_MATCH_TOKEN = { type: 9 /* TokenType.DASH_MATCH_TOKEN */ };
 var INCLUDE_MATCH_TOKEN = { type: 10 /* TokenType.INCLUDE_MATCH_TOKEN */ };
 var LEFT_CURLY_BRACKET_TOKEN = {
-    type: 11 /* TokenType.LEFT_CURLY_BRACKET_TOKEN */
+    type: 11 /* TokenType.LEFT_CURLY_BRACKET_TOKEN */,
 };
 var RIGHT_CURLY_BRACKET_TOKEN = {
-    type: 12 /* TokenType.RIGHT_CURLY_BRACKET_TOKEN */
+    type: 12 /* TokenType.RIGHT_CURLY_BRACKET_TOKEN */,
 };
 var SUBSTRING_MATCH_TOKEN = { type: 14 /* TokenType.SUBSTRING_MATCH_TOKEN */ };
 var BAD_URL_TOKEN = { type: 23 /* TokenType.BAD_URL_TOKEN */ };
@@ -299,10 +299,10 @@ var CDC_TOKEN = { type: 24 /* TokenType.CDC_TOKEN */ };
 var COLON_TOKEN = { type: 26 /* TokenType.COLON_TOKEN */ };
 var SEMICOLON_TOKEN = { type: 27 /* TokenType.SEMICOLON_TOKEN */ };
 var LEFT_SQUARE_BRACKET_TOKEN = {
-    type: 28 /* TokenType.LEFT_SQUARE_BRACKET_TOKEN */
+    type: 28 /* TokenType.LEFT_SQUARE_BRACKET_TOKEN */,
 };
 var RIGHT_SQUARE_BRACKET_TOKEN = {
-    type: 29 /* TokenType.RIGHT_SQUARE_BRACKET_TOKEN */
+    type: 29 /* TokenType.RIGHT_SQUARE_BRACKET_TOKEN */,
 };
 var WHITESPACE_TOKEN = { type: 31 /* TokenType.WHITESPACE_TOKEN */ };
 var EOF_TOKEN = { type: 32 /* TokenType.EOF_TOKEN */ };
@@ -827,7 +827,7 @@ var Parser = /** @class */ (function () {
         var cssFunction = {
             name: functionToken.value,
             values: [],
-            type: 18 /* TokenType.FUNCTION */
+            type: 18 /* TokenType.FUNCTION */,
         };
         while (true) {
             var token = this.consumeToken();
@@ -893,6 +893,61 @@ var isEndingTokenFor = function (token, type) {
     return type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */ && token.type === 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */;
 };
 
+var parseBlendMode = function (value) {
+    switch (value) {
+        case 'multiply':
+            return "multiply" /* BACKGROUND_BLEND_MODE.MULTIPLY */;
+        case 'screen':
+            return "screen" /* BACKGROUND_BLEND_MODE.SCREEN */;
+        case 'overlay':
+            return "overlay" /* BACKGROUND_BLEND_MODE.OVERLAY */;
+        case 'darken':
+            return "darken" /* BACKGROUND_BLEND_MODE.DARKEN */;
+        case 'lighten':
+            return "lighten" /* BACKGROUND_BLEND_MODE.LIGHTEN */;
+        case 'color-dodge':
+            return "color-dodge" /* BACKGROUND_BLEND_MODE.COLOR_DODGE */;
+        case 'color-burn':
+            return "color-burn" /* BACKGROUND_BLEND_MODE.COLOR_BURN */;
+        case 'hard-light':
+            return "hard-light" /* BACKGROUND_BLEND_MODE.HARD_LIGHT */;
+        case 'soft-light':
+            return "soft-light" /* BACKGROUND_BLEND_MODE.SOFT_LIGHT */;
+        case 'difference':
+            return "difference" /* BACKGROUND_BLEND_MODE.DIFFERENCE */;
+        case 'exclusion':
+            return "exclusion" /* BACKGROUND_BLEND_MODE.EXCLUSION */;
+        case 'hue':
+            return "hue" /* BACKGROUND_BLEND_MODE.HUE */;
+        case 'saturation':
+            return "saturation" /* BACKGROUND_BLEND_MODE.SATURATION */;
+        case 'color':
+            return "color" /* BACKGROUND_BLEND_MODE.COLOR */;
+        case 'luminosity':
+            return "luminosity" /* BACKGROUND_BLEND_MODE.LUMINOSITY */;
+        case 'normal':
+        default:
+            return "source-over" /* BACKGROUND_BLEND_MODE.NORMAL */;
+    }
+};
+var backgroundBlendMode = {
+    name: 'background-blend-mode',
+    initialValue: 'normal',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: function (_context, tokens) {
+        var modes = [];
+        for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+            var token = tokens_1[_i];
+            if (isIdentToken(token)) {
+                modes.push(parseBlendMode(token.value));
+            }
+            else if (token.type === 4 /* TokenType.COMMA_TOKEN */) ;
+        }
+        return modes.length ? modes : ["source-over" /* BACKGROUND_BLEND_MODE.NORMAL */];
+    },
+};
+
 var backgroundClip = {
     name: 'background-clip',
     initialValue: 'border-box',
@@ -906,11 +961,14 @@ var backgroundClip = {
                         return 1 /* BACKGROUND_CLIP.PADDING_BOX */;
                     case 'content-box':
                         return 2 /* BACKGROUND_CLIP.CONTENT_BOX */;
+                    case 'text':
+                    case '-webkit-text':
+                        return 3 /* BACKGROUND_CLIP.TEXT */;
                 }
             }
             return 0 /* BACKGROUND_CLIP.BORDER_BOX */;
         });
-    }
+    },
 };
 
 var backgroundColor = {
@@ -918,7 +976,7 @@ var backgroundColor = {
     initialValue: 'transparent',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color'
+    format: 'color',
 };
 
 var isLength = function (token) {
@@ -937,17 +995,17 @@ var parseLengthPercentageTuple = function (tokens) {
 var ZERO_LENGTH = {
     type: 17 /* TokenType.NUMBER_TOKEN */,
     number: 0,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 var FIFTY_PERCENT = {
     type: 16 /* TokenType.PERCENTAGE_TOKEN */,
     number: 50,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 var HUNDRED_PERCENT = {
     type: 16 /* TokenType.PERCENTAGE_TOKEN */,
     number: 100,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 var getAbsoluteValueForTuple = function (tuple, width, height) {
     var x = tuple[0], y = tuple[1];
@@ -1093,7 +1151,7 @@ var angle = {
             }
         }
         throw new Error("Unsupported angle type");
-    }
+    },
 };
 var isAngle = function (value) {
     if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
@@ -1219,7 +1277,7 @@ var color$1 = {
             }
         }
         return COLORS.TRANSPARENT;
-    }
+    },
 };
 var isTransparent = function (color) { return (0xff & color) === 0; };
 var asString = function (color) {
@@ -1409,7 +1467,7 @@ var SUPPORTED_COLOR_FUNCTIONS = {
     oklab: oklab,
     hwb: hwb,
     color: colorFunction,
-    'color-mix': colorMix
+    'color-mix': colorMix,
 };
 var parseColor = function (context, value) {
     return color$1.parse(context, Parser.create(value).parseComponentValue());
@@ -1563,7 +1621,7 @@ var COLORS = {
     WHITE: 0xffffffff,
     WHITESMOKE: 0xf5f5f5ff,
     YELLOW: 0xffff00ff,
-    YELLOWGREEN: 0x9acd32ff
+    YELLOWGREEN: 0x9acd32ff,
 };
 
 var parseColorStop = function (context, args) {
@@ -1644,7 +1702,7 @@ var findCorner = function (width, height, x, y, closest) {
         [0, 0],
         [0, height],
         [width, 0],
-        [width, height]
+        [width, height],
     ];
     return corners.reduce(function (stat, corner) {
         var cx = corner[0], cy = corner[1];
@@ -1652,13 +1710,13 @@ var findCorner = function (width, height, x, y, closest) {
         if (closest ? d < stat.optimumDistance : d > stat.optimumDistance) {
             return {
                 optimumCorner: corner,
-                optimumDistance: d
+                optimumDistance: d,
             };
         }
         return stat;
     }, {
         optimumDistance: closest ? Infinity : -Infinity,
-        optimumCorner: null
+        optimumCorner: null,
     }).optimumCorner;
 };
 var calculateRadius = function (gradient, x, y, width, height) {
@@ -1765,7 +1823,7 @@ var prefixLinearGradient = function (context, tokens) {
     return {
         angle: angle$1,
         stops: stops,
-        type: 1 /* CSSImageType.LINEAR_GRADIENT */
+        type: 1 /* CSSImageType.LINEAR_GRADIENT */,
     };
 };
 
@@ -1805,7 +1863,7 @@ var webkitGradient = function (context, tokens) {
                     if (isNumberToken(stop_1)) {
                         stops.push({
                             stop: { type: 16 /* TokenType.PERCENTAGE_TOKEN */, number: stop_1.number * 100, flags: stop_1.flags },
-                            color: color
+                            color: color,
                         });
                     }
                 }
@@ -1816,7 +1874,7 @@ var webkitGradient = function (context, tokens) {
         ? {
             angle: (angle + deg(180)) % deg(360),
             stops: stops,
-            type: type
+            type: type,
         }
         : { size: size, shape: shape, stops: stops, position: position, type: type };
 };
@@ -2001,7 +2059,7 @@ var image = {
             return imageFunction(context, value.values);
         }
         throw new Error("Unsupported image type ".concat(value.type));
-    }
+    },
 };
 function isSupportedImage(value) {
     return (!(value.type === 20 /* TokenType.IDENT_TOKEN */ && value.value === 'none') &&
@@ -2018,7 +2076,7 @@ var SUPPORTED_IMAGE_FUNCTIONS = {
     '-ms-radial-gradient': prefixRadialGradient,
     '-o-radial-gradient': prefixRadialGradient,
     '-webkit-radial-gradient': prefixRadialGradient,
-    '-webkit-gradient': webkitGradient
+    '-webkit-gradient': webkitGradient,
 };
 
 var backgroundImage = {
@@ -2037,7 +2095,7 @@ var backgroundImage = {
         return tokens
             .filter(function (value) { return nonFunctionArgSeparator(value) && isSupportedImage(value); })
             .map(function (value) { return image.parse(context, value); });
-    }
+    },
 };
 
 var backgroundOrigin = {
@@ -2057,7 +2115,7 @@ var backgroundOrigin = {
             }
             return 0 /* BACKGROUND_ORIGIN.BORDER_BOX */;
         });
-    }
+    },
 };
 
 var backgroundPosition = {
@@ -2069,7 +2127,7 @@ var backgroundPosition = {
         return parseFunctionArgs(tokens)
             .map(function (values) { return values.filter(isLengthPercentage); })
             .map(parseLengthPercentageTuple);
-    }
+    },
 };
 
 var backgroundRepeat = {
@@ -2086,7 +2144,7 @@ var backgroundRepeat = {
                 .join(' ');
         })
             .map(parseBackgroundRepeat);
-    }
+    },
 };
 var parseBackgroundRepeat = function (value) {
     switch (value) {
@@ -2117,7 +2175,7 @@ var backgroundSize = {
     type: 1 /* PropertyDescriptorParsingType.LIST */,
     parse: function (_context, tokens) {
         return parseFunctionArgs(tokens).map(function (values) { return values.filter(isBackgroundSizeInfoToken); });
-    }
+    },
 };
 var isBackgroundSizeInfoToken = function (value) {
     return isIdentToken(value) || isLengthPercentage(value);
@@ -2128,7 +2186,7 @@ var borderColorForSide = function (side) { return ({
     initialValue: 'transparent',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color'
+    format: 'color',
 }); };
 var borderTopColor = borderColorForSide('top');
 var borderRightColor = borderColorForSide('right');
@@ -2142,7 +2200,7 @@ var borderRadiusForSide = function (side) { return ({
     type: 1 /* PropertyDescriptorParsingType.LIST */,
     parse: function (_context, tokens) {
         return parseLengthPercentageTuple(tokens.filter(isLengthPercentage));
-    }
+    },
 }); };
 var borderTopLeftRadius = borderRadiusForSide('top-left');
 var borderTopRightRadius = borderRadiusForSide('top-right');
@@ -2166,7 +2224,7 @@ var borderStyleForSide = function (side) { return ({
                 return 4 /* BORDER_STYLE.DOUBLE */;
         }
         return 1 /* BORDER_STYLE.SOLID */;
-    }
+    },
 }); };
 var borderTopStyle = borderStyleForSide('top');
 var borderRightStyle = borderStyleForSide('right');
@@ -2183,7 +2241,7 @@ var borderWidthForSide = function (side) { return ({
             return token.number;
         }
         return 0;
-    }
+    },
 }); };
 var borderTopWidth = borderWidthForSide('top');
 var borderRightWidth = borderWidthForSide('right');
@@ -2206,7 +2264,7 @@ var boxShadow = {
                 offsetY: ZERO_LENGTH,
                 blur: ZERO_LENGTH,
                 spread: ZERO_LENGTH,
-                inset: false
+                inset: false,
             };
             var c = 0;
             for (var i = 0; i < values.length; i++) {
@@ -2235,7 +2293,7 @@ var boxShadow = {
             }
             return shadow;
         });
-    }
+    },
 };
 
 var color = {
@@ -2243,7 +2301,7 @@ var color = {
     initialValue: 'transparent',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color'
+    format: 'color',
 };
 
 var content = {
@@ -2260,7 +2318,7 @@ var content = {
             return [];
         }
         return tokens;
-    }
+    },
 };
 
 var counterIncrement = {
@@ -2287,7 +2345,7 @@ var counterIncrement = {
             }
         }
         return increments;
-    }
+    },
 };
 
 var counterReset = {
@@ -2310,7 +2368,7 @@ var counterReset = {
             }
         }
         return resets;
-    }
+    },
 };
 
 var direction = {
@@ -2326,7 +2384,7 @@ var direction = {
             default:
                 return 0 /* DIRECTION.LTR */;
         }
-    }
+    },
 };
 
 var display = {
@@ -2338,7 +2396,7 @@ var display = {
         return tokens.filter(isIdentToken).reduce(function (bit, token) {
             return bit | parseDisplayValue(token.value);
         }, 0 /* DISPLAY.NONE */);
-    }
+    },
 };
 var parseDisplayValue = function (display) {
     switch (display) {
@@ -2419,7 +2477,7 @@ var time = {
             }
         }
         throw new Error("Unsupported time type");
-    }
+    },
 };
 
 var duration = {
@@ -2429,7 +2487,7 @@ var duration = {
     type: 1 /* PropertyDescriptorParsingType.LIST */,
     parse: function (context, tokens) {
         return tokens.filter(isDimensionToken).map(function (token) { return time.parse(context, token); });
-    }
+    },
 };
 
 var filter = {
@@ -2452,7 +2510,7 @@ var filter = {
             }
         }
         return filters;
-    }
+    },
 };
 var parseFilterFunction = function (context, name, values) {
     switch (name) {
@@ -2486,7 +2544,7 @@ var parseDropShadow = function (context, values) {
         color: COLORS.TRANSPARENT,
         offsetX: ZERO_LENGTH,
         offsetY: ZERO_LENGTH,
-        blur: ZERO_LENGTH
+        blur: ZERO_LENGTH,
     };
     var lengthCount = 0;
     for (var i = 0; i < values.length; i++) {
@@ -2519,7 +2577,7 @@ var parseDropShadow = function (context, values) {
 var parseBlur = function (values) {
     var result = {
         type: 1 /* FilterType.BLUR */,
-        radius: ZERO_LENGTH
+        radius: ZERO_LENGTH,
     };
     for (var i = 0; i < values.length; i++) {
         var token = values[i];
@@ -2533,7 +2591,7 @@ var parseBlur = function (values) {
 var parseAmountFilter = function (type, values) {
     var result = {
         type: type,
-        amount: 1 // default is 1 (100%) for most filters
+        amount: 1, // default is 1 (100%) for most filters
     };
     for (var i = 0; i < values.length; i++) {
         var token = values[i];
@@ -2551,7 +2609,7 @@ var parseAmountFilter = function (type, values) {
 var parseHueRotate = function (values) {
     var result = {
         type: 5 /* FilterType.HUE_ROTATE */,
-        angle: 0
+        angle: 0,
     };
     for (var i = 0; i < values.length; i++) {
         var token = values[i];
@@ -2597,7 +2655,7 @@ var float = {
                 return 4 /* FLOAT.INLINE_END */;
         }
         return 0 /* FLOAT.NONE */;
-    }
+    },
 };
 
 var fontFamily = {
@@ -2627,7 +2685,7 @@ var fontFamily = {
             results.push(accumulator.join(' '));
         }
         return results.map(function (result) { return (result.indexOf(' ') === -1 ? result : "'".concat(result, "'")); });
-    }
+    },
 };
 
 var fontSize = {
@@ -2635,7 +2693,7 @@ var fontSize = {
     initialValue: '0',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'length'
+    format: 'length',
 };
 
 var fontStyle = {
@@ -2653,7 +2711,7 @@ var fontStyle = {
             default:
                 return "normal" /* FONT_STYLE.NORMAL */;
         }
-    }
+    },
 };
 
 var fontVariant = {
@@ -2663,7 +2721,7 @@ var fontVariant = {
     prefix: false,
     parse: function (_context, tokens) {
         return tokens.filter(isIdentToken).map(function (token) { return token.value; });
-    }
+    },
 };
 
 var fontWeight = {
@@ -2685,7 +2743,7 @@ var fontWeight = {
             }
         }
         return 400;
-    }
+    },
 };
 
 var letterSpacing = {
@@ -2704,7 +2762,7 @@ var letterSpacing = {
             return token.number;
         }
         return 0;
-    }
+    },
 };
 
 var LINE_BREAK;
@@ -2725,14 +2783,14 @@ var lineBreak = {
             default:
                 return LINE_BREAK.NORMAL;
         }
-    }
+    },
 };
 
 var lineHeight = {
     name: 'line-height',
     initialValue: 'normal',
     prefix: false,
-    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */
+    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */,
 };
 var computeLineHeight = function (token, fontSize) {
     if (isIdentToken(token) && token.value === 'normal') {
@@ -2757,7 +2815,7 @@ var listStyleImage = {
             return null;
         }
         return image.parse(context, token);
-    }
+    },
 };
 
 var listStylePosition = {
@@ -2773,7 +2831,7 @@ var listStylePosition = {
             default:
                 return 1 /* LIST_STYLE_POSITION.OUTSIDE */;
         }
-    }
+    },
 };
 
 var listStyleType = {
@@ -2893,19 +2951,83 @@ var listStyleType = {
             default:
                 return -1 /* LIST_STYLE_TYPE.NONE */;
         }
-    }
+    },
 };
 
 var marginForSide = function (side) { return ({
     name: "margin-".concat(side),
     initialValue: '0',
     prefix: false,
-    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */
+    type: 4 /* PropertyDescriptorParsingType.TOKEN_VALUE */,
 }); };
 var marginTop = marginForSide('top');
 var marginRight = marginForSide('right');
 var marginBottom = marginForSide('bottom');
 var marginLeft = marginForSide('left');
+
+var _a;
+var mixBlendMode = {
+    name: 'mix-blend-mode',
+    initialValue: 'normal',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: function (_context, mode) {
+        switch (mode) {
+            case 'multiply':
+                return 1 /* MIX_BLEND_MODE.MULTIPLY */;
+            case 'screen':
+                return 2 /* MIX_BLEND_MODE.SCREEN */;
+            case 'overlay':
+                return 3 /* MIX_BLEND_MODE.OVERLAY */;
+            case 'darken':
+                return 4 /* MIX_BLEND_MODE.DARKEN */;
+            case 'lighten':
+                return 5 /* MIX_BLEND_MODE.LIGHTEN */;
+            case 'color-dodge':
+                return 6 /* MIX_BLEND_MODE.COLOR_DODGE */;
+            case 'color-burn':
+                return 7 /* MIX_BLEND_MODE.COLOR_BURN */;
+            case 'hard-light':
+                return 8 /* MIX_BLEND_MODE.HARD_LIGHT */;
+            case 'soft-light':
+                return 9 /* MIX_BLEND_MODE.SOFT_LIGHT */;
+            case 'difference':
+                return 10 /* MIX_BLEND_MODE.DIFFERENCE */;
+            case 'exclusion':
+                return 11 /* MIX_BLEND_MODE.EXCLUSION */;
+            case 'hue':
+                return 12 /* MIX_BLEND_MODE.HUE */;
+            case 'saturation':
+                return 13 /* MIX_BLEND_MODE.SATURATION */;
+            case 'color':
+                return 14 /* MIX_BLEND_MODE.COLOR */;
+            case 'luminosity':
+                return 15 /* MIX_BLEND_MODE.LUMINOSITY */;
+            case 'normal':
+            default:
+                return 0 /* MIX_BLEND_MODE.NORMAL */;
+        }
+    },
+};
+/** Map enum to the globalCompositeOperation string value */
+var mixBlendModeToComposite = (_a = {},
+    _a[0 /* MIX_BLEND_MODE.NORMAL */] = 'source-over',
+    _a[1 /* MIX_BLEND_MODE.MULTIPLY */] = 'multiply',
+    _a[2 /* MIX_BLEND_MODE.SCREEN */] = 'screen',
+    _a[3 /* MIX_BLEND_MODE.OVERLAY */] = 'overlay',
+    _a[4 /* MIX_BLEND_MODE.DARKEN */] = 'darken',
+    _a[5 /* MIX_BLEND_MODE.LIGHTEN */] = 'lighten',
+    _a[6 /* MIX_BLEND_MODE.COLOR_DODGE */] = 'color-dodge',
+    _a[7 /* MIX_BLEND_MODE.COLOR_BURN */] = 'color-burn',
+    _a[8 /* MIX_BLEND_MODE.HARD_LIGHT */] = 'hard-light',
+    _a[9 /* MIX_BLEND_MODE.SOFT_LIGHT */] = 'soft-light',
+    _a[10 /* MIX_BLEND_MODE.DIFFERENCE */] = 'difference',
+    _a[11 /* MIX_BLEND_MODE.EXCLUSION */] = 'exclusion',
+    _a[12 /* MIX_BLEND_MODE.HUE */] = 'hue',
+    _a[13 /* MIX_BLEND_MODE.SATURATION */] = 'saturation',
+    _a[14 /* MIX_BLEND_MODE.COLOR */] = 'color',
+    _a[15 /* MIX_BLEND_MODE.LUMINOSITY */] = 'luminosity',
+    _a);
 
 var objectFit = {
     name: 'object-fit',
@@ -2926,7 +3048,7 @@ var objectFit = {
             default:
                 return "fill" /* OBJECT_FIT.FILL */;
         }
-    }
+    },
 };
 
 var opacity = {
@@ -2939,7 +3061,7 @@ var opacity = {
             return token.number;
         }
         return 1;
-    }
+    },
 };
 
 var overflow = {
@@ -2963,7 +3085,7 @@ var overflow = {
                     return 0 /* OVERFLOW.VISIBLE */;
             }
         });
-    }
+    },
 };
 
 var overflowWrap = {
@@ -2979,7 +3101,7 @@ var overflowWrap = {
             default:
                 return "normal" /* OVERFLOW_WRAP.NORMAL */;
         }
-    }
+    },
 };
 
 var paddingForSide = function (side) { return ({
@@ -2987,7 +3109,7 @@ var paddingForSide = function (side) { return ({
     initialValue: '0',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'length-percentage'
+    format: 'length-percentage',
 }); };
 var paddingTop = paddingForSide('top');
 var paddingRight = paddingForSide('right');
@@ -3021,7 +3143,7 @@ var paintOrder = {
             }
         });
         return layers;
-    }
+    },
 };
 
 var position = {
@@ -3041,7 +3163,7 @@ var position = {
                 return 4 /* POSITION.STICKY */;
         }
         return 0 /* POSITION.STATIC */;
-    }
+    },
 };
 
 var quotes = {
@@ -3068,7 +3190,7 @@ var quotes = {
             quotes.push({ open: open_1, close: close_1 });
         }
         return quotes;
-    }
+    },
 };
 var getQuote = function (quotes, depth, open) {
     if (!quotes) {
@@ -3097,7 +3219,7 @@ var textAlign = {
             default:
                 return 0 /* TEXT_ALIGN.LEFT */;
         }
-    }
+    },
 };
 
 var textDecorationColor = {
@@ -3105,7 +3227,7 @@ var textDecorationColor = {
     initialValue: 'transparent',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color'
+    format: 'color',
 };
 
 var textDecorationLine = {
@@ -3124,13 +3246,56 @@ var textDecorationLine = {
                     return 2 /* TEXT_DECORATION_LINE.OVERLINE */;
                 case 'line-through':
                     return 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */;
-                case 'none':
+                case 'blink':
                     return 4 /* TEXT_DECORATION_LINE.BLINK */;
+                case 'none':
+                default:
+                    return 0 /* TEXT_DECORATION_LINE.NONE */;
             }
-            return 0 /* TEXT_DECORATION_LINE.NONE */;
         })
             .filter(function (line) { return line !== 0 /* TEXT_DECORATION_LINE.NONE */; });
-    }
+    },
+};
+
+var textDecorationStyle = {
+    name: 'text-decoration-style',
+    initialValue: 'solid',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: function (_context, value) {
+        switch (value) {
+            case 'double':
+                return 1 /* TEXT_DECORATION_STYLE.DOUBLE */;
+            case 'dotted':
+                return 2 /* TEXT_DECORATION_STYLE.DOTTED */;
+            case 'dashed':
+                return 3 /* TEXT_DECORATION_STYLE.DASHED */;
+            case 'wavy':
+                return 4 /* TEXT_DECORATION_STYLE.WAVY */;
+            case 'solid':
+            default:
+                return 0 /* TEXT_DECORATION_STYLE.SOLID */;
+        }
+    },
+};
+
+var textDecorationThickness = {
+    name: 'text-decoration-thickness',
+    initialValue: 'auto',
+    prefix: false,
+    type: 0 /* PropertyDescriptorParsingType.VALUE */,
+    parse: function (_context, token) {
+        if (isIdentToken(token)) {
+            if (token.value === 'from-font') {
+                return 'from-font';
+            }
+            return 'auto';
+        }
+        if (isDimensionToken(token)) {
+            return getNumber(token);
+        }
+        return 'auto';
+    },
 };
 
 var textShadow = {
@@ -3147,7 +3312,7 @@ var textShadow = {
                 color: COLORS.TRANSPARENT,
                 offsetX: ZERO_LENGTH,
                 offsetY: ZERO_LENGTH,
-                blur: ZERO_LENGTH
+                blur: ZERO_LENGTH,
             };
             var c = 0;
             for (var i = 0; i < values.length; i++) {
@@ -3170,7 +3335,7 @@ var textShadow = {
             }
             return shadow;
         });
-    }
+    },
 };
 
 var textTransform = {
@@ -3186,9 +3351,16 @@ var textTransform = {
                 return 1 /* TEXT_TRANSFORM.LOWERCASE */;
             case 'capitalize':
                 return 3 /* TEXT_TRANSFORM.CAPITALIZE */;
+            case 'full-width':
+                return 4 /* TEXT_TRANSFORM.FULL_WIDTH */;
+            case 'full-size-kana':
+                return 5 /* TEXT_TRANSFORM.FULL_SIZE_KANA */;
+            case 'math-auto':
+                return 6 /* TEXT_TRANSFORM.MATH_AUTO */;
+            default:
+                return 0 /* TEXT_TRANSFORM.NONE */;
         }
-        return 0 /* TEXT_TRANSFORM.NONE */;
-    }
+    },
 };
 
 var transform$1 = {
@@ -3208,7 +3380,7 @@ var transform$1 = {
             return transformFunction(token.values);
         }
         return null;
-    }
+    },
 };
 var matrix = function (args) {
     var values = args.filter(function (arg) { return arg.type === 17 /* TokenType.NUMBER_TOKEN */; }).map(function (arg) { return arg.number; });
@@ -3222,13 +3394,13 @@ var matrix3d = function (args) {
 };
 var SUPPORTED_TRANSFORM_FUNCTIONS = {
     matrix: matrix,
-    matrix3d: matrix3d
+    matrix3d: matrix3d,
 };
 
 var DEFAULT_VALUE = {
     type: 16 /* TokenType.PERCENTAGE_TOKEN */,
     number: 50,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 var DEFAULT = [DEFAULT_VALUE, DEFAULT_VALUE];
 var transformOrigin = {
@@ -3242,7 +3414,7 @@ var transformOrigin = {
             return DEFAULT;
         }
         return [origins[0], origins[1]];
-    }
+    },
 };
 
 var visibility = {
@@ -3260,7 +3432,7 @@ var visibility = {
             default:
                 return 0 /* VISIBILITY.VISIBLE */;
         }
-    }
+    },
 };
 
 var webkitTextStrokeColor = {
@@ -3268,7 +3440,7 @@ var webkitTextStrokeColor = {
     initialValue: 'currentcolor',
     prefix: false,
     type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color'
+    format: 'color',
 };
 
 var webkitTextStrokeWidth = {
@@ -3281,7 +3453,7 @@ var webkitTextStrokeWidth = {
             return token.number;
         }
         return 0;
-    }
+    },
 };
 
 var WORD_BREAK;
@@ -3305,7 +3477,7 @@ var wordBreak = {
             default:
                 return WORD_BREAK.NORMAL;
         }
-    }
+    },
 };
 
 var writingMode = {
@@ -3327,7 +3499,7 @@ var writingMode = {
             default:
                 return 0 /* WRITING_MODE.HORIZONTAL_TB */;
         }
-    }
+    },
 };
 
 var zIndex = {
@@ -3343,7 +3515,7 @@ var zIndex = {
             return { auto: false, order: token.number };
         }
         throw new Error("Invalid z-index number parsed");
-    }
+    },
 };
 
 var CSSParsedDeclaration = /** @class */ (function () {
@@ -3351,6 +3523,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         var _a, _b;
         this.animationDuration = parse(context, duration, declaration.animationDuration);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
+        this.backgroundBlendMode = parse(context, backgroundBlendMode, declaration.backgroundBlendMode);
         this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
         this.backgroundImage = parse(context, backgroundImage, declaration.backgroundImage);
         this.backgroundOrigin = parse(context, backgroundOrigin, declaration.backgroundOrigin);
@@ -3396,6 +3569,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
         this.objectFit = parse(context, objectFit, declaration.objectFit);
         this.opacity = parse(context, opacity, declaration.opacity);
+        this.mixBlendMode = parse(context, mixBlendMode, declaration.mixBlendMode);
         var overflowTuple = parse(context, overflow, declaration.overflow);
         this.overflowX = overflowTuple[0];
         this.overflowY = overflowTuple[overflowTuple.length > 1 ? 1 : 0];
@@ -3409,6 +3583,8 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.textAlign = parse(context, textAlign, declaration.textAlign);
         this.textDecorationColor = parse(context, textDecorationColor, (_a = declaration.textDecorationColor) !== null && _a !== void 0 ? _a : declaration.color);
         this.textDecorationLine = parse(context, textDecorationLine, (_b = declaration.textDecorationLine) !== null && _b !== void 0 ? _b : declaration.textDecoration);
+        this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
+        this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
         this.transform = parse(context, transform$1, declaration.transform);
@@ -3739,15 +3915,15 @@ var CHECKBOX_BORDER_RADIUS = [
         type: 15 /* TokenType.DIMENSION_TOKEN */,
         flags: 0,
         unit: 'px',
-        number: 3
-    }
+        number: 3,
+    },
 ];
 var RADIO_BORDER_RADIUS = [
     {
         type: 16 /* TokenType.PERCENTAGE_TOKEN */,
         flags: 0,
-        number: 50
-    }
+        number: 50,
+    },
 ];
 var reformatInputBounds = function (bounds) {
     if (bounds.width > bounds.height) {
@@ -3992,7 +4168,7 @@ var segmentWords = function (value, styles) {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         var segmenter = new Intl.Segmenter(void 0, {
-            granularity: 'word'
+            granularity: 'word',
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return Array.from(segmenter.segment(value)).map(function (segment) { return segment.segment; });
@@ -4007,7 +4183,7 @@ var wordSeparators = [0x0020, 0x00a0, 0x1361, 0x10100, 0x10101, 0x1039, 0x1091];
 var breakWords = function (str, styles) {
     var breaker = LineBreaker(str, {
         lineBreak: styles.lineBreak,
-        wordBreak: styles.overflowWrap === "break-word" /* OVERFLOW_WRAP.BREAK_WORD */ ? 'break-word' : styles.wordBreak
+        wordBreak: styles.overflowWrap === "break-word" /* OVERFLOW_WRAP.BREAK_WORD */ ? 'break-word' : styles.wordBreak,
     });
     var words = [];
     var bk;
@@ -4042,7 +4218,19 @@ var breakWords = function (str, styles) {
 var TextContainer = /** @class */ (function () {
     function TextContainer(context, node, styles) {
         this.text = transform(node.data, styles.textTransform);
-        this.textBounds = parseTextBounds(context, this.text, styles, node);
+        if (styles.textTransform === 6 /* TEXT_TRANSFORM.MATH_AUTO */) {
+            // parseTextBounds uses Range offsets on the original DOM text node.
+            // math-auto produces surrogate-pair codepoints (U+1D400+, length=2 in JS)
+            // from single ASCII chars (length=1), so offsets into the original node
+            // would be wrong if we pass the transformed text directly.
+            // Parse bounds using the original text, then replace each segment's
+            // text with its transformed equivalent and recalculate the width.
+            var originalBounds = parseTextBounds(context, node.data, styles, node);
+            this.textBounds = remeasureMathAutoBounds(originalBounds, styles);
+        }
+        else {
+            this.textBounds = parseTextBounds(context, this.text, styles, node);
+        }
     }
     return TextContainer;
 }());
@@ -4054,6 +4242,13 @@ var transform = function (text, transform) {
             return text.replace(CAPITALIZE, capitalize);
         case 2 /* TEXT_TRANSFORM.UPPERCASE */:
             return text.toUpperCase();
+        case 4 /* TEXT_TRANSFORM.FULL_WIDTH */:
+            return toFullWidth(text);
+        case 5 /* TEXT_TRANSFORM.FULL_SIZE_KANA */:
+            return toFullSizeKana(text);
+        case 6 /* TEXT_TRANSFORM.MATH_AUTO */:
+            return toMathAuto(text);
+        case 0 /* TEXT_TRANSFORM.NONE */:
         default:
             return text;
     }
@@ -4064,6 +4259,96 @@ var capitalize = function (m, p1, p2) {
         return p1 + p2.toUpperCase();
     }
     return m;
+};
+// Converts standard ASCII characters to full-width characters
+var toFullWidth = function (text) {
+    return text
+        .replace(/[\u0021-\u007E]/g, function (char) { return String.fromCharCode(char.charCodeAt(0) + 0xfee0); })
+        .replace(/\u0020/g, '\u3000');
+};
+// Map of small Kana to normal full-size Kana
+var SMALL_KANA_MAP = {
+    ぁ: 'あ',
+    ぃ: 'い',
+    ぅ: 'う',
+    ぇ: 'え',
+    ぉ: 'お',
+    っ: 'つ',
+    ゃ: 'や',
+    ゅ: 'ゆ',
+    ょ: 'よ',
+    ゎ: 'わ',
+    ゕ: 'か',
+    ゖ: 'け', // Small Hiragana ka/ke
+    ァ: 'ア',
+    ィ: 'イ',
+    ゥ: 'ウ',
+    ェ: 'エ',
+    ォ: 'オ',
+    ッ: 'ツ',
+    ャ: 'ヤ',
+    ュ: 'ユ',
+    ョ: 'ヨ',
+    ヮ: 'ワ',
+    ヵ: 'カ',
+    ヶ: 'ケ', // Small Katakana ka/ke
+};
+// Converts small kana characters to their full-size equivalents
+var toFullSizeKana = function (text) {
+    return text.replace(/[ぁ-ゎゕゖァ-ヮヵヶ]/g, function (match) { return SMALL_KANA_MAP[match] || match; });
+};
+// Applies math-auto transformation (typically used for single-character MathML variables)
+var toMathAuto = function (text) {
+    var trimmed = text.trim();
+    // math-auto only converts a single character to its mathematical italic equivalent.
+    if (trimmed.length === 1) {
+        var code = trimmed.charCodeAt(0);
+        // A-Z → Mathematical Italic Capital (U+1D434..U+1D44D)
+        if (code >= 65 && code <= 90) {
+            return String.fromCodePoint(code + 0x1d3bf);
+        }
+        // a-z → Mathematical Italic Small (U+1D44E..U+1D467)
+        // Exception: 'h' → U+210E (Planck constant)
+        if (code >= 97 && code <= 122) {
+            if (trimmed === 'h')
+                return '\u210E';
+            return String.fromCodePoint(code + 0x1d3b9);
+        }
+    }
+    return text;
+};
+// Canvas used for measuring math-auto glyph widths (shared, lazy-created).
+var _mathMeasureCanvas = null;
+var _mathMeasureCtx = null;
+var getMathMeasureCtx = function () {
+    if (!_mathMeasureCtx) {
+        _mathMeasureCanvas = document.createElement('canvas');
+        _mathMeasureCtx = _mathMeasureCanvas.getContext('2d');
+    }
+    return _mathMeasureCtx;
+};
+/**
+ * Takes bounds measured on the original ASCII text, transforms each segment's
+ * text via toMathAuto(), and recalculates its width using canvas measureText().
+ *
+ * Returns a new TextBounds[] with transformed text and corrected widths.
+ * top, left, height remain from the DOM measurement.
+ */
+var remeasureMathAutoBounds = function (originalBounds, styles) {
+    var ctx = getMathMeasureCtx();
+    var fontVariant = styles.fontVariant.filter(function (v) { return v === 'normal' || v === 'small-caps'; }).join('');
+    var fontFamily = styles.fontFamily.join(', ');
+    var fontSize = isDimensionToken(styles.fontSize)
+        ? "".concat(getNumber(styles.fontSize)).concat(styles.fontSize.unit)
+        : "".concat(getNumber(styles.fontSize), "px");
+    if (ctx) {
+        ctx.font = [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' ');
+    }
+    return originalBounds.map(function (tb) {
+        var transformedText = toMathAuto(tb.text);
+        var width = ctx ? ctx.measureText(transformedText).width : tb.bounds.width;
+        return new TextBounds(transformedText, new Bounds(tb.bounds.left, tb.bounds.top, width, tb.bounds.height));
+    });
 };
 
 var LIST_OWNERS = ['OL', 'UL', 'MENU'];
@@ -4173,6 +4458,7 @@ var createsRealStackingContext = function (node, container, root) {
         container.styles.opacity < 1 ||
         container.styles.isTransformed() ||
         container.styles.isFiltered() ||
+        container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */ ||
         (isBodyElement(node) && root.styles.isTransparent()));
 };
 var createsStackingContext = function (styles) { return styles.isPositioned() || styles.isFloating(); };
@@ -4406,7 +4692,7 @@ var FEATURES = {
         var value = !!(typeof Intl !== 'undefined' && Intl.Segmenter);
         Object.defineProperty(FEATURES, 'SUPPORT_NATIVE_TEXT_SEGMENTATION', { value: value });
         return value;
-    }
+    },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -4710,12 +4996,12 @@ var CounterState = /** @class */ (function () {
 }());
 var ROMAN_UPPER = {
     integers: [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1],
-    values: ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I']
+    values: ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'],
 };
 var ARMENIAN = {
     integers: [
         9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 90, 80, 70,
-        60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+        60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
     ],
     values: [
         'Ք',
@@ -4753,13 +5039,13 @@ var ARMENIAN = {
         'Դ',
         'Գ',
         'Բ',
-        'Ա'
-    ]
+        'Ա',
+    ],
 };
 var HEBREW = {
     integers: [
         10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 400, 300, 200, 100, 90, 80, 70, 60, 50, 40, 30, 20,
-        19, 18, 17, 16, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+        19, 18, 17, 16, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
     ],
     values: [
         'י׳',
@@ -4798,13 +5084,13 @@ var HEBREW = {
         'ד',
         'ג',
         'ב',
-        'א'
-    ]
+        'א',
+    ],
 };
 var GEORGIAN = {
     integers: [
         10000, 9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 90,
-        80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+        80, 70, 60, 50, 40, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
     ],
     values: [
         'ჵ',
@@ -4843,8 +5129,8 @@ var GEORGIAN = {
         'დ',
         'გ',
         'ბ',
-        'ა'
-    ]
+        'ა',
+    ],
 };
 var createAdditiveCounter = function (value, min, max, symbols, fallback, suffix) {
     if (value < min || value > max) {
@@ -5080,7 +5366,7 @@ var DocumentCloner = /** @class */ (function () {
                                             resolve();
                                         }
                                     }, 1000);
-                                })
+                                }),
                             ])];
                     case 1:
                         _a.sent();
@@ -5490,7 +5776,7 @@ var iframeLoader = function (iframe) {
 var ignoredStyleProperties = new Set([
     'all', // #2476
     'd', // #2483
-    'content' // Safari shows pseudoelements if content is set
+    'content', // Safari shows pseudoelements if content is set
 ]);
 var copyCSSStyles = function (style, target, onCopyProperty) {
     // Edge does not provide value for cssText.
@@ -5568,6 +5854,21 @@ var addBase = function (targetELement, referenceDocument) {
     headEle === null || headEle === void 0 ? void 0 : headEle.insertBefore(baseNode, (_a = headEle === null || headEle === void 0 ? void 0 : headEle.firstChild) !== null && _a !== void 0 ? _a : null);
 };
 
+var paddingBox = function (element) {
+    var bounds = element.bounds;
+    var styles = element.styles;
+    return bounds.add(styles.borderLeftWidth, styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth), -(styles.borderTopWidth + styles.borderBottomWidth));
+};
+var contentBox = function (element) {
+    var styles = element.styles;
+    var bounds = element.bounds;
+    var paddingLeft = getAbsoluteValue(styles.paddingLeft, bounds.width);
+    var paddingRight = getAbsoluteValue(styles.paddingRight, bounds.width);
+    var paddingTop = getAbsoluteValue(styles.paddingTop, bounds.width);
+    var paddingBottom = getAbsoluteValue(styles.paddingBottom, bounds.width);
+    return bounds.add(paddingLeft + styles.borderLeftWidth, paddingTop + styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth + paddingLeft + paddingRight), -(styles.borderTopWidth + styles.borderBottomWidth + paddingTop + paddingBottom));
+};
+
 var PathType;
 (function (PathType) {
     PathType[PathType["VECTOR"] = 0] = "VECTOR";
@@ -5603,21 +5904,6 @@ var Vector = /** @class */ (function () {
     return Vector;
 }());
 
-var paddingBox = function (element) {
-    var bounds = element.bounds;
-    var styles = element.styles;
-    return bounds.add(styles.borderLeftWidth, styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth), -(styles.borderTopWidth + styles.borderBottomWidth));
-};
-var contentBox = function (element) {
-    var styles = element.styles;
-    var bounds = element.bounds;
-    var paddingLeft = getAbsoluteValue(styles.paddingLeft, bounds.width);
-    var paddingRight = getAbsoluteValue(styles.paddingRight, bounds.width);
-    var paddingTop = getAbsoluteValue(styles.paddingTop, bounds.width);
-    var paddingBottom = getAbsoluteValue(styles.paddingBottom, bounds.width);
-    return bounds.add(paddingLeft + styles.borderLeftWidth, paddingTop + styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth + paddingLeft + paddingRight), -(styles.borderTopWidth + styles.borderBottomWidth + paddingTop + paddingBottom));
-};
-
 var calculateBackgroundPositioningArea = function (backgroundOrigin, element) {
     if (backgroundOrigin === 0 /* BACKGROUND_ORIGIN.BORDER_BOX */) {
         return element.bounds;
@@ -5633,6 +5919,11 @@ var calculateBackgroundPaintingArea = function (backgroundClip, element) {
     }
     if (backgroundClip === 2 /* BACKGROUND_CLIP.CONTENT_BOX */) {
         return contentBox(element);
+    }
+    // For background-clip: text, use padding-box as the initial painting area.
+    // The actual text-shape clipping happens at render time via canvas compositing.
+    if (backgroundClip === 3 /* BACKGROUND_CLIP.TEXT */) {
+        return paddingBox(element);
     }
     return paddingBox(element);
 };
@@ -5766,28 +6057,28 @@ var calculateBackgroundRepeatPath = function (repeat, _a, _b, backgroundPosition
                 new Vector(Math.round(backgroundPositioningArea.left), Math.round(backgroundPositioningArea.top + y)),
                 new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(backgroundPositioningArea.top + y)),
                 new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(height + backgroundPositioningArea.top + y)),
-                new Vector(Math.round(backgroundPositioningArea.left), Math.round(height + backgroundPositioningArea.top + y))
+                new Vector(Math.round(backgroundPositioningArea.left), Math.round(height + backgroundPositioningArea.top + y)),
             ];
         case 3 /* BACKGROUND_REPEAT.REPEAT_Y */:
             return [
                 new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top)),
                 new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top)),
                 new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
-                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top))
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
             ];
         case 1 /* BACKGROUND_REPEAT.NO_REPEAT */:
             return [
                 new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y)),
                 new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y)),
                 new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y + height)),
-                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y + height))
+                new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y + height)),
             ];
         default:
             return [
                 new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.top)),
                 new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.top)),
                 new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
-                new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top))
+                new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
             ];
     }
 };
@@ -6155,7 +6446,7 @@ var expandBorderBoxPath = function (curves, spread) {
             : new Vector(newLeft + newWidth, newTop + newHeight),
         newBlH > 0 || newBlV > 0
             ? getCurvePoints(newLeft, newTop + leftHeight, newBlH, newBlV, CORNER.BOTTOM_LEFT)
-            : new Vector(newLeft, newTop + newHeight)
+            : new Vector(newLeft, newTop + newHeight),
     ];
 };
 var calculateContentBoxPath = function (curves) {
@@ -6163,7 +6454,7 @@ var calculateContentBoxPath = function (curves) {
         curves.topLeftContentBox,
         curves.topRightContentBox,
         curves.bottomRightContentBox,
-        curves.bottomLeftContentBox
+        curves.bottomLeftContentBox,
     ];
 };
 var calculatePaddingBoxPath = function (curves) {
@@ -6171,7 +6462,7 @@ var calculatePaddingBoxPath = function (curves) {
         curves.topLeftPaddingBox,
         curves.topRightPaddingBox,
         curves.bottomRightPaddingBox,
-        curves.bottomLeftPaddingBox
+        curves.bottomLeftPaddingBox,
     ];
 };
 
@@ -6209,12 +6500,23 @@ var FilterEffect = /** @class */ (function () {
     }
     return FilterEffect;
 }());
+var MixBlendModeEffect = /** @class */ (function () {
+    function MixBlendModeEffect(mixBlendMode) {
+        this.mixBlendMode = mixBlendMode;
+        this.type = 4 /* EffectType.MIX_BLEND_MODE */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+    return MixBlendModeEffect;
+}());
 var isTransformEffect = function (effect) {
     return effect.type === 0 /* EffectType.TRANSFORM */;
 };
 var isClipEffect = function (effect) { return effect.type === 1 /* EffectType.CLIP */; };
 var isOpacityEffect = function (effect) { return effect.type === 2 /* EffectType.OPACITY */; };
 var isFilterEffect = function (effect) { return effect.type === 3 /* EffectType.FILTER */; };
+var isMixBlendModeEffect = function (effect) {
+    return effect.type === 4 /* EffectType.MIX_BLEND_MODE */;
+};
 
 var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -6402,7 +6704,7 @@ var calculateObjectFitBounds = function (objectFit, naturalWidth, naturalHeight,
     }
     return {
         src: new Bounds(srcX, srcY, srcWidth, srcHeight),
-        dest: new Bounds(destX, destY, destWidth, destHeight)
+        dest: new Bounds(destX, destY, destWidth, destHeight),
     };
 };
 
@@ -6457,6 +6759,9 @@ var ElementPaint = /** @class */ (function () {
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
         }
+        if (this.container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */) {
+            this.effects.push(new MixBlendModeEffect(this.container.styles.mixBlendMode));
+        }
     }
     ElementPaint.prototype.getEffects = function (target) {
         if (!this._collectedEffects) {
@@ -6502,7 +6807,8 @@ var parseStackTree = function (parent, stackingContext, realStackingContext, lis
             if (child.styles.isPositioned() ||
                 child.styles.opacity < 1 ||
                 child.styles.isTransformed() ||
-                child.styles.isFiltered()) {
+                child.styles.isFiltered() ||
+                child.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */) {
                 var order_1 = child.styles.zIndex.order;
                 if (order_1 < 0) {
                     var index_1 = 0;
@@ -6629,46 +6935,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
             this.path(effect.path);
             this.ctx.clip();
         }
-        if (isFilterEffect(effect)) {
-            var filterStrings = [];
-            for (var _i = 0, _a = effect.filter; _i < _a.length; _i++) {
-                var f = _a[_i];
-                switch (f.type) {
-                    case 0 /* FilterType.DROP_SHADOW */:
-                        filterStrings.push("drop-shadow(".concat(f.offsetX.number, "px ").concat(f.offsetY.number, "px ").concat(f.blur.number, "px ").concat(asString(f.color), ")"));
-                        break;
-                    case 1 /* FilterType.BLUR */:
-                        filterStrings.push("blur(".concat(f.radius.number, "px)"));
-                        break;
-                    case 2 /* FilterType.BRIGHTNESS */:
-                        filterStrings.push("brightness(".concat(f.amount, ")"));
-                        break;
-                    case 3 /* FilterType.CONTRAST */:
-                        filterStrings.push("contrast(".concat(f.amount, ")"));
-                        break;
-                    case 4 /* FilterType.GRAYSCALE */:
-                        filterStrings.push("grayscale(".concat(f.amount, ")"));
-                        break;
-                    case 5 /* FilterType.HUE_ROTATE */:
-                        filterStrings.push("hue-rotate(".concat(f.angle, "deg)"));
-                        break;
-                    case 6 /* FilterType.INVERT */:
-                        filterStrings.push("invert(".concat(f.amount, ")"));
-                        break;
-                    case 7 /* FilterType.OPACITY */:
-                        filterStrings.push("opacity(".concat(f.amount, ")"));
-                        break;
-                    case 8 /* FilterType.SATURATE */:
-                        filterStrings.push("saturate(".concat(f.amount, ")"));
-                        break;
-                    case 9 /* FilterType.SEPIA */:
-                        filterStrings.push("sepia(".concat(f.amount, ")"));
-                        break;
-                }
-            }
-            if (filterStrings.length) {
-                this.ctx.filter = filterStrings.join(' ');
-            }
+        if (isFilterEffect(effect)) ;
+        if (isMixBlendModeEffect(effect)) {
+            this.ctx.globalCompositeOperation = mixBlendModeToComposite[effect.mixBlendMode];
         }
         this._activeEffects.push(effect);
     };
@@ -6678,17 +6947,115 @@ var CanvasRenderer = /** @class */ (function (_super) {
     };
     CanvasRenderer.prototype.renderStack = function (stack) {
         return __awaiter(this, void 0, void 0, function () {
-            var styles;
+            var styles, offscreenFilters;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         styles = stack.element.container.styles;
-                        if (!styles.isVisible()) return [3 /*break*/, 2];
-                        return [4 /*yield*/, this.renderStackContent(stack)];
+                        if (!styles.isVisible()) return [3 /*break*/, 4];
+                        offscreenFilters = this._getOffscreenFilters(stack);
+                        if (!offscreenFilters) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this._renderStackWithOffscreenFilters(stack, offscreenFilters)];
                     case 1:
                         _a.sent();
-                        _a.label = 2;
-                    case 2: return [2 /*return*/];
+                        return [3 /*break*/, 4];
+                    case 2: return [4 /*yield*/, this.renderStackContent(stack)];
+                    case 3:
+                        _a.sent();
+                        _a.label = 4;
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Returns the ctx.filter string for all filters if the stacking context's own
+     * effects include them, or null if there are none.
+     * Offscreen rendering is needed because ctx.filter interacts badly with ctx.clip().
+     */
+    CanvasRenderer.prototype._getOffscreenFilters = function (stack) {
+        var filterStrings = [];
+        for (var _i = 0, _a = stack.element.effects; _i < _a.length; _i++) {
+            var effect = _a[_i];
+            if (isFilterEffect(effect)) {
+                for (var _b = 0, _c = effect.filter; _b < _c.length; _b++) {
+                    var f = _c[_b];
+                    switch (f.type) {
+                        case 0 /* FilterType.DROP_SHADOW */:
+                            filterStrings.push("drop-shadow(".concat(f.offsetX.number, "px ").concat(f.offsetY.number, "px ").concat(f.blur.number, "px ").concat(asString(f.color), ")"));
+                            break;
+                        case 1 /* FilterType.BLUR */:
+                            filterStrings.push("blur(".concat(f.radius.number, "px)"));
+                            break;
+                        case 2 /* FilterType.BRIGHTNESS */:
+                            filterStrings.push("brightness(".concat(f.amount, ")"));
+                            break;
+                        case 3 /* FilterType.CONTRAST */:
+                            filterStrings.push("contrast(".concat(f.amount, ")"));
+                            break;
+                        case 4 /* FilterType.GRAYSCALE */:
+                            filterStrings.push("grayscale(".concat(f.amount, ")"));
+                            break;
+                        case 5 /* FilterType.HUE_ROTATE */:
+                            filterStrings.push("hue-rotate(".concat(f.angle, "deg)"));
+                            break;
+                        case 6 /* FilterType.INVERT */:
+                            filterStrings.push("invert(".concat(f.amount, ")"));
+                            break;
+                        case 7 /* FilterType.OPACITY */:
+                            filterStrings.push("opacity(".concat(f.amount, ")"));
+                            break;
+                        case 8 /* FilterType.SATURATE */:
+                            filterStrings.push("saturate(".concat(f.amount, ")"));
+                            break;
+                        case 9 /* FilterType.SEPIA */:
+                            filterStrings.push("sepia(".concat(f.amount, ")"));
+                            break;
+                    }
+                }
+            }
+        }
+        return filterStrings.length > 0 ? filterStrings.join(' ') : null;
+    };
+    /**
+     * Renders a stacking context into an offscreen canvas, then draws it onto the
+     * main canvas with the drop-shadow/blur filter applied. This prevents the filter
+     * from being clipped by the element's own clip region.
+     */
+    CanvasRenderer.prototype._renderStackWithOffscreenFilters = function (stack, filterString) {
+        return __awaiter(this, void 0, void 0, function () {
+            var mainCanvas, mainCtx, offscreen, offCtx;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        mainCanvas = this.canvas;
+                        mainCtx = this.ctx;
+                        offscreen = document.createElement('canvas');
+                        offscreen.width = mainCanvas.width;
+                        offscreen.height = mainCanvas.height;
+                        offCtx = offscreen.getContext('2d');
+                        offCtx.scale(this.options.scale, this.options.scale);
+                        offCtx.translate(-this.options.x, -this.options.y);
+                        offCtx.textBaseline = 'bottom';
+                        // Swap to offscreen canvas
+                        this.canvas = offscreen;
+                        this.ctx = offCtx;
+                        // Render the stacking context content normally (without drop-shadow/blur in effects)
+                        return [4 /*yield*/, this.renderStackContent(stack)];
+                    case 1:
+                        // Render the stacking context content normally (without drop-shadow/blur in effects)
+                        _a.sent();
+                        // Restore main canvas
+                        this.canvas = mainCanvas;
+                        this.ctx = mainCtx;
+                        // Draw offscreen canvas onto main canvas with the filter
+                        this.ctx.save();
+                        this.ctx.filter = filterString;
+                        // Reset transform to identity since offscreen canvas is already at the correct scale/position
+                        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                        this.ctx.drawImage(offscreen, 0, 0);
+                        this.ctx.restore();
+                        return [2 /*return*/];
                 }
             });
         });
@@ -6798,10 +7165,84 @@ var CanvasRenderer = /** @class */ (function (_super) {
         var result = [
             [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
             fontFamily,
-            fontSize
+            fontSize,
         ];
         this._fontStyleCache.set(styles, result);
         return result;
+    };
+    /**
+     * Draws a single text-decoration line segment using the given style.
+     * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
+     * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
+     * The `isVertical` flag swaps the semantics of w/h for dotted/dashed segment sizing.
+     */
+    CanvasRenderer.prototype.renderDecorationLine = function (style, x, y, w, h, isVertical, textDecorationLine) {
+        switch (style) {
+            case 1 /* TEXT_DECORATION_STYLE.DOUBLE */: {
+                // For double, `h` (or `w` in vertical) is the thickness of each individual line.
+                // Gap between the two lines = max(1, round(thickness / 2)).
+                if (isVertical) {
+                    var lineW = Math.max(1, w);
+                    var gap = Math.max(1, Math.round(w / 2));
+                    this.ctx.fillRect(x, y, lineW, h);
+                    if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
+                        this.ctx.fillRect(x - lineW - gap, y, lineW, h);
+                    }
+                    else {
+                        this.ctx.fillRect(x + lineW + gap, y, lineW, h);
+                    }
+                }
+                else {
+                    var lineH = Math.max(1, h);
+                    var gap = Math.max(1, Math.trunc(h / 2));
+                    this.ctx.fillRect(x, y, w, lineH);
+                    if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
+                        this.ctx.fillRect(x, y - lineH - gap, w, lineH);
+                    }
+                    else {
+                        this.ctx.fillRect(x, y + lineH + gap, w, lineH);
+                    }
+                }
+                break;
+            }
+            case 2 /* TEXT_DECORATION_STYLE.DOTTED */: {
+                // Dots (squares) with diameter = thickness, spaced by one dot width.
+                var dotSize = isVertical ? w : h;
+                var length_1 = isVertical ? h : w;
+                var step = dotSize * 2;
+                for (var pos = 0; pos < length_1; pos += step) {
+                    if (isVertical) {
+                        this.ctx.fillRect(x, y + pos, w, Math.min(dotSize, length_1 - pos));
+                    }
+                    else {
+                        this.ctx.fillRect(x + pos, y, Math.min(dotSize, length_1 - pos), h);
+                    }
+                }
+                break;
+            }
+            case 3 /* TEXT_DECORATION_STYLE.DASHED */: {
+                // Dashes 3× the thickness long, with a gap equal to the dash length.
+                var thickness = isVertical ? w : h;
+                var dashLen = thickness * 3;
+                var length_2 = isVertical ? h : w;
+                var step = dashLen * 2;
+                for (var pos = 0; pos < length_2; pos += step) {
+                    if (isVertical) {
+                        this.ctx.fillRect(x, y + pos, w, Math.min(dashLen, length_2 - pos));
+                    }
+                    else {
+                        this.ctx.fillRect(x + pos, y, Math.min(dashLen, length_2 - pos), h);
+                    }
+                }
+                break;
+            }
+            case 0 /* TEXT_DECORATION_STYLE.SOLID */:
+            case 4 /* TEXT_DECORATION_STYLE.WAVY */:
+            default:
+                // solid (and unimplemented wavy) fall back to a simple filled rectangle.
+                this.ctx.fillRect(x, y, w, h);
+                break;
+        }
     };
     CanvasRenderer.prototype.renderTextNode = function (text, styles) {
         return __awaiter(this, void 0, void 0, function () {
@@ -6824,70 +7265,112 @@ var CanvasRenderer = /** @class */ (function (_super) {
                     paintOrder.forEach(function (paintOrderLayer) {
                         switch (paintOrderLayer) {
                             case 0 /* PAINT_ORDER_LAYER.FILL */:
+                                // When background-clip: text is active, the text fill is handled
+                                // by the background compositing — skip normal text rendering.
+                                if (getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */) {
+                                    break;
+                                }
                                 _this.ctx.fillStyle = asString(styles.color);
-                                _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                                 var textShadows = styles.textShadow;
                                 if (textShadows.length && text.text.trim().length) {
+                                    // Render each shadow manually: draw the text in the shadow colour
+                                    // at the shadow offset on an isolated offscreen canvas, then apply
+                                    // a CSS blur filter before compositing onto the main canvas.
+                                    // This bypasses the Canvas shadow API entirely, which cannot handle
+                                    // transparent text or multiple independent blur radii.
+                                    var w_1 = _this.canvas.width;
+                                    var h_1 = _this.canvas.height;
+                                    var scale_1 = _this.options.scale;
+                                    var ox_1 = _this.options.x;
+                                    var oy_1 = _this.options.y;
                                     textShadows
                                         .slice(0)
                                         .reverse()
                                         .forEach(function (textShadow) {
-                                        _this.ctx.shadowColor = asString(textShadow.color);
-                                        _this.ctx.shadowOffsetX = textShadow.offsetX.number * _this.options.scale;
-                                        _this.ctx.shadowOffsetY = textShadow.offsetY.number * _this.options.scale;
-                                        _this.ctx.shadowBlur = textShadow.blur.number;
+                                        var shadowCanvas = document.createElement('canvas');
+                                        shadowCanvas.width = w_1;
+                                        shadowCanvas.height = h_1;
+                                        var shadowCtx = shadowCanvas.getContext('2d');
+                                        shadowCtx.scale(scale_1, scale_1);
+                                        // Incorporate the shadow offset into the translate so the
+                                        // text is drawn at the correct position on the offscreen.
+                                        shadowCtx.translate(-ox_1 + textShadow.offsetX.number, -oy_1 + textShadow.offsetY.number);
+                                        shadowCtx.font = _this.ctx.font;
+                                        shadowCtx.direction = _this.ctx.direction;
+                                        shadowCtx.textAlign = _this.ctx.textAlign;
+                                        shadowCtx.textBaseline = _this.ctx.textBaseline;
+                                        shadowCtx.fillStyle = asString(textShadow.color);
+                                        var mainCtx = _this.ctx;
+                                        _this.ctx = shadowCtx;
                                         _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
+                                        _this.ctx = mainCtx;
+                                        // Apply blur via ctx.filter on the main canvas drawImage call.
+                                        if (textShadow.blur.number > 0) {
+                                            _this.ctx.save();
+                                            _this.ctx.filter = "blur(".concat(textShadow.blur.number / 2, "px)");
+                                        }
+                                        _this.ctx.drawImage(shadowCanvas, 0, 0, w_1, h_1, ox_1, oy_1, w_1 / scale_1, h_1 / scale_1);
+                                        if (textShadow.blur.number > 0) {
+                                            _this.ctx.restore();
+                                        }
                                     });
-                                    _this.ctx.shadowColor = '';
-                                    _this.ctx.shadowOffsetX = 0;
-                                    _this.ctx.shadowOffsetY = 0;
-                                    _this.ctx.shadowBlur = 0;
+                                    // Draw the real text on top of all shadows.
+                                    // Skipped for transparent text — shadows are the only visual.
+                                    if (!isTransparent(styles.color)) {
+                                        _this.ctx.save();
+                                        _this.ctx.fillStyle = asString(styles.color);
+                                        _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
+                                        _this.ctx.restore();
+                                    }
+                                }
+                                else if (!isTransparent(styles.color)) {
+                                    _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                                 }
                                 if (styles.textDecorationLine.length) {
-                                    _this.ctx.fillStyle = asString(styles.textDecorationColor || styles.color);
+                                    _this.ctx.fillStyle = asString(isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor);
+                                    // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
+                                    var thickness_1 = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
                                     styles.textDecorationLine.forEach(function (textDecorationLine) {
-                                        // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
-                                        var decorationLineHeight = 1;
                                         if (isVertical) {
-                                            // In vertical writing modes underline/overline become vertical bars.
-                                            // The side depends on the writing mode:
-                                            //   vertical-lr: underline=left, overline=right
-                                            //   vertical-rl, sideways-rl, sideways-lr: underline=right, overline=left
                                             var underlineOnLeft = wm === 2 /* WRITING_MODE.VERTICAL_LR */ || wm === 1 /* WRITING_MODE.VERTICAL_RL */;
+                                            var lineX = void 0;
                                             switch (textDecorationLine) {
                                                 case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
-                                                    if (underlineOnLeft) {
-                                                        _this.ctx.fillRect(text.bounds.left, text.bounds.top, decorationLineHeight, text.bounds.height);
-                                                    }
-                                                    else {
-                                                        _this.ctx.fillRect(text.bounds.left + text.bounds.width - decorationLineHeight, text.bounds.top, decorationLineHeight, text.bounds.height);
-                                                    }
+                                                    lineX = underlineOnLeft
+                                                        ? text.bounds.left
+                                                        : text.bounds.left + text.bounds.width - thickness_1;
                                                     break;
                                                 case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
-                                                    if (underlineOnLeft) {
-                                                        _this.ctx.fillRect(text.bounds.left + text.bounds.width - decorationLineHeight, text.bounds.top, decorationLineHeight, text.bounds.height);
-                                                    }
-                                                    else {
-                                                        _this.ctx.fillRect(text.bounds.left, text.bounds.top, decorationLineHeight, text.bounds.height);
-                                                    }
+                                                    lineX = underlineOnLeft
+                                                        ? text.bounds.left + text.bounds.width - thickness_1
+                                                        : text.bounds.left;
                                                     break;
                                                 case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
-                                                    _this.ctx.fillRect(text.bounds.left + (text.bounds.width / 2 - decorationLineHeight / 2), text.bounds.top, decorationLineHeight, text.bounds.height);
+                                                default:
+                                                    lineX = text.bounds.left + text.bounds.width / 2 - thickness_1 / 2;
                                                     break;
                                             }
+                                            _this.renderDecorationLine(styles.textDecorationStyle, lineX, text.bounds.top, thickness_1, text.bounds.height, true, textDecorationLine);
                                         }
                                         else {
+                                            // baseline = distance from bounds.top to the alphabetic baseline.
+                                            // Use it to position decorations relative to actual glyph positions
+                                            // rather than the full line-height bounding box.
+                                            var baselineY = text.bounds.top + baseline;
+                                            var lineY = void 0;
                                             switch (textDecorationLine) {
                                                 case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
-                                                    _this.ctx.fillRect(text.bounds.left, text.bounds.top + text.bounds.height - decorationLineHeight, text.bounds.width, decorationLineHeight);
+                                                    lineY = baselineY + 2;
                                                     break;
                                                 case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
-                                                    _this.ctx.fillRect(text.bounds.left, text.bounds.top, text.bounds.width, decorationLineHeight);
+                                                    lineY = Math.round(text.bounds.top + (text.bounds.height - baseline) * 0.1);
                                                     break;
                                                 case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
-                                                    _this.ctx.fillRect(text.bounds.left, text.bounds.top + (text.bounds.height / 2 - decorationLineHeight / 2), text.bounds.width, decorationLineHeight);
+                                                default:
+                                                    lineY = Math.round(baselineY - baseline * 0.4) + 2;
                                                     break;
                                             }
+                                            _this.renderDecorationLine(styles.textDecorationStyle, text.bounds.left, lineY, text.bounds.width, thickness_1, false, textDecorationLine);
                                         }
                                     });
                                 }
@@ -7013,7 +7496,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             x: 0,
                             y: 0,
                             width: container.width,
-                            height: container.height
+                            height: container.height,
                         });
                         return [4 /*yield*/, iframeRenderer.render(container.tree)];
                     case 19:
@@ -7035,7 +7518,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                         new Vector(container.bounds.left + size * 0.39694, container.bounds.top + size * 0.5649),
                                         new Vector(container.bounds.left + size * 0.72983, container.bounds.top + size * 0.23),
                                         new Vector(container.bounds.left + size * 0.84, container.bounds.top + size * 0.34085),
-                                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79)
+                                        new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79),
                                     ]);
                                     this.ctx.fillStyle = asString(INPUT_COLOR);
                                     this.ctx.fill();
@@ -7169,7 +7652,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                 new Vector(bounds_1.left, bounds_1.top),
                                 new Vector(bounds_1.left + bounds_1.width, bounds_1.top),
                                 new Vector(bounds_1.left + bounds_1.width, bounds_1.top + bounds_1.height),
-                                new Vector(bounds_1.left, bounds_1.top + bounds_1.height)
+                                new Vector(bounds_1.left, bounds_1.top + bounds_1.height),
                             ]);
                             this.ctx.clip();
                             if (container instanceof TextareaElementContainer) {
@@ -7590,10 +8073,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
                     case 0:
                         index = container.styles.backgroundImage.length - 1;
                         _loop_1 = function (backgroundImage) {
-                            var image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, left, top_1, width, height, position, x, y, _g, rx, ry, radialGradient_1, midX, midY, f, invF;
+                            var blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, left, top_1, width, height, position, x, y, _g, rx, ry, radialGradient_1, midX, midY, f, invF;
                             return __generator(this, function (_h) {
                                 switch (_h.label) {
                                     case 0:
+                                        blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
                                         if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
                                         image = void 0;
                                         url = backgroundImage.url;
@@ -7613,7 +8097,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                             _c = calculateBackgroundRendering(container, index, [
                                                 image.width,
                                                 image.height,
-                                                image.width / image.height
+                                                image.width / image.height,
                                             ]), path = _c[0], x = _c[1], y = _c[2], width = _c[3], height = _c[4];
                                             pattern = this_1.ctx.createPattern(this_1.resizeImage(image, width, height), 'repeat');
                                             this_1.renderRepeat(path, pattern, x, y);
@@ -7642,7 +8126,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                             _f = calculateBackgroundRendering(container, index, [
                                                 null,
                                                 null,
-                                                null
+                                                null,
                                             ]), path = _f[0], left = _f[1], top_1 = _f[2], width = _f[3], height = _f[4];
                                             position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                                             x = getAbsoluteValue(position[0], width);
@@ -7675,6 +8159,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                         _h.label = 6;
                                     case 6:
                                         index--;
+                                        if (blendMode !== 'source-over') {
+                                            this_1.ctx.globalCompositeOperation = 'source-over';
+                                        }
                                         return [2 /*return*/];
                                 }
                             });
@@ -7731,9 +8218,132 @@ var CanvasRenderer = /** @class */ (function (_super) {
             });
         });
     };
+    /**
+     * Renders background clipped to text shapes using an offscreen canvas.
+     * Steps:
+     * 1. Create an offscreen canvas the size of the element's border box.
+     * 2. Draw the background (color + images) normally onto the offscreen canvas.
+     * 3. Create a text mask canvas with all text shapes drawn as opaque black.
+     * 4. Apply 'destination-in' with the mask canvas to clip the background to text.
+     * 5. Composite the offscreen canvas back onto the main canvas.
+     */
+    CanvasRenderer.prototype.renderBackgroundClipText = function (paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _loop_2, this_2, _c, _d, textBound;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        container = paint.container;
+                        styles = container.styles;
+                        bounds = container.bounds;
+                        if (container.textNodes.length === 0) {
+                            return [2 /*return*/];
+                        }
+                        width = Math.ceil(bounds.width * this.options.scale);
+                        height = Math.ceil(bounds.height * this.options.scale);
+                        if (width <= 0 || height <= 0) {
+                            return [2 /*return*/];
+                        }
+                        offscreen = document.createElement('canvas');
+                        offscreen.width = width;
+                        offscreen.height = height;
+                        offCtx = offscreen.getContext('2d');
+                        // Apply the same transform so absolute coordinates work correctly.
+                        offCtx.scale(this.options.scale, this.options.scale);
+                        offCtx.translate(-bounds.left, -bounds.top);
+                        mainCtx = this.ctx;
+                        this.ctx = offCtx;
+                        if (!isTransparent(styles.backgroundColor)) {
+                            this.ctx.fillStyle = asString(styles.backgroundColor);
+                            this.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+                        }
+                        return [4 /*yield*/, this.renderBackgroundImage(container)];
+                    case 1:
+                        _e.sent();
+                        this.ctx = mainCtx;
+                        maskCanvas = document.createElement('canvas');
+                        maskCanvas.width = width;
+                        maskCanvas.height = height;
+                        maskCtx = maskCanvas.getContext('2d');
+                        maskCtx.scale(this.options.scale, this.options.scale);
+                        maskCtx.translate(-bounds.left, -bounds.top);
+                        _a = this.createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
+                        maskCtx.font = font;
+                        maskCtx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
+                        maskCtx.textAlign = 'left';
+                        maskCtx.fillStyle = '#000000';
+                        wm = styles.writingMode;
+                        baseline = this.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
+                        isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
+                            wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
+                            wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
+                            wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                        for (_i = 0, _b = container.textNodes; _i < _b.length; _i++) {
+                            textNode = _b[_i];
+                            _loop_2 = function (textBound) {
+                                if (isVertical) {
+                                    var cx = textBound.bounds.left + textBound.bounds.width / 2;
+                                    var cy = textBound.bounds.top + textBound.bounds.height / 2;
+                                    var isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                                    var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+                                    maskCtx.save();
+                                    maskCtx.translate(cx, cy);
+                                    maskCtx.rotate(angle);
+                                    maskCtx.translate(-cx, -cy);
+                                    var rotatedBounds = new Bounds(cx - textBound.bounds.height / 2, cy - textBound.bounds.width / 2, textBound.bounds.height, textBound.bounds.width);
+                                    if (!this_2._isFirefox) {
+                                        maskCtx.textBaseline = 'ideographic';
+                                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + rotatedBounds.height);
+                                    }
+                                    else {
+                                        maskCtx.textBaseline = 'alphabetic';
+                                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + baseline);
+                                    }
+                                    maskCtx.restore();
+                                }
+                                else {
+                                    if (styles.letterSpacing === 0) {
+                                        if (!this_2._isFirefox) {
+                                            maskCtx.textBaseline = 'ideographic';
+                                            maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + textBound.bounds.height);
+                                        }
+                                        else {
+                                            maskCtx.textBaseline = 'alphabetic';
+                                            maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + baseline);
+                                        }
+                                    }
+                                    else {
+                                        maskCtx.textBaseline = 'alphabetic';
+                                        var letters_3 = segmentGraphemes(textBound.text);
+                                        letters_3.reduce(function (left, letter, index) {
+                                            maskCtx.fillText(letter, left, textBound.bounds.top + baseline);
+                                            var isLast = index === letters_3.length - 1;
+                                            return left + maskCtx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
+                                        }, textBound.bounds.left);
+                                    }
+                                }
+                            };
+                            this_2 = this;
+                            for (_c = 0, _d = textNode.textBounds; _c < _d.length; _c++) {
+                                textBound = _d[_c];
+                                _loop_2(textBound);
+                            }
+                        }
+                        // Step 3: Apply the text mask to the background using 'destination-in'.
+                        // This is a single drawImage call so it clips the entire background at once.
+                        offCtx.globalCompositeOperation = 'destination-in';
+                        offCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pixel-to-pixel copy
+                        offCtx.drawImage(maskCanvas, 0, 0);
+                        // Step 4: Draw the clipped result onto the main canvas
+                        this.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     CanvasRenderer.prototype.renderNodeBackgroundAndBorders = function (paint) {
         return __awaiter(this, void 0, void 0, function () {
-            var styles, hasBackground, borders, backgroundPaintingArea, _i, _a, textNode, _b, _c, textBound, side, _d, borders_1, border;
+            var styles, hasBackground, borders, backgroundPaintingArea, isBackgroundClipText, _i, _a, textNode, _b, _c, textBound, side, _d, borders_1, border;
             var _this = this;
             return __generator(this, function (_e) {
                 switch (_e.label) {
@@ -7745,10 +8355,22 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
                             { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
                             { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
-                            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth }
+                            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
                         ];
                         backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(getBackgroundValueForIndex(styles.backgroundClip, 0), paint.curves);
-                        if (!(hasBackground || styles.boxShadow.length)) return [3 /*break*/, 2];
+                        if (!(hasBackground || styles.boxShadow.length)) return [3 /*break*/, 5];
+                        isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */;
+                        if (!(isBackgroundClipText && hasBackground)) return [3 /*break*/, 2];
+                        // background-clip: text — render background clipped to text shapes
+                        // using an offscreen canvas with composite operations.
+                        return [4 /*yield*/, this.renderBackgroundClipText(paint)];
+                    case 1:
+                        // background-clip: text — render background clipped to text shapes
+                        // using an offscreen canvas with composite operations.
+                        _e.sent();
+                        return [3 /*break*/, 4];
+                    case 2:
+                        if (!hasBackground) return [3 /*break*/, 4];
                         this.ctx.save();
                         this.path(backgroundPaintingArea);
                         this.ctx.clip();
@@ -7768,9 +8390,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             }
                         }
                         return [4 /*yield*/, this.renderBackgroundImage(paint.container)];
-                    case 1:
+                    case 3:
                         _e.sent();
                         this.ctx.restore();
+                        _e.label = 4;
+                    case 4:
                         styles.boxShadow
                             .slice(0)
                             .reverse()
@@ -7805,43 +8429,43 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             _this.ctx.fill();
                             _this.ctx.restore();
                         });
-                        _e.label = 2;
-                    case 2:
+                        _e.label = 5;
+                    case 5:
                         side = 0;
                         _d = 0, borders_1 = borders;
-                        _e.label = 3;
-                    case 3:
-                        if (!(_d < borders_1.length)) return [3 /*break*/, 13];
-                        border = borders_1[_d];
-                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 11];
-                        if (!(border.style === 2 /* BORDER_STYLE.DASHED */)) return [3 /*break*/, 5];
-                        return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 2 /* BORDER_STYLE.DASHED */)];
-                    case 4:
-                        _e.sent();
-                        return [3 /*break*/, 11];
-                    case 5:
-                        if (!(border.style === 3 /* BORDER_STYLE.DOTTED */)) return [3 /*break*/, 7];
-                        return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 3 /* BORDER_STYLE.DOTTED */)];
+                        _e.label = 6;
                     case 6:
-                        _e.sent();
-                        return [3 /*break*/, 11];
+                        if (!(_d < borders_1.length)) return [3 /*break*/, 16];
+                        border = borders_1[_d];
+                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 14];
+                        if (!(border.style === 2 /* BORDER_STYLE.DASHED */)) return [3 /*break*/, 8];
+                        return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 2 /* BORDER_STYLE.DASHED */)];
                     case 7:
-                        if (!(border.style === 4 /* BORDER_STYLE.DOUBLE */)) return [3 /*break*/, 9];
-                        return [4 /*yield*/, this.renderDoubleBorder(border.color, border.width, side, paint.curves)];
+                        _e.sent();
+                        return [3 /*break*/, 14];
                     case 8:
+                        if (!(border.style === 3 /* BORDER_STYLE.DOTTED */)) return [3 /*break*/, 10];
+                        return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 3 /* BORDER_STYLE.DOTTED */)];
+                    case 9:
                         _e.sent();
-                        return [3 /*break*/, 11];
-                    case 9: return [4 /*yield*/, this.renderSolidBorder(border.color, side, paint.curves)];
+                        return [3 /*break*/, 14];
                     case 10:
-                        _e.sent();
-                        _e.label = 11;
+                        if (!(border.style === 4 /* BORDER_STYLE.DOUBLE */)) return [3 /*break*/, 12];
+                        return [4 /*yield*/, this.renderDoubleBorder(border.color, border.width, side, paint.curves)];
                     case 11:
+                        _e.sent();
+                        return [3 /*break*/, 14];
+                    case 12: return [4 /*yield*/, this.renderSolidBorder(border.color, side, paint.curves)];
+                    case 13:
+                        _e.sent();
+                        _e.label = 14;
+                    case 14:
                         side++;
-                        _e.label = 12;
-                    case 12:
+                        _e.label = 15;
+                    case 15:
                         _d++;
-                        return [3 /*break*/, 3];
-                    case 13: return [2 /*return*/];
+                        return [3 /*break*/, 6];
+                    case 16: return [2 /*return*/];
                 }
             });
         });
@@ -7993,6 +8617,11 @@ var calculateBackgroundCurvedPaintingArea = function (clip, curves) {
             return calculateBorderBoxPath(curves);
         case 2 /* BACKGROUND_CLIP.CONTENT_BOX */:
             return calculateContentBoxPath(curves);
+        case 3 /* BACKGROUND_CLIP.TEXT */:
+            // For background-clip: text, use padding-box as the initial painting area.
+            // The actual text-shape clipping is handled in renderNodeBackgroundAndBorders
+            // via offscreen canvas compositing.
+            return calculatePaddingBoxPath(curves);
         case 1 /* BACKGROUND_CLIP.PADDING_BOX */:
         default:
             return calculatePaddingBoxPath(curves);
@@ -8084,14 +8713,14 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     allowTaint: (_b = opts.allowTaint) !== null && _b !== void 0 ? _b : false,
                     imageTimeout: (_c = opts.imageTimeout) !== null && _c !== void 0 ? _c : 15000,
                     proxy: opts.proxy,
-                    useCORS: (_d = opts.useCORS) !== null && _d !== void 0 ? _d : false
+                    useCORS: (_d = opts.useCORS) !== null && _d !== void 0 ? _d : false,
                 };
                 contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache }, resourceOptions);
                 windowOptions = {
                     windowWidth: (_f = opts.windowWidth) !== null && _f !== void 0 ? _f : defaultView.innerWidth,
                     windowHeight: (_g = opts.windowHeight) !== null && _g !== void 0 ? _g : defaultView.innerHeight,
                     scrollX: (_h = opts.scrollX) !== null && _h !== void 0 ? _h : defaultView.pageXOffset,
-                    scrollY: (_j = opts.scrollY) !== null && _j !== void 0 ? _j : defaultView.pageYOffset
+                    scrollY: (_j = opts.scrollY) !== null && _j !== void 0 ? _j : defaultView.pageYOffset,
                 };
                 windowBounds = new Bounds(windowOptions.scrollX, windowOptions.scrollY, windowOptions.windowWidth, windowOptions.windowHeight);
                 context = new Context(contextOptions, windowBounds);
@@ -8102,7 +8731,7 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     ignoreElements: opts.ignoreElements,
                     onCopyProperty: opts.onCopyProperty,
                     inlineImages: foreignObjectRendering,
-                    copyStyles: foreignObjectRendering
+                    copyStyles: foreignObjectRendering,
                 };
                 context.logger.debug("Starting document clone with size ".concat(windowBounds.width, "x").concat(windowBounds.height, " scrolled to ").concat(-windowBounds.left, ",").concat(-windowBounds.top));
                 documentCloner = new DocumentCloner(context, element, cloneOptions);
@@ -8124,7 +8753,7 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     x: ((_p = opts.x) !== null && _p !== void 0 ? _p : 0) + left,
                     y: ((_q = opts.y) !== null && _q !== void 0 ? _q : 0) + top,
                     width: (_r = opts.width) !== null && _r !== void 0 ? _r : Math.ceil(width),
-                    height: (_s = opts.height) !== null && _s !== void 0 ? _s : Math.ceil(height)
+                    height: (_s = opts.height) !== null && _s !== void 0 ? _s : Math.ceil(height),
                 };
                 if (!foreignObjectRendering) return [3 /*break*/, 3];
                 context.logger.debug("Document cloned, using foreign object rendering");

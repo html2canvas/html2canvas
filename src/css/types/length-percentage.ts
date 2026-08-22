@@ -1,6 +1,6 @@
-import {CSSFunction, CSSValue, isDimensionToken} from '../syntax/parser';
-import {DimensionToken, FLAG_INTEGER, NumberValueToken, TokenType} from '../syntax/tokenizer';
-import {isLength} from './length';
+import { CSSFunction, CSSValue, isDimensionToken } from '../syntax/parser';
+import { DimensionToken, FLAG_INTEGER, NumberValueToken, TokenType } from '../syntax/tokenizer';
+import { isLength } from './length';
 
 export type LengthPercentage = DimensionToken | NumberValueToken | CSSFunction;
 export type LengthPercentageTuple = [LengthPercentage] | [LengthPercentage, LengthPercentage];
@@ -16,25 +16,25 @@ export const parseLengthPercentageTuple = (tokens: LengthPercentage[]): LengthPe
 export const ZERO_LENGTH: NumberValueToken = {
     type: TokenType.NUMBER_TOKEN,
     number: 0,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 
 export const FIFTY_PERCENT: NumberValueToken = {
     type: TokenType.PERCENTAGE_TOKEN,
     number: 50,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 
 export const HUNDRED_PERCENT: NumberValueToken = {
     type: TokenType.PERCENTAGE_TOKEN,
     number: 100,
-    flags: FLAG_INTEGER
+    flags: FLAG_INTEGER,
 };
 
 export const getAbsoluteValueForTuple = (
     tuple: LengthPercentageTuple,
     width: number,
-    height: number
+    height: number,
 ): [number, number] => {
     const [x, y] = tuple;
     return [getAbsoluteValue(x, width), getAbsoluteValue(typeof y !== 'undefined' ? y : x, height)];
@@ -82,7 +82,7 @@ export const getAbsoluteValue = (token: LengthPercentage, parent: number): numbe
  */
 const evaluateCalc = (values: CSSValue[], parent: number): number => {
     // Flatten tokens, ignoring whitespace
-    const tokens = values.filter((t) => t.type !== TokenType.WHITESPACE_TOKEN);
+    const tokens = values.filter(t => t.type !== TokenType.WHITESPACE_TOKEN);
     return evaluateExpression(tokens, 0, parent).value;
 };
 
@@ -98,7 +98,7 @@ interface EvalResult {
  *          factor = number | percentage | dimension | '(' expression ')' | calc(expression)
  */
 const evaluateExpression = (tokens: CSSValue[], startIndex: number, parent: number): EvalResult => {
-    let {value, index} = evaluateTerm(tokens, startIndex, parent);
+    let { value, index } = evaluateTerm(tokens, startIndex, parent);
 
     while (index < tokens.length) {
         const op = tokens[index];
@@ -111,11 +111,11 @@ const evaluateExpression = (tokens: CSSValue[], startIndex: number, parent: numb
         }
     }
 
-    return {value, index};
+    return { value, index };
 };
 
 const evaluateTerm = (tokens: CSSValue[], startIndex: number, parent: number): EvalResult => {
-    let {value, index} = evaluateFactor(tokens, startIndex, parent);
+    let { value, index } = evaluateFactor(tokens, startIndex, parent);
 
     while (index < tokens.length) {
         const op = tokens[index];
@@ -128,12 +128,12 @@ const evaluateTerm = (tokens: CSSValue[], startIndex: number, parent: number): E
         }
     }
 
-    return {value, index};
+    return { value, index };
 };
 
 const evaluateFactor = (tokens: CSSValue[], index: number, parent: number): EvalResult => {
     if (index >= tokens.length) {
-        return {value: 0, index};
+        return { value: 0, index };
     }
 
     const token = tokens[index];
@@ -141,20 +141,20 @@ const evaluateFactor = (tokens: CSSValue[], index: number, parent: number): Eval
     // Nested calc()
     if (token.type === TokenType.FUNCTION && (token as CSSFunction).name === 'calc') {
         const result = evaluateCalc((token as CSSFunction).values, parent);
-        return {value: result, index: index + 1};
+        return { value: result, index: index + 1 };
     }
 
     // Parenthesized sub-expression
     if (token.type === TokenType.LEFT_PARENTHESIS_TOKEN) {
         // Find matching right paren and evaluate contents
-        const {value, index: endIndex} = evaluateExpression(tokens, index + 1, parent);
+        const { value, index: endIndex } = evaluateExpression(tokens, index + 1, parent);
         // Skip the right parenthesis
-        return {value, index: endIndex + 1};
+        return { value, index: endIndex + 1 };
     }
 
     // Percentage
     if (token.type === TokenType.PERCENTAGE_TOKEN) {
-        return {value: (token.number / 100) * parent, index: index + 1};
+        return { value: (token.number / 100) * parent, index: index + 1 };
     }
 
     // Dimension (px, em, rem, etc.)
@@ -170,14 +170,14 @@ const evaluateFactor = (tokens: CSSValue[], index: number, parent: number): Eval
                 val = token.number;
                 break;
         }
-        return {value: val, index: index + 1};
+        return { value: val, index: index + 1 };
     }
 
     // Plain number
     if (token.type === TokenType.NUMBER_TOKEN) {
-        return {value: token.number, index: index + 1};
+        return { value: token.number, index: index + 1 };
     }
 
     // Unrecognized token — skip it
-    return {value: 0, index: index + 1};
+    return { value: 0, index: index + 1 };
 };

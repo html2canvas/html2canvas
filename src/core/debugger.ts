@@ -4,7 +4,7 @@ export const enum DebuggerType {
     ALL,
     CLONE,
     PARSE,
-    RENDER
+    RENDER,
 }
 
 const getElementDebugType = (element: Element): DebuggerType => {

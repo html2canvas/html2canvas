@@ -1,10 +1,10 @@
-import {Context} from '../../core/context';
-import {IPropertyListDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue, isIdentWithValue} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {Color, color as colorParse, COLORS} from '../types/color';
-import {isLength, Length} from '../types/length';
-import {ZERO_LENGTH} from '../types/length-percentage';
+import { Context } from '../../core/context';
+import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue, isIdentWithValue } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { Color, color as colorParse, COLORS } from '../types/color';
+import { isLength, Length } from '../types/length';
+import { ZERO_LENGTH } from '../types/length-percentage';
 
 export const enum FilterType {
     DROP_SHADOW = 0,
@@ -16,7 +16,7 @@ export const enum FilterType {
     INVERT = 6,
     OPACITY = 7,
     SATURATE = 8,
-    SEPIA = 9
+    SEPIA = 9,
 }
 
 export interface DropShadowFilter {
@@ -75,7 +75,7 @@ export const filter: IPropertyListDescriptor<CSSFilterList> = {
         }
 
         return filters;
-    }
+    },
 };
 
 const parseFilterFunction = (context: Context, name: string, values: CSSValue[]): CSSFilter | null => {
@@ -111,7 +111,7 @@ const parseDropShadow = (context: Context, values: CSSValue[]): DropShadowFilter
         color: COLORS.TRANSPARENT,
         offsetX: ZERO_LENGTH,
         offsetY: ZERO_LENGTH,
-        blur: ZERO_LENGTH
+        blur: ZERO_LENGTH,
     };
 
     let lengthCount = 0;
@@ -145,7 +145,7 @@ const parseDropShadow = (context: Context, values: CSSValue[]): DropShadowFilter
 const parseBlur = (values: CSSValue[]): BlurFilter => {
     const result: BlurFilter = {
         type: FilterType.BLUR,
-        radius: ZERO_LENGTH
+        radius: ZERO_LENGTH,
     };
 
     for (let i = 0; i < values.length; i++) {
@@ -162,7 +162,7 @@ const parseBlur = (values: CSSValue[]): BlurFilter => {
 const parseAmountFilter = (type: AmountFilter['type'], values: CSSValue[]): AmountFilter => {
     const result: AmountFilter = {
         type,
-        amount: 1 // default is 1 (100%) for most filters
+        amount: 1, // default is 1 (100%) for most filters
     };
 
     for (let i = 0; i < values.length; i++) {
@@ -183,7 +183,7 @@ const parseAmountFilter = (type: AmountFilter['type'], values: CSSValue[]): Amou
 const parseHueRotate = (values: CSSValue[]): HueRotateFilter => {
     const result: HueRotateFilter = {
         type: FilterType.HUE_ROTATE,
-        angle: 0
+        angle: 0,
     };
 
     for (let i = 0; i < values.length; i++) {

@@ -1,18 +1,19 @@
-import {Context} from '../core/context';
-import {CSSParsedDeclaration} from '../css';
-import {ElementContainer, FLAGS} from './element-container';
-import {LIElementContainer} from './elements/li-element-container';
-import {OLElementContainer} from './elements/ol-element-container';
-import {SelectElementContainer} from './elements/select-element-container';
-import {TextareaElementContainer} from './elements/textarea-element-container';
-import {CanvasElementContainer} from './replaced-elements/canvas-element-container';
-import {IFrameElementContainer} from './replaced-elements/iframe-element-container';
-import {ImageElementContainer} from './replaced-elements/image-element-container';
-import {InputElementContainer} from './replaced-elements/input-element-container';
-import {MeterElementContainer} from './replaced-elements/meter-element-container';
-import {ProgressElementContainer} from './replaced-elements/progress-element-container';
-import {SVGElementContainer} from './replaced-elements/svg-element-container';
-import {TextContainer} from './text-container';
+import { Context } from '../core/context';
+import { CSSParsedDeclaration } from '../css';
+import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
+import { ElementContainer, FLAGS } from './element-container';
+import { LIElementContainer } from './elements/li-element-container';
+import { OLElementContainer } from './elements/ol-element-container';
+import { SelectElementContainer } from './elements/select-element-container';
+import { TextareaElementContainer } from './elements/textarea-element-container';
+import { CanvasElementContainer } from './replaced-elements/canvas-element-container';
+import { IFrameElementContainer } from './replaced-elements/iframe-element-container';
+import { ImageElementContainer } from './replaced-elements/image-element-container';
+import { InputElementContainer } from './replaced-elements/input-element-container';
+import { MeterElementContainer } from './replaced-elements/meter-element-container';
+import { ProgressElementContainer } from './replaced-elements/progress-element-container';
+import { SVGElementContainer } from './replaced-elements/svg-element-container';
+import { TextContainer } from './text-container';
 
 const LIST_OWNERS = ['OL', 'UL', 'MENU'];
 
@@ -45,7 +46,7 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
             parent.textNodes.push(new TextContainer(context, childNode, parent.styles));
         } else if (isElementNode(childNode)) {
             if (isSlotElement(childNode) && childNode.assignedNodes) {
-                childNode.assignedNodes().forEach((childNode) => parseNodeTree(context, childNode, parent, root));
+                childNode.assignedNodes().forEach(childNode => parseNodeTree(context, childNode, parent, root));
             } else {
                 const container = createContainer(context, childNode);
                 if (container.styles.isVisible()) {
@@ -136,6 +137,7 @@ const createsRealStackingContext = (node: Element, container: ElementContainer, 
         container.styles.opacity < 1 ||
         container.styles.isTransformed() ||
         container.styles.isFiltered() ||
+        container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL ||
         (isBodyElement(node) && root.styles.isTransparent())
     );
 };

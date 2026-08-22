@@ -1,6 +1,6 @@
-import {Path} from './path';
-import {BoundCurves} from './bound-curves';
-import {isBezierCurve} from './bezier-curve';
+import { Path } from './path';
+import { BoundCurves } from './bound-curves';
+import { isBezierCurve } from './bezier-curve';
 
 export const parsePathForBorder = (curves: BoundCurves, borderSide: number): Path[] => {
     switch (borderSide) {
@@ -9,21 +9,21 @@ export const parsePathForBorder = (curves: BoundCurves, borderSide: number): Pat
                 curves.topLeftBorderBox,
                 curves.topLeftPaddingBox,
                 curves.topRightBorderBox,
-                curves.topRightPaddingBox
+                curves.topRightPaddingBox,
             );
         case 1:
             return createPathFromCurves(
                 curves.topRightBorderBox,
                 curves.topRightPaddingBox,
                 curves.bottomRightBorderBox,
-                curves.bottomRightPaddingBox
+                curves.bottomRightPaddingBox,
             );
         case 2:
             return createPathFromCurves(
                 curves.bottomRightBorderBox,
                 curves.bottomRightPaddingBox,
                 curves.bottomLeftBorderBox,
-                curves.bottomLeftPaddingBox
+                curves.bottomLeftPaddingBox,
             );
         case 3:
         default:
@@ -31,7 +31,7 @@ export const parsePathForBorder = (curves: BoundCurves, borderSide: number): Pat
                 curves.bottomLeftBorderBox,
                 curves.bottomLeftPaddingBox,
                 curves.topLeftBorderBox,
-                curves.topLeftPaddingBox
+                curves.topLeftPaddingBox,
             );
     }
 };
@@ -43,21 +43,21 @@ export const parsePathForBorderDoubleOuter = (curves: BoundCurves, borderSide: n
                 curves.topLeftBorderBox,
                 curves.topLeftBorderDoubleOuterBox,
                 curves.topRightBorderBox,
-                curves.topRightBorderDoubleOuterBox
+                curves.topRightBorderDoubleOuterBox,
             );
         case 1:
             return createPathFromCurves(
                 curves.topRightBorderBox,
                 curves.topRightBorderDoubleOuterBox,
                 curves.bottomRightBorderBox,
-                curves.bottomRightBorderDoubleOuterBox
+                curves.bottomRightBorderDoubleOuterBox,
             );
         case 2:
             return createPathFromCurves(
                 curves.bottomRightBorderBox,
                 curves.bottomRightBorderDoubleOuterBox,
                 curves.bottomLeftBorderBox,
-                curves.bottomLeftBorderDoubleOuterBox
+                curves.bottomLeftBorderDoubleOuterBox,
             );
         case 3:
         default:
@@ -65,7 +65,7 @@ export const parsePathForBorderDoubleOuter = (curves: BoundCurves, borderSide: n
                 curves.bottomLeftBorderBox,
                 curves.bottomLeftBorderDoubleOuterBox,
                 curves.topLeftBorderBox,
-                curves.topLeftBorderDoubleOuterBox
+                curves.topLeftBorderDoubleOuterBox,
             );
     }
 };
@@ -77,21 +77,21 @@ export const parsePathForBorderDoubleInner = (curves: BoundCurves, borderSide: n
                 curves.topLeftBorderDoubleInnerBox,
                 curves.topLeftPaddingBox,
                 curves.topRightBorderDoubleInnerBox,
-                curves.topRightPaddingBox
+                curves.topRightPaddingBox,
             );
         case 1:
             return createPathFromCurves(
                 curves.topRightBorderDoubleInnerBox,
                 curves.topRightPaddingBox,
                 curves.bottomRightBorderDoubleInnerBox,
-                curves.bottomRightPaddingBox
+                curves.bottomRightPaddingBox,
             );
         case 2:
             return createPathFromCurves(
                 curves.bottomRightBorderDoubleInnerBox,
                 curves.bottomRightPaddingBox,
                 curves.bottomLeftBorderDoubleInnerBox,
-                curves.bottomLeftPaddingBox
+                curves.bottomLeftPaddingBox,
             );
         case 3:
         default:
@@ -99,7 +99,7 @@ export const parsePathForBorderDoubleInner = (curves: BoundCurves, borderSide: n
                 curves.bottomLeftBorderDoubleInnerBox,
                 curves.bottomLeftPaddingBox,
                 curves.topLeftBorderDoubleInnerBox,
-                curves.topLeftPaddingBox
+                curves.topLeftPaddingBox,
             );
     }
 };

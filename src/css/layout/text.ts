@@ -1,10 +1,10 @@
-import {fromCodePoint, LineBreaker, toCodePoints} from 'css-line-break';
-import {splitGraphemes} from 'text-segmentation';
-import {Context} from '../../core/context';
-import {FEATURES} from '../../core/features';
-import {CSSParsedDeclaration} from '../index';
-import {OVERFLOW_WRAP} from '../property-descriptors/overflow-wrap';
-import {Bounds, parseBounds} from './bounds';
+import { fromCodePoint, LineBreaker, toCodePoints } from 'css-line-break';
+import { splitGraphemes } from 'text-segmentation';
+import { Context } from '../../core/context';
+import { FEATURES } from '../../core/features';
+import { CSSParsedDeclaration } from '../index';
+import { OVERFLOW_WRAP } from '../property-descriptors/overflow-wrap';
+import { Bounds, parseBounds } from './bounds';
 
 export class TextBounds {
     readonly text: string;
@@ -20,27 +20,27 @@ export const parseTextBounds = (
     context: Context,
     value: string,
     styles: CSSParsedDeclaration,
-    node: Text
+    node: Text,
 ): TextBounds[] => {
     const textList = breakText(value, styles);
     const textBounds: TextBounds[] = [];
     let offset = 0;
-    textList.forEach((text) => {
+    textList.forEach(text => {
         if (styles.textDecorationLine.length || text.trim().length > 0) {
             if (FEATURES.SUPPORT_RANGE_BOUNDS) {
                 const clientRects = createRange(node, offset, text.length).getClientRects();
                 if (clientRects.length > 1) {
                     const subSegments = segmentGraphemes(text);
                     let subOffset = 0;
-                    subSegments.forEach((subSegment) => {
+                    subSegments.forEach(subSegment => {
                         textBounds.push(
                             new TextBounds(
                                 subSegment,
                                 Bounds.fromDOMRectList(
                                     context,
-                                    createRange(node, subOffset + offset, subSegment.length).getClientRects()
-                                )
-                            )
+                                    createRange(node, subOffset + offset, subSegment.length).getClientRects(),
+                                ),
+                            ),
                         );
                         subOffset += subSegment.length;
                     });
@@ -98,7 +98,7 @@ let _reusableRange: Range | null = null;
 export const segmentGraphemes = (value: string): string[] => {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const segmenter = new (Intl as any).Segmenter(void 0, {granularity: 'grapheme'});
+        const segmenter = new (Intl as any).Segmenter(void 0, { granularity: 'grapheme' });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return Array.from(segmenter.segment(value)).map((segment: any) => segment.segment);
     }
@@ -110,7 +110,7 @@ const segmentWords = (value: string, styles: CSSParsedDeclaration): string[] => 
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const segmenter = new (Intl as any).Segmenter(void 0, {
-            granularity: 'word'
+            granularity: 'word',
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return Array.from(segmenter.segment(value)).map((segment: any) => segment.segment);
@@ -129,7 +129,7 @@ const wordSeparators = [0x0020, 0x00a0, 0x1361, 0x10100, 0x10101, 0x1039, 0x1091
 const breakWords = (str: string, styles: CSSParsedDeclaration): string[] => {
     const breaker = LineBreaker(str, {
         lineBreak: styles.lineBreak,
-        wordBreak: styles.overflowWrap === OVERFLOW_WRAP.BREAK_WORD ? 'break-word' : styles.wordBreak
+        wordBreak: styles.overflowWrap === OVERFLOW_WRAP.BREAK_WORD ? 'break-word' : styles.wordBreak,
     });
 
     const words = [];
@@ -140,7 +140,7 @@ const breakWords = (str: string, styles: CSSParsedDeclaration): string[] => {
             const value = bk.value.slice();
             const codePoints = toCodePoints(value);
             let word = '';
-            codePoints.forEach((codePoint) => {
+            codePoints.forEach(codePoint => {
                 if (wordSeparators.indexOf(codePoint) === -1) {
                     word += fromCodePoint(codePoint);
                 } else {

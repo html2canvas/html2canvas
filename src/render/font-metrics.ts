@@ -1,4 +1,4 @@
-import {SMALL_IMAGE} from '../core/util';
+import { SMALL_IMAGE } from '../core/util';
 export interface FontMetric {
     baseline: number;
     middle: number;
@@ -7,7 +7,7 @@ export interface FontMetric {
 const SAMPLE_TEXT = 'Hidden Text';
 
 export class FontMetrics {
-    private readonly _data: {[key: string]: FontMetric};
+    private readonly _data: { [key: string]: FontMetric };
     private readonly _document: Document;
     private readonly _baselineAdjustment: number;
 
@@ -61,7 +61,7 @@ export class FontMetrics {
 
         body.removeChild(container);
 
-        return {baseline, middle};
+        return { baseline, middle };
     }
     getMetrics(fontFamily: string, fontSize: string): FontMetric {
         const key = `${fontFamily} ${fontSize}`;
@@ -111,7 +111,7 @@ export class FontMetrics {
             const middle = img.offsetTop - container.offsetTop;
 
             body.removeChild(container);
-            this._data[key] = {baseline, middle};
+            this._data[key] = { baseline, middle };
         }
         return this._data[key];
     }

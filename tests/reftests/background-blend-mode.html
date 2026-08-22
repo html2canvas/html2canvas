@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS background-blend-mode</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../test.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #fff;
+        }
+        .box {
+            width: 140px;
+            height: 140px;
+            margin: 8px;
+            display: inline-block;
+            border-radius: 8px;
+            background-image: linear-gradient(to bottom, #000, #fff);
+            background-color: #3498db;
+        }
+        .label {
+            font-size: 11px;
+            color: #333;
+            margin-top: 4px;
+            display: block;
+        }
+        .item {
+            display: inline-block;
+            vertical-align: top;
+            margin: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: normal;"></div>
+    <span class="label">normal</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: multiply;"></div>
+    <span class="label">multiply</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: screen;"></div>
+    <span class="label">screen</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: overlay;"></div>
+    <span class="label">overlay</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: darken;"></div>
+    <span class="label">darken</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: lighten;"></div>
+    <span class="label">lighten</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: color-dodge;"></div>
+    <span class="label">color-dodge</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: color-burn;"></div>
+    <span class="label">color-burn</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: hard-light;"></div>
+    <span class="label">hard-light</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: soft-light;"></div>
+    <span class="label">soft-light</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: difference;"></div>
+    <span class="label">difference</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: exclusion;"></div>
+    <span class="label">exclusion</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: hue;"></div>
+    <span class="label">hue</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: saturation;"></div>
+    <span class="label">saturation</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: color;"></div>
+    <span class="label">color</span>
+</div>
+
+<div class="item">
+    <div class="box" style="background-blend-mode: luminosity;"></div>
+    <span class="label">luminosity</span>
+</div>
+
+</body>
+</html>

@@ -1,9 +1,9 @@
-import {CSSValue, isIdentToken} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {ITypeDescriptor} from '../ITypeDescriptor';
-import {HUNDRED_PERCENT, ZERO_LENGTH} from './length-percentage';
-import {GradientCorner} from './image';
-import {Context} from '../../core/context';
+import { CSSValue, isIdentToken } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { ITypeDescriptor } from '../ITypeDescriptor';
+import { HUNDRED_PERCENT, ZERO_LENGTH } from './length-percentage';
+import { GradientCorner } from './image';
+import { Context } from '../../core/context';
 
 const DEG = 'deg';
 const GRAD = 'grad';
@@ -27,7 +27,7 @@ export const angle: ITypeDescriptor<number> = {
         }
 
         throw new Error(`Unsupported angle type`);
-    }
+    },
 };
 
 export const isAngle = (value: CSSValue): boolean => {
@@ -42,7 +42,7 @@ export const isAngle = (value: CSSValue): boolean => {
 export const parseNamedSide = (tokens: CSSValue[]): number | GradientCorner => {
     const sideOrCorner = tokens
         .filter(isIdentToken)
-        .map((ident) => ident.value)
+        .map(ident => ident.value)
         .join(' ');
 
     switch (sideOrCorner) {

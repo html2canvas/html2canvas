@@ -1,12 +1,12 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 
 export const enum WRITING_MODE {
     HORIZONTAL_TB = 0,
     VERTICAL_RL = 1,
     VERTICAL_LR = 2,
     SIDEWAYS_RL = 3,
-    SIDEWAYS_LR = 4
+    SIDEWAYS_LR = 4,
 }
 
 export const writingMode: IPropertyIdentValueDescriptor<WRITING_MODE> = {
@@ -28,5 +28,5 @@ export const writingMode: IPropertyIdentValueDescriptor<WRITING_MODE> = {
             default:
                 return WRITING_MODE.HORIZONTAL_TB;
         }
-    }
+    },
 };

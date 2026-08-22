@@ -1,18 +1,18 @@
-import {Bounds} from '../css/layout/bounds';
-import {BACKGROUND_ORIGIN} from '../css/property-descriptors/background-origin';
-import {ElementContainer} from '../dom/element-container';
-import {BACKGROUND_SIZE, BackgroundSizeInfo} from '../css/property-descriptors/background-size';
-import {Vector} from './vector';
-import {BACKGROUND_REPEAT} from '../css/property-descriptors/background-repeat';
-import {getAbsoluteValue, getAbsoluteValueForTuple, isLengthPercentage} from '../css/types/length-percentage';
-import {CSSValue, isIdentToken} from '../css/syntax/parser';
-import {contentBox, paddingBox} from './box-sizing';
-import {Path} from './path';
-import {BACKGROUND_CLIP} from '../css/property-descriptors/background-clip';
+import { Bounds } from '../css/layout/bounds';
+import { BACKGROUND_CLIP } from '../css/property-descriptors/background-clip';
+import { BACKGROUND_ORIGIN } from '../css/property-descriptors/background-origin';
+import { BACKGROUND_REPEAT } from '../css/property-descriptors/background-repeat';
+import { BACKGROUND_SIZE, BackgroundSizeInfo } from '../css/property-descriptors/background-size';
+import { CSSValue, isIdentToken } from '../css/syntax/parser';
+import { getAbsoluteValue, getAbsoluteValueForTuple, isLengthPercentage } from '../css/types/length-percentage';
+import { ElementContainer } from '../dom/element-container';
+import { contentBox, paddingBox } from './box-sizing';
+import { Path } from './path';
+import { Vector } from './vector';
 
 export const calculateBackgroundPositioningArea = (
     backgroundOrigin: BACKGROUND_ORIGIN,
-    element: ElementContainer
+    element: ElementContainer,
 ): Bounds => {
     if (backgroundOrigin === BACKGROUND_ORIGIN.BORDER_BOX) {
         return element.bounds;
@@ -34,28 +34,34 @@ export const calculateBackgroundPaintingArea = (backgroundClip: BACKGROUND_CLIP,
         return contentBox(element);
     }
 
+    // For background-clip: text, use padding-box as the initial painting area.
+    // The actual text-shape clipping happens at render time via canvas compositing.
+    if (backgroundClip === BACKGROUND_CLIP.TEXT) {
+        return paddingBox(element);
+    }
+
     return paddingBox(element);
 };
 
 export const calculateBackgroundRendering = (
     container: ElementContainer,
     index: number,
-    intrinsicSize: [number | null, number | null, number | null]
+    intrinsicSize: [number | null, number | null, number | null],
 ): [Path[], number, number, number, number] => {
     const backgroundPositioningArea = calculateBackgroundPositioningArea(
         getBackgroundValueForIndex(container.styles.backgroundOrigin, index),
-        container
+        container,
     );
 
     const backgroundPaintingArea = calculateBackgroundPaintingArea(
         getBackgroundValueForIndex(container.styles.backgroundClip, index),
-        container
+        container,
     );
 
     const backgroundImageSize = calculateBackgroundSize(
         getBackgroundValueForIndex(container.styles.backgroundSize, index),
         intrinsicSize,
-        backgroundPositioningArea
+        backgroundPositioningArea,
     );
 
     let [sizeWidth, sizeHeight] = backgroundImageSize;
@@ -63,7 +69,7 @@ export const calculateBackgroundRendering = (
     const position = getAbsoluteValueForTuple(
         getBackgroundValueForIndex(container.styles.backgroundPosition, index),
         backgroundPositioningArea.width - sizeWidth,
-        backgroundPositioningArea.height - sizeHeight
+        backgroundPositioningArea.height - sizeHeight,
     );
 
     const path = calculateBackgroundRepeatPath(
@@ -71,7 +77,7 @@ export const calculateBackgroundRendering = (
         position,
         backgroundImageSize,
         backgroundPositioningArea,
-        backgroundPaintingArea
+        backgroundPaintingArea,
     );
 
     const offsetX = Math.round(backgroundPositioningArea.left + position[0]);
@@ -90,7 +96,7 @@ const hasIntrinsicValue = (value: number | null): value is number => typeof valu
 export const calculateBackgroundSize = (
     size: BackgroundSizeInfo[],
     [intrinsicWidth, intrinsicHeight, intrinsicProportion]: [number | null, number | null, number | null],
-    bounds: Bounds
+    bounds: Bounds,
 ): [number, number] => {
     const [first, second] = size;
 
@@ -224,7 +230,7 @@ export const calculateBackgroundRepeatPath = (
     [x, y]: [number, number],
     [width, height]: [number, number],
     backgroundPositioningArea: Bounds,
-    backgroundPaintingArea: Bounds
+    backgroundPaintingArea: Bounds,
 ): [Vector, Vector, Vector, Vector] => {
     switch (repeat) {
         case BACKGROUND_REPEAT.REPEAT_X:
@@ -232,67 +238,67 @@ export const calculateBackgroundRepeatPath = (
                 new Vector(Math.round(backgroundPositioningArea.left), Math.round(backgroundPositioningArea.top + y)),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width),
-                    Math.round(backgroundPositioningArea.top + y)
+                    Math.round(backgroundPositioningArea.top + y),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width),
-                    Math.round(height + backgroundPositioningArea.top + y)
+                    Math.round(height + backgroundPositioningArea.top + y),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left),
-                    Math.round(height + backgroundPositioningArea.top + y)
-                )
+                    Math.round(height + backgroundPositioningArea.top + y),
+                ),
             ];
         case BACKGROUND_REPEAT.REPEAT_Y:
             return [
                 new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top)),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x + width),
-                    Math.round(backgroundPositioningArea.top)
+                    Math.round(backgroundPositioningArea.top),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x + width),
-                    Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)
+                    Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x),
-                    Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)
-                )
+                    Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top),
+                ),
             ];
         case BACKGROUND_REPEAT.NO_REPEAT:
             return [
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x),
-                    Math.round(backgroundPositioningArea.top + y)
+                    Math.round(backgroundPositioningArea.top + y),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x + width),
-                    Math.round(backgroundPositioningArea.top + y)
+                    Math.round(backgroundPositioningArea.top + y),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x + width),
-                    Math.round(backgroundPositioningArea.top + y + height)
+                    Math.round(backgroundPositioningArea.top + y + height),
                 ),
                 new Vector(
                     Math.round(backgroundPositioningArea.left + x),
-                    Math.round(backgroundPositioningArea.top + y + height)
-                )
+                    Math.round(backgroundPositioningArea.top + y + height),
+                ),
             ];
         default:
             return [
                 new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.top)),
                 new Vector(
                     Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width),
-                    Math.round(backgroundPaintingArea.top)
+                    Math.round(backgroundPaintingArea.top),
                 ),
                 new Vector(
                     Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width),
-                    Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)
+                    Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top),
                 ),
                 new Vector(
                     Math.round(backgroundPaintingArea.left),
-                    Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)
-                )
+                    Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top),
+                ),
             ];
     }
 };
