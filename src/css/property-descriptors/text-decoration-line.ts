@@ -1,6 +1,6 @@
+import { Context } from '../../core/context';
 import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 import { CSSValue, isIdentToken } from '../syntax/parser';
-import { Context } from '../../core/context';
 
 export const enum TEXT_DECORATION_LINE {
     NONE = 0,
@@ -28,10 +28,12 @@ export const textDecorationLine: IPropertyListDescriptor<TextDecorationLine> = {
                         return TEXT_DECORATION_LINE.OVERLINE;
                     case 'line-through':
                         return TEXT_DECORATION_LINE.LINE_THROUGH;
-                    case 'none':
+                    case 'blink':
                         return TEXT_DECORATION_LINE.BLINK;
+                    case 'none':
+                    default:
+                        return TEXT_DECORATION_LINE.NONE;
                 }
-                return TEXT_DECORATION_LINE.NONE;
             })
             .filter(line => line !== TEXT_DECORATION_LINE.NONE);
     },

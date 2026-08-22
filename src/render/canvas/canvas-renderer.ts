@@ -416,32 +416,77 @@ export class CanvasRenderer extends Renderer {
                             break;
                         }
                         this.ctx.fillStyle = asString(styles.color);
-                        this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
+                            // Render each shadow manually: draw the text in the shadow colour
+                            // at the shadow offset on an isolated offscreen canvas, then apply
+                            // a CSS blur filter before compositing onto the main canvas.
+                            // This bypasses the Canvas shadow API entirely, which cannot handle
+                            // transparent text or multiple independent blur radii.
+                            const w = this.canvas.width;
+                            const h = this.canvas.height;
+                            const scale = this.options.scale;
+                            const ox = this.options.x;
+                            const oy = this.options.y;
+
                             textShadows
                                 .slice(0)
                                 .reverse()
                                 .forEach(textShadow => {
-                                    this.ctx.shadowColor = asString(textShadow.color);
-                                    this.ctx.shadowOffsetX = textShadow.offsetX.number * this.options.scale;
-                                    this.ctx.shadowOffsetY = textShadow.offsetY.number * this.options.scale;
-                                    this.ctx.shadowBlur = textShadow.blur.number;
+                                    const shadowCanvas = document.createElement('canvas');
+                                    shadowCanvas.width = w;
+                                    shadowCanvas.height = h;
+                                    const shadowCtx = shadowCanvas.getContext('2d') as CanvasRenderingContext2D;
+                                    shadowCtx.scale(scale, scale);
+                                    // Incorporate the shadow offset into the translate so the
+                                    // text is drawn at the correct position on the offscreen.
+                                    shadowCtx.translate(
+                                        -ox + textShadow.offsetX.number,
+                                        -oy + textShadow.offsetY.number,
+                                    );
+                                    shadowCtx.font = this.ctx.font;
+                                    shadowCtx.direction = this.ctx.direction;
+                                    shadowCtx.textAlign = this.ctx.textAlign;
+                                    shadowCtx.textBaseline = this.ctx.textBaseline;
+                                    shadowCtx.fillStyle = asString(textShadow.color);
 
+                                    const mainCtx = this.ctx;
+                                    this.ctx = shadowCtx;
                                     this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
+                                    this.ctx = mainCtx;
+
+                                    // Apply blur via ctx.filter on the main canvas drawImage call.
+                                    if (textShadow.blur.number > 0) {
+                                        this.ctx.save();
+                                        this.ctx.filter = `blur(${textShadow.blur.number / 2}px)`;
+                                    }
+                                    this.ctx.drawImage(shadowCanvas, 0, 0, w, h, ox, oy, w / scale, h / scale);
+                                    if (textShadow.blur.number > 0) {
+                                        this.ctx.restore();
+                                    }
                                 });
 
-                            this.ctx.shadowColor = '';
-                            this.ctx.shadowOffsetX = 0;
-                            this.ctx.shadowOffsetY = 0;
-                            this.ctx.shadowBlur = 0;
+                            // Draw the real text on top of all shadows.
+                            // Skipped for transparent text — shadows are the only visual.
+                            if (!isTransparent(styles.color)) {
+                                this.ctx.save();
+                                this.ctx.fillStyle = asString(styles.color);
+                                this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
+                                this.ctx.restore();
+                            }
+                        } else if (!isTransparent(styles.color)) {
+                            this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
                         }
 
                         if (styles.textDecorationLine.length) {
-                            this.ctx.fillStyle = asString(styles.textDecorationColor || styles.color);
+                            this.ctx.fillStyle = asString(
+                                isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor,
+                            );
                             styles.textDecorationLine.forEach(textDecorationLine => {
-                                // Fix the issue where textDecorationLine exhibits x-axis positioning errors on high-resolution devices due to varying devicePixelRatio, corrected by using relative values of element heights.
+                                // Fix the issue where textDecorationLine exhibits x-axis positioning errors on
+                                // high-resolution devices due to varying devicePixelRatio, corrected by using relative
+                                // values of element heights.
                                 const decorationLineHeight = 1;
                                 if (isVertical) {
                                     // In vertical writing modes underline/overline become vertical bars.
@@ -1227,9 +1272,6 @@ export class CanvasRenderer extends Renderer {
         let index = container.styles.backgroundImage.length - 1;
         for (const backgroundImage of container.styles.backgroundImage.slice(0).reverse()) {
             const blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
-            if (blendMode !== 'source-over') {
-                this.ctx.globalCompositeOperation = blendMode;
-            }
             if (backgroundImage.type === CSSImageType.URL) {
                 let image;
                 const url = (backgroundImage as CSSURLImage).url;
