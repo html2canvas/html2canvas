@@ -78,7 +78,28 @@ Below is a list of all the supported CSS properties and values.
 - text-shadow
 - text-transform
 - top
-- transform (**Limited support**)
+- transform
+    - matrix()
+    - matrix3d() (**3D components projected to 2D**)
+    - translate()
+    - translateX()
+    - translateY()
+    - translate3d() (**tz ignored**)
+    - translateZ() (**no-op in 2D**)
+    - scale()
+    - scaleX()
+    - scaleY()
+    - scale3d() (**sz ignored**)
+    - scaleZ() (**no-op in 2D**)
+    - rotate()
+    - rotateZ()
+    - rotateX() (**no-op in 2D**)
+    - rotateY() (**no-op in 2D**)
+    - rotate3d() (**only z-axis rotation maps to 2D**)
+    - skew()
+    - skewX()
+    - skewY()
+    - perspective() (**no-op in 2D**)
 - visibility
 - white-space
 - writing-mode (**Limited support**)
