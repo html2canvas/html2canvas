@@ -180,43 +180,17 @@ jobs:
               with:
                   name: dist
                   path: dist
-            - name: Create Github Release
-              id: create_release
-              uses: actions/create-release@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Create GitHub Release and upload assets
+              uses: softprops/action-gh-release@v2
               with:
-                  tag_name: ${{ github.ref }}
-                  release_name: ${{ github.ref }}
                   draft: false
                   prerelease: ${{ contains(github.ref, '-rc.') || contains(github.ref, '-alpha.') }}
-            - name: Upload html2canvas.js
-              uses: actions/upload-release-asset@v1
+                  files: |
+                      dist/html2canvas.js
+                      dist/html2canvas.min.js
+                      dist/html2canvas.esm.js
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: ./dist/html2canvas.js
-                  asset_name: html2canvas.js
-                  asset_content_type: text/javascript
-            - name: Upload html2canvas.min.js
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: ./dist/html2canvas.min.js
-                  asset_name: html2canvas.min.js
-                  asset_content_type: text/javascript
-            - name: Upload html2canvas.esm.js
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: ./dist/html2canvas.esm.js
-                  asset_name: html2canvas.esm.js
-                  asset_content_type: text/javascript
             - name: Unpack npm
               run: cd npm && tar -xvzf "html2canvas.tgz"
             - uses: actions/setup-node@v4
