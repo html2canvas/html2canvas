@@ -9,6 +9,10 @@ export const enum EffectType {
     OPACITY = 2,
     FILTER = 3,
     MIX_BLEND_MODE = 4,
+    PATH2D_CLIP = 5,
+    /** Overflow clip — same canvas behaviour as CLIP but kept separate so
+     *  _computeEffects() can filter overflow clips without discarding clip-path clips. */
+    OVERFLOW_CLIP = 6,
 }
 
 export const enum EffectTarget {
@@ -38,6 +42,17 @@ export class ClipEffect implements IElementEffect {
     constructor(
         readonly path: Path[],
         readonly target: EffectTarget,
+        readonly fillRule: CanvasFillRule = 'nonzero',
+    ) {}
+}
+
+/** Clip produced by overflow:hidden/scroll — distinct from clip-path ClipEffect. */
+export class OverflowClipEffect implements IElementEffect {
+    readonly type: EffectType = EffectType.OVERFLOW_CLIP;
+
+    constructor(
+        readonly path: Path[],
+        readonly target: EffectTarget,
     ) {}
 }
 
@@ -62,10 +77,24 @@ export class MixBlendModeEffect implements IElementEffect {
     constructor(readonly mixBlendMode: MIX_BLEND_MODE) {}
 }
 
+export class Path2DClipEffect implements IElementEffect {
+    readonly type: EffectType = EffectType.PATH2D_CLIP;
+
+    constructor(
+        readonly path2d: Path2D,
+        readonly target: EffectTarget,
+        readonly fillRule?: CanvasFillRule,
+    ) {}
+}
+
 export const isTransformEffect = (effect: IElementEffect): effect is TransformEffect =>
     effect.type === EffectType.TRANSFORM;
 export const isClipEffect = (effect: IElementEffect): effect is ClipEffect => effect.type === EffectType.CLIP;
+export const isOverflowClipEffect = (effect: IElementEffect): effect is OverflowClipEffect =>
+    effect.type === EffectType.OVERFLOW_CLIP;
 export const isOpacityEffect = (effect: IElementEffect): effect is OpacityEffect => effect.type === EffectType.OPACITY;
 export const isFilterEffect = (effect: IElementEffect): effect is FilterEffect => effect.type === EffectType.FILTER;
 export const isMixBlendModeEffect = (effect: IElementEffect): effect is MixBlendModeEffect =>
     effect.type === EffectType.MIX_BLEND_MODE;
+export const isPath2DClipEffect = (effect: IElementEffect): effect is Path2DClipEffect =>
+    effect.type === EffectType.PATH2D_CLIP;

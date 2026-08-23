@@ -64,6 +64,8 @@ import {
     isFilterEffect,
     isMixBlendModeEffect,
     isOpacityEffect,
+    isOverflowClipEffect,
+    isPath2DClipEffect,
     isTransformEffect,
 } from '../effects';
 import { FontMetrics } from '../font-metrics';
@@ -147,7 +149,16 @@ export class CanvasRenderer extends Renderer {
 
         if (isClipEffect(effect)) {
             this.path(effect.path);
+            this.ctx.clip(effect.fillRule);
+        }
+
+        if (isOverflowClipEffect(effect)) {
+            this.path(effect.path);
             this.ctx.clip();
+        }
+
+        if (isPath2DClipEffect(effect)) {
+            this.ctx.clip(effect.path2d, effect.fillRule ?? 'nonzero');
         }
 
         if (isFilterEffect(effect)) {
@@ -236,12 +247,24 @@ export class CanvasRenderer extends Renderer {
      * main canvas with the drop-shadow/blur filter applied. This prevents the filter
      * from being clipped by the element's own clip region.
      */
+    /**
+     * Renders a stacking context into an offscreen canvas, composites it onto the
+     * main canvas with the CSS filter applied.
+     *
+     * Note: when clip-path and filter are combined on the same element, the Canvas 2D
+     * API applies the clip before the filter (clip → render → filter). The CSS spec
+     * order would be render → filter → clip, which is not achievable with Canvas 2D
+     * clip primitives alone. This is a known Canvas 2D limitation.
+     */
     private async _renderStackWithOffscreenFilters(stack: StackingContext, filterString: string): Promise<void> {
-        // Save current canvas state
         const mainCanvas = this.canvas;
         const mainCtx = this.ctx;
 
-        // Create offscreen canvas with extra padding for blur/shadow overflow
+        // Detach the active effects array from the main canvas so that popEffect()
+        // calls during offscreen rendering don't call ctx.restore() on the wrong context.
+        const savedActiveEffects = this._activeEffects.splice(0);
+
+        // Offscreen canvas — same physical size, same transform as the main canvas.
         const offscreen = document.createElement('canvas');
         offscreen.width = mainCanvas.width;
         offscreen.height = mainCanvas.height;
@@ -250,21 +273,25 @@ export class CanvasRenderer extends Renderer {
         offCtx.translate(-this.options.x, -this.options.y);
         offCtx.textBaseline = 'bottom';
 
-        // Swap to offscreen canvas
         this.canvas = offscreen;
         this.ctx = offCtx;
-
-        // Render the stacking context content normally (without drop-shadow/blur in effects)
         await this.renderStackContent(stack);
 
-        // Restore main canvas
         this.canvas = mainCanvas;
         this.ctx = mainCtx;
+        this._activeEffects.push(...savedActiveEffects);
 
-        // Draw offscreen canvas onto main canvas with the filter
+        // Pop all active ancestor effects from the main ctx so we can use
+        // setTransform(identity) for the drawImage without misaligned clips.
+        // The next applyEffects() call will re-establish them for the next element.
+        const activeCount = this._activeEffects.length;
+        for (let i = 0; i < activeCount; i++) {
+            this.ctx.restore();
+        }
+        this._activeEffects.length = 0;
+
         this.ctx.save();
         this.ctx.filter = filterString;
-        // Reset transform to identity since offscreen canvas is already at the correct scale/position
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.drawImage(offscreen, 0, 0);
         this.ctx.restore();
@@ -498,7 +525,7 @@ export class CanvasRenderer extends Renderer {
                         const textShadows: TextShadow = styles.textShadow;
 
                         if (textShadows.length && text.text.trim().length) {
-                            // Render each shadow manually: draw the text in the shadow colour
+                            // Render each shadow manually: draw the text in the shadow color
                             // at the shadow offset on an isolated offscreen canvas, then apply
                             // a CSS blur filter before compositing onto the main canvas.
                             // This bypasses the Canvas shadow API entirely, which cannot handle
@@ -1328,6 +1355,9 @@ export class CanvasRenderer extends Renderer {
         let index = container.styles.backgroundImage.length - 1;
         for (const backgroundImage of container.styles.backgroundImage.slice(0).reverse()) {
             const blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
+            if (blendMode !== 'source-over') {
+                this.ctx.globalCompositeOperation = blendMode;
+            }
             if (backgroundImage.type === CSSImageType.URL) {
                 let image;
                 const url = (backgroundImage as CSSURLImage).url;

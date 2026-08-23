@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS clip-path — complex cases</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row {
+            margin-bottom: 30px;
+        }
+        .row-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #111;
+        }
+        .item {
+            display: inline-block;
+            vertical-align: top;
+            text-align: center;
+            margin-right: 20px;
+        }
+        .label {
+            font-size: 11px;
+            margin-top: 6px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── 1. clip-path on element with children (content must be clipped too) ── -->
+<div class="row">
+    <div class="row-title">clip-path clips children (not just background)</div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: circle(50%);">
+            <div style="width:80px; height:40px; background:#e74c3c; margin:20px auto;"></div>
+            <p style="margin:0; color:#fff; font-size:12px; text-align:center;">child text</p>
+        </div>
+        <div class="label">circle clips children</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#2ecc71; clip-path: polygon(50% 0%, 100% 100%, 0% 100%);">
+            <div style="width:60px; height:60px; background:#e74c3c; margin:50px auto 0;"></div>
+            <span style="color:#fff; font-size:12px;">text inside</span>
+        </div>
+        <div class="label">triangle clips children</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#9b59b6; clip-path: inset(20px round 30px);">
+            <div style="width:100px; height:100px; background:#f39c12; margin:25px auto;"></div>
+        </div>
+        <div class="label">inset+round clips children</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#e67e22; clip-path: ellipse(45% 35% at 50% 50%);">
+            <span style="color:#fff; font-size:13px; line-height:150px; display:block; text-align:center;">clipped text</span>
+        </div>
+        <div class="label">ellipse clips text</div>
+    </div>
+</div>
+
+<!-- ── 2. clip-path + overflow:hidden stacking ── -->
+<div class="row">
+    <div class="row-title">clip-path + overflow:hidden (both applied)</div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; overflow:hidden; clip-path: circle(50%);">
+            <div style="width:250px; height:250px; background: linear-gradient(135deg,#e74c3c,#3498db);"></div>
+        </div>
+        <div class="label">overflow:hidden + circle</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; overflow:hidden; clip-path: polygon(50% 0%,100% 100%,0% 100%);">
+            <div style="width:300px; height:200px; background: linear-gradient(45deg,#2ecc71,#f39c12);"></div>
+        </div>
+        <div class="label">overflow:hidden + triangle</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; overflow:hidden; clip-path: inset(10px round 20px);">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%239b59b6'/%3E%3Ccircle cx='75' cy='75' r='60' fill='%23f39c12'/%3E%3C/svg%3E" width="200" height="200">
+        </div>
+        <div class="label">overflow:hidden + inset round</div>
+    </div>
+</div>
+
+<!-- ── 3. Nested clip-path elements ── -->
+<div class="row">
+    <div class="row-title">Nested clip-path (parent clips, then child clips further)</div>
+
+    <div class="item">
+        <!-- outer: circle, inner: inset -->
+        <div style="width:160px; height:160px; background:#ecf0f1; clip-path: circle(48%);">
+            <div style="margin:30px; width:100px; height:100px; background:#e74c3c; clip-path: inset(10px);"></div>
+        </div>
+        <div class="label">circle > inset</div>
+    </div>
+
+    <div class="item">
+        <!-- outer: inset rounded, inner: circle -->
+        <div style="width:160px; height:160px; background:#ecf0f1; clip-path: inset(0 round 40px);">
+            <div style="margin:20px; width:120px; height:120px; background:#3498db; clip-path: circle(50%);"></div>
+        </div>
+        <div class="label">inset round > circle</div>
+    </div>
+
+    <div class="item">
+        <!-- outer: polygon (diamond), inner: polygon (triangle) -->
+        <div style="width:160px; height:160px; background:#2ecc71; clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%);">
+            <div style="margin:30px; width:100px; height:100px; background:#f39c12; clip-path: polygon(50% 0%,100% 100%,0% 100%);"></div>
+        </div>
+        <div class="label">diamond > triangle</div>
+    </div>
+
+    <div class="item">
+        <!-- 3 levels deep -->
+        <div style="width:160px; height:160px; background:#e74c3c; clip-path: circle(48%);">
+            <div style="margin:20px; width:120px; height:120px; background:#9b59b6; clip-path: inset(0 round 20px);">
+                <div style="margin:15px; width:90px; height:90px; background:#f1c40f; clip-path: polygon(50% 0%,100% 100%,0% 100%);"></div>
+            </div>
+        </div>
+        <div class="label">3 levels deep</div>
+    </div>
+</div>
+
+<!-- ── 4. clip-path on positioned elements ── -->
+<div class="row">
+    <div class="row-title">clip-path on positioned elements (absolute/fixed/relative)</div>
+
+    <div class="item" style="position:relative; width:160px; height:160px;">
+        <div style="position:absolute; inset:0; background:#1abc9c; clip-path: circle(40%);"></div>
+        <div style="position:absolute; top:0; left:0; width:160px; font-size:11px; color:#333; margin-top:170px;">position:absolute</div>
+    </div>
+
+    <div class="item" style="display:inline-block; width:160px; height:160px; position:relative;">
+        <div style="position:relative; width:160px; height:160px; background:#e67e22; clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%);"></div>
+        <div class="label">position:relative</div>
+    </div>
+
+    <div class="item" style="display:inline-block; width:160px; height:160px;">
+        <div style="width:160px; height:160px; background:#8e44ad; clip-path: inset(10px round 30px); z-index:1; position:relative;">
+            <span style="color:#fff; font-size:12px; padding:10px; display:block;">z-index + clip-path</span>
+        </div>
+        <div class="label">z-index + inset</div>
+    </div>
+</div>
+
+<!-- ── 5. clip-path with transform ── -->
+<div class="row">
+    <div class="row-title">clip-path + transform</div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: circle(45%); transform: rotate(0deg);"></div>
+        <div class="label">circle (no rotation)</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#e74c3c; clip-path: polygon(50% 0%,100% 100%,0% 100%); transform: rotate(45deg); margin:20px;"></div>
+        <div class="label">triangle + rotate(45deg)</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#2ecc71; clip-path: inset(10px round 20px); transform: scale(0.8);"></div>
+        <div class="label">inset + scale(0.8)</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#9b59b6; clip-path: ellipse(45% 35%); transform: skewX(10deg);"></div>
+        <div class="label">ellipse + skewX(10deg)</div>
+    </div>
+</div>
+
+<!-- ── 6. clip-path with opacity and filter ── -->
+<div class="row">
+    <div class="row-title">clip-path + opacity / filter <small style="font-weight:normal;color:#888">(note: clip-path+filter order differs from CSS spec due to Canvas 2D limitations)</small></div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#e74c3c; clip-path: circle(45%); opacity:0.5;"></div>
+        <div class="label">circle + opacity:0.5</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: polygon(50% 0%,100% 100%,0% 100%); filter: blur(2px);"></div>
+        <div class="label">triangle + blur(2px)<br><small>(Canvas 2D: clip applied before blur)</small></div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#2ecc71; clip-path: inset(10px round 15px); filter: grayscale(100%);"></div>
+        <div class="label">inset + grayscale</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#f39c12; clip-path: ellipse(45% 35%); opacity:0.7; filter: brightness(1.3);"></div>
+        <div class="label">ellipse + opacity + brightness</div>
+    </div>
+</div>
+
+<!-- ── 7. clip-path with text (background-clip:text interaction) ── -->
+<div class="row">
+    <div class="row-title">clip-path with text content</div>
+
+    <div class="item">
+        <div style="width:200px; height:80px; background:#e74c3c; clip-path: inset(0 round 15px); display:flex; align-items:center; justify-content:center;">
+            <span style="color:#fff; font-size:16px; font-weight:bold;">Rounded inset</span>
+        </div>
+        <div class="label">text in rounded inset</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: circle(48%); display:flex; align-items:center; justify-content:center; flex-direction:column;">
+            <span style="color:#fff; font-weight:bold;">Line 1</span>
+            <span style="color:#fff;">Line 2</span>
+            <span style="color:#ffe;">Line 3</span>
+        </div>
+        <div class="label">multiline text in circle</div>
+    </div>
+
+    <div class="item">
+        <div style="width:180px; height:100px; background:#9b59b6; clip-path: polygon(0% 0%, 80% 0%, 100% 50%, 80% 100%, 0% 100%); padding:15px;">
+            <span style="color:#fff; font-size:13px;">Arrow shape text that overflows the clip region horizontally.</span>
+        </div>
+        <div class="label">text in arrow polygon</div>
+    </div>
+</div>
+
+<!-- ── 8. clip-path on images ── -->
+<div class="row">
+    <div class="row-title">clip-path on replaced elements (images)</div>
+
+    <div class="item">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%233498db'/%3E%3Ccircle cx='75' cy='75' r='60' fill='%23e74c3c'/%3E%3Ctext x='75' y='80' text-anchor='middle' fill='white' font-size='20'%3EIMG%3C/text%3E%3C/svg%3E"
+             width="150" height="150" style="clip-path: circle(45%); display:block;">
+        <div class="label">image + circle</div>
+    </div>
+
+    <div class="item">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%232ecc71'/%3E%3Ccircle cx='75' cy='75' r='60' fill='%23f39c12'/%3E%3Ctext x='75' y='80' text-anchor='middle' fill='white' font-size='20'%3EIMG%3C/text%3E%3C/svg%3E"
+             width="150" height="150" style="clip-path: polygon(50% 0%,100% 100%,0% 100%); display:block;">
+        <div class="label">image + triangle</div>
+    </div>
+
+    <div class="item">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%239b59b6'/%3E%3Crect x='20' y='20' width='110' height='110' fill='%23e74c3c'/%3E%3Ctext x='75' y='80' text-anchor='middle' fill='white' font-size='20'%3EIMG%3C/text%3E%3C/svg%3E"
+             width="150" height="150" style="clip-path: inset(10px round 25px); display:block;">
+        <div class="label">image + inset round</div>
+    </div>
+</div>
+
+<!-- ── 9. clip-path with box-shadow ── -->
+<div class="row">
+    <div class="row-title">clip-path + box-shadow (shadow should be clipped)</div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: circle(45%); box-shadow: 10px 10px 20px rgba(0,0,0,0.5); margin:20px;"></div>
+        <div class="label">circle + box-shadow</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#e74c3c; clip-path: polygon(50% 0%,100% 100%,0% 100%); box-shadow: 0 0 15px blue; margin:20px;"></div>
+        <div class="label">triangle + box-shadow</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#2ecc71; clip-path: inset(5px round 20px); box-shadow: inset 0 0 15px rgba(0,0,0,0.4);"></div>
+        <div class="label">inset round + inset shadow</div>
+    </div>
+</div>
+
+<!-- ── 10. clip-path edge cases ── -->
+<div class="row">
+    <div class="row-title">Edge cases</div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#e74c3c; clip-path: inset(50%);"></div>
+        <div class="label">inset(50%) — fully clipped</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#3498db; clip-path: circle(0%);"></div>
+        <div class="label">circle(0%) — invisible</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#2ecc71; clip-path: inset(0px);"></div>
+        <div class="label">inset(0px) — no clip</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:#9b59b6; clip-path: polygon(50% 50%, 50% 50%, 50% 50%);"></div>
+        <div class="label">degenerate polygon</div>
+    </div>
+
+    <div class="item">
+        <div style="width:150px; height:150px; background:none; border: 4px solid #e74c3c; clip-path: circle(45%);"></div>
+        <div class="label">border only, no bg</div>
+    </div>
+</div>
+
+</body>
+</html>

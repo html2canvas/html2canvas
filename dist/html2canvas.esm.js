@@ -9637,6 +9637,293 @@ var boxShadow = {
     },
 };
 
+/**
+ * Deprecated CSS `clip` property — only `rect()` values are supported.
+ * Syntax: clip: rect(<top>, <right>, <bottom>, <left>)
+ * Applies to any positioned element (CSS spec says absolute/fixed, but browsers
+ * also apply it to position:relative).
+ */
+var NO_CLIP = null;
+var clip = {
+    name: 'clip',
+    initialValue: 'auto',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        var filtered = tokens.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+        if (filtered.length === 0) {
+            return NO_CLIP;
+        }
+        // auto keyword — no clipping
+        if (filtered.length === 1 && filtered[0].type === 20 /* TokenType.IDENT_TOKEN */) {
+            var val = filtered[0].value.toLowerCase();
+            if (val === 'auto') {
+                return NO_CLIP;
+            }
+        }
+        // rect() function
+        if (filtered.length === 1 && filtered[0].type === 18 /* TokenType.FUNCTION */) {
+            var fn = filtered[0];
+            if (fn.name.toLowerCase() === 'rect') {
+                return parseRect(fn.values);
+            }
+        }
+        return NO_CLIP;
+    },
+};
+/**
+ * Parse rect(<top>, <right>, <bottom>, <left>).
+ * Comma-separated or space-separated, each value is a length or `auto`.
+ * `auto` for top/left → 0 (start edge); `auto` for right → 100% width; `auto` for bottom → 100% height.
+ * We store positional index so the resolver in stacking-context can pick the right sentinel.
+ */
+var parseRect = function (values) {
+    var lengths = [];
+    for (var _i = 0, values_1 = values; _i < values_1.length; _i++) {
+        var token = values_1[_i];
+        if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */ || token.type === 4 /* TokenType.COMMA_TOKEN */) {
+            continue;
+        }
+        if (isLengthPercentage(token)) {
+            lengths.push(token);
+        }
+        else if (token.type === 20 /* TokenType.IDENT_TOKEN */ &&
+            token.value.toLowerCase() === 'auto') {
+            // Use a sentinel: 100% for right (index 1) and bottom (index 2), 0 for top/left.
+            // We don't know the index here yet, so push a placeholder and fix below.
+            lengths.push(null); // placeholder for auto
+        }
+    }
+    if (lengths.length !== 4) {
+        return null;
+    }
+    // Resolve `auto` per position:
+    // index 0 = top    → auto means 0 (top edge)
+    // index 1 = right  → auto means 100% of width (right edge of element)
+    // index 2 = bottom → auto means 100% of height (bottom edge of element)
+    // index 3 = left   → auto means 0 (left edge)
+    var autoValues = [ZERO_LENGTH, HUNDRED_PERCENT, HUNDRED_PERCENT, ZERO_LENGTH];
+    var resolved = lengths.map(function (v, i) { return (v === null ? autoValues[i] : v); });
+    return {
+        top: resolved[0],
+        right: resolved[1],
+        bottom: resolved[2],
+        left: resolved[3],
+    };
+};
+
+var NONE_CLIP_PATH = { type: 0 /* ClipPathType.NONE */ };
+// ---------------------------------------------------------------------------
+// Property descriptor
+// ---------------------------------------------------------------------------
+var clipPath = {
+    name: 'clip-path',
+    initialValue: 'none',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        // Filter whitespace for easier iteration
+        var filtered = tokens.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+        if (filtered.length === 0) {
+            return NONE_CLIP_PATH;
+        }
+        // none
+        if (filtered.length === 1 && isIdentWithValue(filtered[0], 'none')) {
+            return NONE_CLIP_PATH;
+        }
+        // Expect a CSS function token (inset, circle, ellipse, polygon, path)
+        var token = filtered[0];
+        if (token.type === 18 /* TokenType.FUNCTION */) {
+            return parseClipPathFunction(token);
+        }
+        return NONE_CLIP_PATH;
+    },
+};
+// ---------------------------------------------------------------------------
+// Function parsers
+// ---------------------------------------------------------------------------
+var parseClipPathFunction = function (fn) {
+    var name = fn.name.toLowerCase();
+    switch (name) {
+        case 'inset':
+            return parseInset(fn.values);
+        case 'circle':
+            return parseCircle(fn.values);
+        case 'ellipse':
+            return parseEllipse(fn.values);
+        case 'polygon':
+            return parsePolygon(fn.values);
+        case 'path':
+            return parsePath(fn.values);
+        default:
+            return NONE_CLIP_PATH;
+    }
+};
+// ---------------------------------------------------------------------------
+// inset()
+// ---------------------------------------------------------------------------
+var parseInset = function (values) {
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    var lengths = [];
+    var roundIndex = -1;
+    for (var i = 0; i < tokens.length; i++) {
+        var t = tokens[i];
+        if (isLengthPercentage(t)) {
+            lengths.push(t);
+        }
+        else if (t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'round') {
+            roundIndex = i + 1; // tokens after this index are the border-radius values
+            break;
+        }
+    }
+    // CSS short-hand expansion: 1→all, 2→TB/RL, 3→T/RL/B, 4→T/R/B/L
+    var _a = expandSides(lengths), top = _a[0], right = _a[1], bottom = _a[2], left = _a[3];
+    // Parse optional border-radius after `round`
+    var radii = roundIndex >= 0 ? parseInsetRadii(tokens.slice(roundIndex)) : [];
+    return { type: 1 /* ClipPathType.INSET */, top: top, right: right, bottom: bottom, left: left, radii: radii };
+};
+/**
+ * Expand 1–4 length values to [top, right, bottom, left] following CSS shorthand rules.
+ */
+var expandSides = function (values) {
+    var z = ZERO_LENGTH;
+    switch (values.length) {
+        case 0: return [z, z, z, z];
+        case 1: return [values[0], values[0], values[0], values[0]];
+        case 2: return [values[0], values[1], values[0], values[1]];
+        case 3: return [values[0], values[1], values[2], values[1]];
+        default: return [values[0], values[1], values[2], values[3]];
+    }
+};
+/**
+ * Parse border-radius specification after `round` keyword.
+ * Syntax: <length-percentage>{1,4} [ / <length-percentage>{1,4} ]?
+ * Returns an array of 4 [h, v] pairs in [TL, TR, BR, BL] order.
+ */
+var parseInsetRadii = function (tokens) {
+    // Split on '/' delimiter
+    var slashIndex = tokens.findIndex(function (t) { return t.type === 6 /* TokenType.DELIM_TOKEN */ && t.value === '/'; });
+    var hTokens = tokens
+        .slice(0, slashIndex < 0 ? tokens.length : slashIndex)
+        .filter(isLengthPercentage);
+    var vTokens = slashIndex >= 0
+        ? tokens.slice(slashIndex + 1).filter(isLengthPercentage)
+        : [];
+    var hSides = expandSides(hTokens);
+    var vSides = vTokens.length > 0 ? expandSides(vTokens) : hSides;
+    return [
+        [hSides[0], vSides[0]],
+        [hSides[1], vSides[1]],
+        [hSides[2], vSides[2]],
+        [hSides[3], vSides[3]],
+    ];
+};
+// ---------------------------------------------------------------------------
+// circle()
+// ---------------------------------------------------------------------------
+var parseCircle = function (values) {
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    // Default: r=50%, center=50% 50%
+    var radius = FIFTY_PERCENT;
+    var cx = FIFTY_PERCENT;
+    var cy = FIFTY_PERCENT;
+    // Find `at` keyword position
+    var atIndex = tokens.findIndex(function (t) { return t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'at'; });
+    var radiusTokens = atIndex >= 0 ? tokens.slice(0, atIndex) : tokens;
+    var positionTokens = atIndex >= 0 ? tokens.slice(atIndex + 1) : [];
+    // Parse radius (may be a keyword like `closest-side`/`farthest-side` — treat as 50%)
+    var rToken = radiusTokens.find(isLengthPercentage);
+    if (rToken) {
+        radius = rToken;
+    }
+    // Parse center position
+    var posLengths = positionTokens.filter(isLengthPercentage);
+    if (posLengths.length >= 1)
+        cx = posLengths[0];
+    if (posLengths.length >= 2)
+        cy = posLengths[1];
+    return { type: 2 /* ClipPathType.CIRCLE */, radius: radius, cx: cx, cy: cy };
+};
+// ---------------------------------------------------------------------------
+// ellipse()
+// ---------------------------------------------------------------------------
+var parseEllipse = function (values) {
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    var rx = FIFTY_PERCENT;
+    var ry = FIFTY_PERCENT;
+    var cx = FIFTY_PERCENT;
+    var cy = FIFTY_PERCENT;
+    var atIndex = tokens.findIndex(function (t) { return t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'at'; });
+    var sizeTokens = atIndex >= 0 ? tokens.slice(0, atIndex) : tokens;
+    var positionTokens = atIndex >= 0 ? tokens.slice(atIndex + 1) : [];
+    var sizeLengths = sizeTokens.filter(isLengthPercentage);
+    if (sizeLengths.length >= 1)
+        rx = sizeLengths[0];
+    if (sizeLengths.length >= 2)
+        ry = sizeLengths[1];
+    var posLengths = positionTokens.filter(isLengthPercentage);
+    if (posLengths.length >= 1)
+        cx = posLengths[0];
+    if (posLengths.length >= 2)
+        cy = posLengths[1];
+    return { type: 3 /* ClipPathType.ELLIPSE */, rx: rx, ry: ry, cx: cx, cy: cy };
+};
+// ---------------------------------------------------------------------------
+// polygon()
+// ---------------------------------------------------------------------------
+var parsePolygon = function (values) {
+    var fillRule = 'nonzero';
+    var points = [];
+    // Split the flat token list into comma-separated groups
+    var groups = [[]];
+    for (var _i = 0, values_1 = values; _i < values_1.length; _i++) {
+        var token = values_1[_i];
+        if (token.type === 4 /* TokenType.COMMA_TOKEN */) {
+            groups.push([]);
+        }
+        else {
+            groups[groups.length - 1].push(token);
+        }
+    }
+    for (var _a = 0, groups_1 = groups; _a < groups_1.length; _a++) {
+        var group = groups_1[_a];
+        var nonWs = group.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+        if (nonWs.length === 0)
+            continue;
+        // First group may start with fill-rule ident
+        if (nonWs.length === 1 && nonWs[0].type === 20 /* TokenType.IDENT_TOKEN */) {
+            var val = nonWs[0].value.toLowerCase();
+            if (val === 'evenodd') {
+                fillRule = 'evenodd';
+                continue;
+            }
+            else if (val === 'nonzero') {
+                fillRule = 'nonzero';
+                continue;
+            }
+        }
+        var lengths = nonWs.filter(isLengthPercentage);
+        if (lengths.length >= 2) {
+            points.push([lengths[0], lengths[1]]);
+        }
+    }
+    return { type: 4 /* ClipPathType.POLYGON */, points: points, fillRule: fillRule };
+};
+// ---------------------------------------------------------------------------
+// path()
+// ---------------------------------------------------------------------------
+var parsePath = function (values) {
+    // path() contains a string token with the SVG path data
+    for (var _i = 0, values_2 = values; _i < values_2.length; _i++) {
+        var token = values_2[_i];
+        if (token.type === 0 /* TokenType.STRING_TOKEN */) {
+            var d = token.value;
+            return { type: 5 /* ClipPathType.PATH */, d: d };
+        }
+    }
+    return NONE_CLIP_PATH;
+};
+
 var color = {
     name: "color",
     initialValue: 'transparent',
@@ -11064,6 +11351,8 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
         this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
         this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
+        this.clip = parse(context, clip, declaration.clip);
+        this.clipPath = parse(context, clipPath, declaration.clipPath);
         this.color = parse(context, color, declaration.color);
         this.direction = parse(context, direction, declaration.direction);
         this.display = parse(context, display, declaration.display);
@@ -14376,12 +14665,23 @@ var TransformEffect = /** @class */ (function () {
     return TransformEffect;
 }());
 var ClipEffect = /** @class */ (function () {
-    function ClipEffect(path, target) {
+    function ClipEffect(path, target, fillRule) {
+        if (fillRule === void 0) { fillRule = 'nonzero'; }
         this.path = path;
         this.target = target;
+        this.fillRule = fillRule;
         this.type = 1 /* EffectType.CLIP */;
     }
     return ClipEffect;
+}());
+/** Clip produced by overflow:hidden/scroll — distinct from clip-path ClipEffect. */
+var OverflowClipEffect = /** @class */ (function () {
+    function OverflowClipEffect(path, target) {
+        this.path = path;
+        this.target = target;
+        this.type = 6 /* EffectType.OVERFLOW_CLIP */;
+    }
+    return OverflowClipEffect;
 }());
 var OpacityEffect = /** @class */ (function () {
     function OpacityEffect(opacity) {
@@ -14407,14 +14707,29 @@ var MixBlendModeEffect = /** @class */ (function () {
     }
     return MixBlendModeEffect;
 }());
+var Path2DClipEffect = /** @class */ (function () {
+    function Path2DClipEffect(path2d, target, fillRule) {
+        this.path2d = path2d;
+        this.target = target;
+        this.fillRule = fillRule;
+        this.type = 5 /* EffectType.PATH2D_CLIP */;
+    }
+    return Path2DClipEffect;
+}());
 var isTransformEffect = function (effect) {
     return effect.type === 0 /* EffectType.TRANSFORM */;
 };
 var isClipEffect = function (effect) { return effect.type === 1 /* EffectType.CLIP */; };
+var isOverflowClipEffect = function (effect) {
+    return effect.type === 6 /* EffectType.OVERFLOW_CLIP */;
+};
 var isOpacityEffect = function (effect) { return effect.type === 2 /* EffectType.OPACITY */; };
 var isFilterEffect = function (effect) { return effect.type === 3 /* EffectType.FILTER */; };
 var isMixBlendModeEffect = function (effect) {
     return effect.type === 4 /* EffectType.MIX_BLEND_MODE */;
+};
+var isPath2DClipEffect = function (effect) {
+    return effect.type === 5 /* EffectType.PATH2D_CLIP */;
 };
 
 var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -14615,6 +14930,239 @@ var Renderer = /** @class */ (function () {
     return Renderer;
 }());
 
+/**
+ * clip-path-effect.ts
+ *
+ * Converts a parsed CSSClipPath value into the Path[] arrays (Vector / BezierCurve)
+ * expected by ClipEffect / CanvasRenderer.path().
+ *
+ * For the `path()` function the SVG path string is returned separately so the
+ * renderer can apply it via Path2D (which the canvas API accepts natively).
+ */
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+/**
+ * Build a clip shape from a parsed CSSClipPath and the element's bounding box.
+ *
+ * @param clipPath  - the parsed clip-path value
+ * @param bounds    - the element's border-box in page coordinates
+ * @returns  a ClipPathResult, or null when the clip-path is `none` / unsupported
+ */
+var buildClipPath = function (clipPath, bounds) {
+    switch (clipPath.type) {
+        case 0 /* ClipPathType.NONE */:
+            return null;
+        case 1 /* ClipPathType.INSET */:
+            return { kind: 'path', paths: buildInsetPath(clipPath, bounds) };
+        case 2 /* ClipPathType.CIRCLE */:
+            return { kind: 'path', paths: buildCirclePath(clipPath, bounds) };
+        case 3 /* ClipPathType.ELLIPSE */:
+            return { kind: 'path', paths: buildEllipsePath(clipPath, bounds) };
+        case 4 /* ClipPathType.POLYGON */:
+            return {
+                kind: 'path',
+                paths: buildPolygonPath(clipPath, bounds),
+                fillRule: clipPath.fillRule,
+            };
+        case 5 /* ClipPathType.PATH */:
+            return buildPath2D(clipPath, bounds);
+    }
+};
+// ---------------------------------------------------------------------------
+// Bézier circle/ellipse approximation helpers
+// ---------------------------------------------------------------------------
+/** κ constant for cubic Bézier approximation of a quarter circle arc. */
+var KAPPA = 4 * ((Math.sqrt(2) - 1) / 3);
+/**
+ * Approximate a full ellipse with 4 cubic Bézier curves in clockwise order.
+ * The returned Path[] contains 4 BezierCurve segments (one per quadrant).
+ *
+ * @param cx  - centre x (page coordinates)
+ * @param cy  - centre y (page coordinates)
+ * @param rx  - horizontal radius
+ * @param ry  - vertical radius
+ */
+var buildEllipsePaths = function (cx, cy, rx, ry) {
+    var ox = rx * KAPPA; // control-point offset horizontal
+    var oy = ry * KAPPA; // control-point offset vertical
+    // 4 quadrant Bézier curves drawn clockwise from top-centre:
+    // Q1: top   → right
+    // Q2: right → bottom
+    // Q3: bottom→ left
+    // Q4: left  → top
+    return [
+        new BezierCurve(new Vector(cx, cy - ry), // start: top centre
+        new Vector(cx + ox, cy - ry), // ctrl1
+        new Vector(cx + rx, cy - oy), // ctrl2
+        new Vector(cx + rx, cy)),
+        new BezierCurve(new Vector(cx + rx, cy), // start: right centre
+        new Vector(cx + rx, cy + oy), // ctrl1
+        new Vector(cx + ox, cy + ry), // ctrl2
+        new Vector(cx, cy + ry)),
+        new BezierCurve(new Vector(cx, cy + ry), // start: bottom centre
+        new Vector(cx - ox, cy + ry), // ctrl1
+        new Vector(cx - rx, cy + oy), // ctrl2
+        new Vector(cx - rx, cy)),
+        new BezierCurve(new Vector(cx - rx, cy), // start: left centre
+        new Vector(cx - rx, cy - oy), // ctrl1
+        new Vector(cx - ox, cy - ry), // ctrl2
+        new Vector(cx, cy - ry)),
+    ];
+};
+// ---------------------------------------------------------------------------
+// inset()
+// ---------------------------------------------------------------------------
+/**
+ * Build a rectangular clip path (with optional rounded corners) for inset().
+ *
+ * Each corner is represented as a BezierCurve if radii > 0, or a Vector otherwise.
+ * The order is [TL, TR, BR, BL] matching calculateBorderBoxPath().
+ */
+var buildInsetPath = function (clip, bounds) {
+    var bLeft = bounds.left, bTop = bounds.top, bWidth = bounds.width, bHeight = bounds.height;
+    var topVal = getAbsoluteValue(clip.top, bHeight);
+    var rightVal = getAbsoluteValue(clip.right, bWidth);
+    var bottomVal = getAbsoluteValue(clip.bottom, bHeight);
+    var leftVal = getAbsoluteValue(clip.left, bWidth);
+    // Inset rectangle corners
+    var x0 = bLeft + leftVal;
+    var y0 = bTop + topVal;
+    var x1 = bLeft + bWidth - rightVal;
+    var y1 = bTop + bHeight - bottomVal;
+    var w = x1 - x0;
+    var h = y1 - y0;
+    if (w <= 0 || h <= 0) {
+        // Collapsed — return a degenerate path that clips everything
+        var mid = new Vector(x0, y0);
+        return [mid, mid, mid, mid];
+    }
+    if (clip.radii.length === 0) {
+        // Sharp rectangle
+        return [
+            new Vector(x0, y0),
+            new Vector(x1, y0),
+            new Vector(x1, y1),
+            new Vector(x0, y1),
+        ];
+    }
+    // Resolve radii — 4 entries [TL, TR, BR, BL] of [h, v] pairs
+    // If fewer than 4 entries were parsed, fall back to zero.
+    var getR = function (index) {
+        if (index < clip.radii.length) {
+            return [
+                getAbsoluteValue(clip.radii[index][0], w),
+                getAbsoluteValue(clip.radii[index][1], h),
+            ];
+        }
+        return [0, 0];
+    };
+    var _a = getR(0), tlH = _a[0], tlV = _a[1];
+    var _b = getR(1), trH = _b[0], trV = _b[1];
+    var _c = getR(2), brH = _c[0], brV = _c[1];
+    var _d = getR(3), blH = _d[0], blV = _d[1];
+    // Clamp overlapping radii (CSS spec §4.3)
+    var factors = [
+        (tlH + trH) / w,
+        (blH + brH) / w,
+        (tlV + blV) / h,
+        (trV + brV) / h,
+    ];
+    var maxFactor = Math.max.apply(Math, factors);
+    if (maxFactor > 1) {
+        tlH /= maxFactor;
+        tlV /= maxFactor;
+        trH /= maxFactor;
+        trV /= maxFactor;
+        brH /= maxFactor;
+        brV /= maxFactor;
+        blH /= maxFactor;
+        blV /= maxFactor;
+    }
+    // Build corner Bézier curves using the same getCurvePoints logic as BoundCurves
+    var kappa = KAPPA;
+    // TOP-LEFT corner: starts at (x0, y0+tlV), ends at (x0+tlH, y0)
+    var topLeft = (tlH > 0 || tlV > 0)
+        ? new BezierCurve(new Vector(x0, y0 + tlV), new Vector(x0, y0 + tlV - tlV * kappa), new Vector(x0 + tlH - tlH * kappa, y0), new Vector(x0 + tlH, y0))
+        : new Vector(x0, y0);
+    // TOP-RIGHT corner: starts at (x1-trH, y0), ends at (x1, y0+trV)
+    var topRight = (trH > 0 || trV > 0)
+        ? new BezierCurve(new Vector(x1 - trH, y0), new Vector(x1 - trH + trH * kappa, y0), new Vector(x1, y0 + trV - trV * kappa), new Vector(x1, y0 + trV))
+        : new Vector(x1, y0);
+    // BOTTOM-RIGHT corner: starts at (x1, y1-brV), ends at (x1-brH, y1)
+    var bottomRight = (brH > 0 || brV > 0)
+        ? new BezierCurve(new Vector(x1, y1 - brV), new Vector(x1, y1 - brV + brV * kappa), new Vector(x1 - brH + brH * kappa, y1), new Vector(x1 - brH, y1))
+        : new Vector(x1, y1);
+    // BOTTOM-LEFT corner: starts at (x0+blH, y1), ends at (x0, y1-blV)
+    var bottomLeft = (blH > 0 || blV > 0)
+        ? new BezierCurve(new Vector(x0 + blH, y1), new Vector(x0 + blH - blH * kappa, y1), new Vector(x0, y1 - blV + blV * kappa), new Vector(x0, y1 - blV))
+        : new Vector(x0, y1);
+    return [topLeft, topRight, bottomRight, bottomLeft];
+};
+// ---------------------------------------------------------------------------
+// circle()
+// ---------------------------------------------------------------------------
+var buildCirclePath = function (clip, bounds) {
+    var bLeft = bounds.left, bTop = bounds.top, bWidth = bounds.width, bHeight = bounds.height;
+    var cx = bLeft + getAbsoluteValue(clip.cx, bWidth);
+    var cy = bTop + getAbsoluteValue(clip.cy, bHeight);
+    // For `closest-side` / `farthest-side` keywords we stored 50% as a fallback.
+    // Resolve the radius relative to the smaller dimension so circles stay circular.
+    var r = getAbsoluteValue(clip.radius, Math.min(bWidth, bHeight) / 2 * 2);
+    if (r <= 0) {
+        var mid = new Vector(cx, cy);
+        return [mid, mid, mid, mid];
+    }
+    return buildEllipsePaths(cx, cy, r, r);
+};
+// ---------------------------------------------------------------------------
+// ellipse()
+// ---------------------------------------------------------------------------
+var buildEllipsePath = function (clip, bounds) {
+    var bLeft = bounds.left, bTop = bounds.top, bWidth = bounds.width, bHeight = bounds.height;
+    var cx = bLeft + getAbsoluteValue(clip.cx, bWidth);
+    var cy = bTop + getAbsoluteValue(clip.cy, bHeight);
+    var rx = getAbsoluteValue(clip.rx, bWidth);
+    var ry = getAbsoluteValue(clip.ry, bHeight);
+    if (rx <= 0 || ry <= 0) {
+        var mid = new Vector(cx, cy);
+        return [mid, mid, mid, mid];
+    }
+    return buildEllipsePaths(cx, cy, rx, ry);
+};
+// ---------------------------------------------------------------------------
+// polygon()
+// ---------------------------------------------------------------------------
+var buildPolygonPath = function (clip, bounds) {
+    var bLeft = bounds.left, bTop = bounds.top, bWidth = bounds.width, bHeight = bounds.height;
+    return clip.points.map(function (_a) {
+        var xToken = _a[0], yToken = _a[1];
+        return new Vector(bLeft + getAbsoluteValue(xToken, bWidth), bTop + getAbsoluteValue(yToken, bHeight));
+    });
+};
+// ---------------------------------------------------------------------------
+// path()  — uses Path2D so the SVG path string is rendered natively
+// ---------------------------------------------------------------------------
+var buildPath2D = function (clip, bounds) {
+    if (!clip.d)
+        return null;
+    // Path2D is available in all modern browsers; the path data is absolute SVG
+    // coordinates and is NOT offset by the element position — the canvas transform
+    // already accounts for the page origin, so we apply a translate.
+    try {
+        // Build the path and translate it to the element's origin.
+        var path2d = new Path2D();
+        // Apply the element offset via a DOMMatrix translate before adding the path.
+        var translated = new Path2D();
+        translated.addPath(new Path2D(clip.d), new DOMMatrix([1, 0, 0, 1, bounds.left, bounds.top]));
+        path2d.addPath(translated);
+        return { kind: 'path2d', path2d: path2d };
+    }
+    catch (_a) {
+        return null;
+    }
+};
+
 var StackingContext = /** @class */ (function () {
     function StackingContext(container) {
         this.element = container;
@@ -14630,6 +15178,7 @@ var StackingContext = /** @class */ (function () {
 }());
 var ElementPaint = /** @class */ (function () {
     function ElementPaint(container, parent) {
+        var _a;
         this.container = container;
         this.parent = parent;
         this.effects = [];
@@ -14648,15 +15197,47 @@ var ElementPaint = /** @class */ (function () {
             var borderBox = calculateBorderBoxPath(this.curves);
             var paddingBox = calculatePaddingBoxPath(this.curves);
             if (equalPath(borderBox, paddingBox)) {
-                this.effects.push(new ClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
+                this.effects.push(new OverflowClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
             }
             else {
-                this.effects.push(new ClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */));
-                this.effects.push(new ClipEffect(paddingBox, 4 /* EffectTarget.CONTENT */));
+                this.effects.push(new OverflowClipEffect(borderBox, 2 /* EffectTarget.BACKGROUND_BORDERS */));
+                this.effects.push(new OverflowClipEffect(paddingBox, 4 /* EffectTarget.CONTENT */));
             }
         }
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
+        }
+        // clip: rect() — deprecated property, applies only to absolutely/fixed positioned elements (CSS spec).
+        var clipRect = this.container.styles.clip;
+        if (clipRect !== null &&
+            (this.container.styles.position === 2 /* POSITION.ABSOLUTE */ ||
+                this.container.styles.position === 3 /* POSITION.FIXED */)) {
+            var b = this.container.bounds;
+            // rect(top, right, bottom, left): all values are offsets from the element's top-left corner.
+            var t = getAbsoluteValue(clipRect.top, b.height);
+            var r = getAbsoluteValue(clipRect.right, b.width);
+            var bo = getAbsoluteValue(clipRect.bottom, b.height);
+            var l = getAbsoluteValue(clipRect.left, b.width);
+            var rectPath = [
+                new Vector(b.left + l, b.top + t),
+                new Vector(b.left + r, b.top + t),
+                new Vector(b.left + r, b.top + bo),
+                new Vector(b.left + l, b.top + bo),
+            ];
+            this.effects.push(new ClipEffect(rectPath, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
+        }
+        // clip-path support: inset / circle / ellipse / polygon / path
+        if (this.container.styles.clipPath.type !== 0 /* ClipPathType.NONE */) {
+            var result = buildClipPath(this.container.styles.clipPath, this.container.bounds);
+            if (result !== null) {
+                var target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+                if (result.kind === 'path') {
+                    this.effects.push(new ClipEffect(result.paths, target, (_a = result.fillRule) !== null && _a !== void 0 ? _a : 'nonzero'));
+                }
+                else {
+                    this.effects.push(new Path2DClipEffect(result.path2d, target));
+                }
+            }
         }
         if (this.container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */) {
             this.effects.push(new MixBlendModeEffect(this.container.styles.mixBlendMode));
@@ -14673,14 +15254,17 @@ var ElementPaint = /** @class */ (function () {
         var parent = this.parent;
         var effects = this.effects.slice(0);
         while (parent) {
-            var croplessEffects = parent.effects.filter(function (effect) { return !isClipEffect(effect); });
+            // Propagate all parent effects except overflow clips — those are
+            // either skipped (out-of-flow) or re-created below so that the
+            // correct paddingBox path is used for each positioning context.
+            var croplessEffects = parent.effects.filter(function (effect) { return !isOverflowClipEffect(effect); });
             if (inFlow || parent.container.styles.position !== 0 /* POSITION.STATIC */ || !parent.parent) {
                 inFlow = [2 /* POSITION.ABSOLUTE */, 3 /* POSITION.FIXED */].indexOf(parent.container.styles.position) === -1;
                 if (parent.container.styles.overflowX !== 0 /* OVERFLOW.VISIBLE */) {
                     var borderBox = calculateBorderBoxPath(parent.curves);
                     var paddingBox = calculatePaddingBoxPath(parent.curves);
                     if (!equalPath(borderBox, paddingBox)) {
-                        effects.unshift(new ClipEffect(paddingBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
+                        effects.unshift(new OverflowClipEffect(paddingBox, 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */));
                     }
                 }
             }
@@ -14821,6 +15405,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
         effects.forEach(function (effect) { return _this.applyEffect(effect); });
     };
     CanvasRenderer.prototype.applyEffect = function (effect) {
+        var _a;
         this.ctx.save();
         if (isOpacityEffect(effect)) {
             this.ctx.globalAlpha = effect.opacity;
@@ -14832,7 +15417,14 @@ var CanvasRenderer = /** @class */ (function (_super) {
         }
         if (isClipEffect(effect)) {
             this.path(effect.path);
+            this.ctx.clip(effect.fillRule);
+        }
+        if (isOverflowClipEffect(effect)) {
+            this.path(effect.path);
             this.ctx.clip();
+        }
+        if (isPath2DClipEffect(effect)) {
+            this.ctx.clip(effect.path2d, (_a = effect.fillRule) !== null && _a !== void 0 ? _a : 'nonzero');
         }
         if (isFilterEffect(effect)) ;
         if (isMixBlendModeEffect(effect)) {
@@ -14921,14 +15513,25 @@ var CanvasRenderer = /** @class */ (function (_super) {
      * main canvas with the drop-shadow/blur filter applied. This prevents the filter
      * from being clipped by the element's own clip region.
      */
+    /**
+     * Renders a stacking context into an offscreen canvas, composites it onto the
+     * main canvas with the CSS filter applied.
+     *
+     * Note: when clip-path and filter are combined on the same element, the Canvas 2D
+     * API applies the clip before the filter (clip → render → filter). The CSS spec
+     * order would be render → filter → clip, which is not achievable with Canvas 2D
+     * clip primitives alone. This is a known Canvas 2D limitation.
+     */
     CanvasRenderer.prototype._renderStackWithOffscreenFilters = function (stack, filterString) {
         return __awaiter(this, void 0, void 0, function () {
-            var mainCanvas, mainCtx, offscreen, offCtx;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, activeCount, i;
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         mainCanvas = this.canvas;
                         mainCtx = this.ctx;
+                        savedActiveEffects = this._activeEffects.splice(0);
                         offscreen = document.createElement('canvas');
                         offscreen.width = mainCanvas.width;
                         offscreen.height = mainCanvas.height;
@@ -14936,21 +15539,21 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         offCtx.scale(this.options.scale, this.options.scale);
                         offCtx.translate(-this.options.x, -this.options.y);
                         offCtx.textBaseline = 'bottom';
-                        // Swap to offscreen canvas
                         this.canvas = offscreen;
                         this.ctx = offCtx;
-                        // Render the stacking context content normally (without drop-shadow/blur in effects)
                         return [4 /*yield*/, this.renderStackContent(stack)];
                     case 1:
-                        // Render the stacking context content normally (without drop-shadow/blur in effects)
-                        _a.sent();
-                        // Restore main canvas
+                        _b.sent();
                         this.canvas = mainCanvas;
                         this.ctx = mainCtx;
-                        // Draw offscreen canvas onto main canvas with the filter
+                        (_a = this._activeEffects).push.apply(_a, savedActiveEffects);
+                        activeCount = this._activeEffects.length;
+                        for (i = 0; i < activeCount; i++) {
+                            this.ctx.restore();
+                        }
+                        this._activeEffects.length = 0;
                         this.ctx.save();
                         this.ctx.filter = filterString;
-                        // Reset transform to identity since offscreen canvas is already at the correct scale/position
                         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
                         this.ctx.drawImage(offscreen, 0, 0);
                         this.ctx.restore();
@@ -15172,7 +15775,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                 _this.ctx.fillStyle = asString(styles.color);
                                 var textShadows = styles.textShadow;
                                 if (textShadows.length && text.text.trim().length) {
-                                    // Render each shadow manually: draw the text in the shadow colour
+                                    // Render each shadow manually: draw the text in the shadow color
                                     // at the shadow offset on an isolated offscreen canvas, then apply
                                     // a CSS blur filter before compositing onto the main canvas.
                                     // This bypasses the Canvas shadow API entirely, which cannot handle
@@ -15977,6 +16580,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                 switch (_h.label) {
                                     case 0:
                                         blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
+                                        if (blendMode !== 'source-over') {
+                                            this_1.ctx.globalCompositeOperation = blendMode;
+                                        }
                                         if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
                                         image = void 0;
                                         url = backgroundImage.url;

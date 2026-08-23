@@ -1,25 +1,30 @@
 import { contains } from '../core/bitwise';
+import { ClipPathType } from '../css/property-descriptors/clip-path';
 import { DISPLAY } from '../css/property-descriptors/display';
 import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
 import { OVERFLOW } from '../css/property-descriptors/overflow';
 import { POSITION } from '../css/property-descriptors/position';
 import { createCounterText } from '../css/types/functions/counter';
-import { getNumber } from '../css/types/length-percentage';
+import { getAbsoluteValue, getNumber } from '../css/types/length-percentage';
 import { ElementContainer, FLAGS } from '../dom/element-container';
 import { LIElementContainer } from '../dom/elements/li-element-container';
 import { OLElementContainer } from '../dom/elements/ol-element-container';
 import { BoundCurves, calculateBorderBoxPath, calculatePaddingBoxPath } from './bound-curves';
+import { buildClipPath } from './clip-path-effect';
 import {
     ClipEffect,
     EffectTarget,
     FilterEffect,
     IElementEffect,
+    isOverflowClipEffect,
     MixBlendModeEffect,
     OpacityEffect,
+    OverflowClipEffect,
+    Path2DClipEffect,
     TransformEffect,
-    isClipEffect,
 } from './effects';
 import { equalPath } from './path';
+import { Vector } from './vector';
 
 export class StackingContext {
     element: ElementPaint;
@@ -70,15 +75,52 @@ export class ElementPaint {
             const paddingBox = calculatePaddingBoxPath(this.curves);
 
             if (equalPath(borderBox, paddingBox)) {
-                this.effects.push(new ClipEffect(borderBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT));
+                this.effects.push(
+                    new OverflowClipEffect(borderBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT),
+                );
             } else {
-                this.effects.push(new ClipEffect(borderBox, EffectTarget.BACKGROUND_BORDERS));
-                this.effects.push(new ClipEffect(paddingBox, EffectTarget.CONTENT));
+                this.effects.push(new OverflowClipEffect(borderBox, EffectTarget.BACKGROUND_BORDERS));
+                this.effects.push(new OverflowClipEffect(paddingBox, EffectTarget.CONTENT));
             }
         }
 
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
+        }
+
+        // clip: rect() — deprecated property, applies only to absolutely/fixed positioned elements (CSS spec).
+        const clipRect = this.container.styles.clip;
+        if (
+            clipRect !== null &&
+            (this.container.styles.position === POSITION.ABSOLUTE ||
+                this.container.styles.position === POSITION.FIXED)
+        ) {
+            const b = this.container.bounds;
+            // rect(top, right, bottom, left): all values are offsets from the element's top-left corner.
+            const t = getAbsoluteValue(clipRect.top, b.height);
+            const r = getAbsoluteValue(clipRect.right, b.width);
+            const bo = getAbsoluteValue(clipRect.bottom, b.height);
+            const l = getAbsoluteValue(clipRect.left, b.width);
+            const rectPath = [
+                new Vector(b.left + l, b.top + t),
+                new Vector(b.left + r, b.top + t),
+                new Vector(b.left + r, b.top + bo),
+                new Vector(b.left + l, b.top + bo),
+            ];
+            this.effects.push(new ClipEffect(rectPath, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT));
+        }
+
+        // clip-path support: inset / circle / ellipse / polygon / path
+        if (this.container.styles.clipPath.type !== ClipPathType.NONE) {
+            const result = buildClipPath(this.container.styles.clipPath, this.container.bounds);
+            if (result !== null) {
+                const target = EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT;
+                if (result.kind === 'path') {
+                    this.effects.push(new ClipEffect(result.paths, target, result.fillRule ?? 'nonzero'));
+                } else {
+                    this.effects.push(new Path2DClipEffect(result.path2d, target));
+                }
+            }
         }
 
         if (this.container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL) {
@@ -98,7 +140,10 @@ export class ElementPaint {
         let parent = this.parent;
         const effects = this.effects.slice(0);
         while (parent) {
-            const croplessEffects = parent.effects.filter(effect => !isClipEffect(effect));
+            // Propagate all parent effects except overflow clips — those are
+            // either skipped (out-of-flow) or re-created below so that the
+            // correct paddingBox path is used for each positioning context.
+            const croplessEffects = parent.effects.filter(effect => !isOverflowClipEffect(effect));
             if (inFlow || parent.container.styles.position !== POSITION.STATIC || !parent.parent) {
                 inFlow = [POSITION.ABSOLUTE, POSITION.FIXED].indexOf(parent.container.styles.position) === -1;
                 if (parent.container.styles.overflowX !== OVERFLOW.VISIBLE) {
@@ -106,7 +151,7 @@ export class ElementPaint {
                     const paddingBox = calculatePaddingBoxPath(parent.curves);
                     if (!equalPath(borderBox, paddingBox)) {
                         effects.unshift(
-                            new ClipEffect(paddingBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT),
+                            new OverflowClipEffect(paddingBox, EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT),
                         );
                     }
                 }

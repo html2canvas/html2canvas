@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS clip-path property</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row {
+            margin-bottom: 28px;
+        }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #222;
+        }
+        .item {
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            margin-right: 18px;
+        }
+        .label {
+            font-size: 11px;
+            margin-top: 6px;
+            color: #555;
+        }
+        /* Base box shared by most examples */
+        .box {
+            width: 120px;
+            height: 120px;
+            background: #3498db;
+            display: inline-block;
+        }
+        /* Gradient box to make the clip shape more visible */
+        .box-grad {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #e74c3c 0%, #f39c12 50%, #2ecc71 100%);
+            display: inline-block;
+        }
+        /* Box with inner content to test content clipping */
+        .box-text {
+            width: 120px;
+            height: 120px;
+            background: #9b59b6;
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ───────────────────────── inset() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">inset()</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: inset(0px);"></div>
+        <div class="label">inset(0px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(10px);"></div>
+        <div class="label">inset(10px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(10px 20px);"></div>
+        <div class="label">inset(10px 20px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(10px 20px 30px 5px);"></div>
+        <div class="label">inset(10px 20px 30px 5px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(10% 20%);"></div>
+        <div class="label">inset(10% 20%)</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: inset(15px);">clipped text</div>
+        <div class="label">with text content</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── inset() round ───────────────────────── -->
+<div class="row">
+    <div class="row-title">inset() round (rounded corners)</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: inset(0px round 16px);"></div>
+        <div class="label">inset(0 round 16px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(0px round 50%);"></div>
+        <div class="label">inset(0 round 50%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(10px round 20px);"></div>
+        <div class="label">inset(10px round 20px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: inset(0px round 8px 24px);"></div>
+        <div class="label">inset(0 round 8px 24px)</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: inset(5px round 30px);"></div>
+        <div class="label">gradient + round 30px</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: inset(0px round 20px);">rounded text</div>
+        <div class="label">with text + round</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── circle() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">circle()</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: circle(50%);"></div>
+        <div class="label">circle(50%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: circle(40%);"></div>
+        <div class="label">circle(40%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: circle(30px);"></div>
+        <div class="label">circle(30px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: circle(50% at 25% 25%);"></div>
+        <div class="label">circle(50% at 25% 25%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: circle(50% at 75% 50%);"></div>
+        <div class="label">circle(50% at 75% 50%)</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: circle(45%);"></div>
+        <div class="label">gradient + circle(45%)</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: circle(45%);">circle text</div>
+        <div class="label">with text content</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── ellipse() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">ellipse()</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: ellipse(50% 30%);"></div>
+        <div class="label">ellipse(50% 30%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: ellipse(30% 50%);"></div>
+        <div class="label">ellipse(30% 50%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: ellipse(40% 40%);"></div>
+        <div class="label">ellipse(40% 40%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: ellipse(50% 30% at 50% 50%);"></div>
+        <div class="label">ellipse at centre</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: ellipse(50% 30% at 20% 30%);"></div>
+        <div class="label">ellipse at 20% 30%</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: ellipse(45% 35%);"></div>
+        <div class="label">gradient + ellipse</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: ellipse(48% 38%);">ellipse text</div>
+        <div class="label">with text content</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── polygon() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">polygon()</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: polygon(50% 0%, 100% 100%, 0% 100%);"></div>
+        <div class="label">triangle</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);"></div>
+        <div class="label">diamond</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);"></div>
+        <div class="label">octagon</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);"></div>
+        <div class="label">star</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%);"></div>
+        <div class="label">arrow right</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: polygon(50% 0%, 100% 100%, 0% 100%);"></div>
+        <div class="label">gradient triangle</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: polygon(50% 0%, 100% 100%, 0% 100%);">poly text</div>
+        <div class="label">with text content</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── polygon() evenodd ───────────────────────── -->
+<div class="row">
+    <div class="row-title">polygon() — fill-rule</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: polygon(nonzero, 50% 0%, 100% 100%, 0% 100%);"></div>
+        <div class="label">nonzero triangle</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 25%);"></div>
+        <div class="label">evenodd (hollow rect)</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── path() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">path()</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: path('M 0 60 L 60 0 L 120 60 L 60 120 Z');"></div>
+        <div class="label">path diamond</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: path('M 60 5 L 75 45 L 118 45 L 83 70 L 96 110 L 60 85 L 24 110 L 37 70 L 2 45 L 45 45 Z');"></div>
+        <div class="label">path star</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: path('M 10 10 Q 60 -10 110 10 Q 130 60 110 110 Q 60 130 10 110 Q -10 60 10 10 Z');"></div>
+        <div class="label">path curved</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: path('M 0 60 L 60 0 L 120 60 L 60 120 Z');"></div>
+        <div class="label">gradient + path</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: path('M 0 60 L 60 0 L 120 60 L 60 120 Z');">path text</div>
+        <div class="label">with text content</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── clip-path with border-radius ───────────────────────── -->
+<div class="row">
+    <div class="row-title">clip-path combined with border-radius (independent)</div>
+
+    <div class="item">
+        <div class="box" style="border-radius: 50%; clip-path: inset(10px);"></div>
+        <div class="label">border-radius 50%<br>+ inset(10px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="border-radius: 16px; clip-path: circle(40%);"></div>
+        <div class="label">border-radius 16px<br>+ circle(40%)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="border-radius: 8px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%);"></div>
+        <div class="label">border-radius 8px<br>+ triangle</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── clip-path with overflow ───────────────────────── -->
+<div class="row">
+    <div class="row-title">clip-path combined with overflow: hidden</div>
+
+    <div class="item">
+        <div style="width: 120px; height: 120px; overflow: hidden; clip-path: circle(50%);">
+            <div style="width: 200px; height: 200px; background: #e74c3c;"></div>
+        </div>
+        <div class="label">overflow + circle</div>
+    </div>
+    <div class="item">
+        <div style="width: 120px; height: 120px; overflow: hidden; clip-path: polygon(50% 0%, 100% 100%, 0% 100%);">
+            <div style="width: 200px; height: 200px; background: linear-gradient(45deg, #3498db, #2ecc71);"></div>
+        </div>
+        <div class="label">overflow + triangle</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── nested clip-path ───────────────────────── -->
+<div class="row">
+    <div class="row-title">Nested clip-path (parent + child)</div>
+
+    <div class="item">
+        <div style="width: 160px; height: 160px; background: #ecf0f1; clip-path: inset(0px round 30px);">
+            <div style="margin: 20px; width: 120px; height: 120px; background: #e74c3c; clip-path: circle(50%);"></div>
+        </div>
+        <div class="label">rounded inset > circle</div>
+    </div>
+    <div class="item">
+        <div style="width: 160px; height: 160px; background: #ecf0f1; clip-path: circle(48%);">
+            <div style="margin: 20px; width: 120px; height: 120px; background: #27ae60; clip-path: polygon(50% 0%, 100% 100%, 0% 100%);"></div>
+        </div>
+        <div class="label">circle > triangle</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── clip-path on positioned elements ───────────────────────── -->
+<div class="row">
+    <div class="row-title">clip-path on positioned elements</div>
+
+    <div class="item" style="position: relative; width: 120px; height: 120px;">
+        <div style="position: absolute; inset: 0; background: #1abc9c; clip-path: ellipse(50% 40%);"></div>
+        <div class="label" style="position: relative; top: 130px;">position: absolute</div>
+    </div>
+    <div class="item" style="display: inline-block; width: 120px; height: 120px; position: relative;">
+        <div style="position: relative; width: 120px; height: 120px; background: #e67e22; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); z-index: 1;"></div>
+        <div class="label">position: relative</div>
+    </div>
+</div>
+
+</body>
+</html>
