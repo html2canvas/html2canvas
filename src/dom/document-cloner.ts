@@ -101,6 +101,30 @@ export class DocumentCloner {
          if window url is about:blank, we can assign the url to current by writing onto the document
          */
 
+        // Stamp the reference element with a unique marker attribute so we can locate
+        // it in the parsed document after document.write() (which re-parses the HTML
+        // and creates new DOM nodes, discarding the in-memory clone references).
+        const REFERENCE_ATTR = 'data-html2canvas-ref';
+        // clonedReferenceElement is set during cloneNode() in the constructor; stamp it
+        // on the in-memory clone so the attribute appears in the serialized HTML.
+        if (this.clonedReferenceElement) {
+            this.clonedReferenceElement.setAttribute(REFERENCE_ATTR, '1');
+        }
+
+        // Serialize the full cloned document as HTML — including the <base> tag — so
+        // Chromium parses it natively. This is the only reliable way to ensure that
+        // stylesheet rules (including background-image gradients) are applied: Chromium
+        // only resolves the cascade during the initial HTML parse, not when nodes are
+        // injected via replaceChild/adoptNode after the fact.
+        addBase(this.documentElement, documentClone);
+        const fullHTML = this.documentElement.outerHTML;
+
+        // Open the document before attaching the load listener so that readyState is
+        // 'loading' when iframeLoader registers its onload handler. Without this,
+        // Firefox may have already fired onload on the initial empty document and the
+        // promise would never resolve.
+        documentClone.open();
+
         const iframeLoad = iframeLoader(iframe).then(async () => {
             this.scrolledElements.forEach(restoreNodeScroll);
             if (cloneWindow) {
@@ -119,13 +143,22 @@ export class DocumentCloner {
                 }
             }
 
-            const onclone = this.options.onclone;
+            // Locate the reference element by the marker attribute in the freshly parsed DOM.
+            // Special case: if the reference was the <html> element itself, the marker may
+            // not survive serialization as an attribute on <html>; fall back to documentElement.
+            const referenceElement =
+                documentClone.querySelector<HTMLElement>(`[${REFERENCE_ATTR}]`) ??
+                (this.referenceElement === this.referenceElement.ownerDocument?.documentElement
+                    ? (documentClone.documentElement as HTMLElement)
+                    : null);
+            referenceElement?.removeAttribute(REFERENCE_ATTR);
 
-            const referenceElement = this.clonedReferenceElement;
-
-            if (typeof referenceElement === 'undefined') {
+            if (!referenceElement) {
                 return Promise.reject(`Error finding the ${this.referenceElement.nodeName} in the cloned document`);
             }
+            this.clonedReferenceElement = referenceElement;
+
+            const onclone = this.options.onclone;
 
             if (documentClone.fonts && documentClone.fonts.status === 'loading') {
                 await Promise.race([
@@ -154,17 +187,9 @@ export class DocumentCloner {
             return iframe;
         });
 
-        const adoptedNode = documentClone.adoptNode(this.documentElement);
-        /**
-         * The baseURI of the document will be lost after documentClone.open().
-         * We can avoid it by adding <base> element.
-         * */
-        addBase(adoptedNode, documentClone);
-        documentClone.open();
-        documentClone.write(`${serializeDoctype(document.doctype)}<html></html>`);
+        documentClone.write(`${serializeDoctype(document.doctype)}${fullHTML}`);
         // Chrome scrolls the parent document for some reason after the write to the cloned window???
         restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
-        documentClone.replaceChild(adoptedNode, documentClone.documentElement);
         documentClone.close();
 
         return iframeLoad;
@@ -313,7 +338,9 @@ export class DocumentCloner {
                 !child.hasAttribute(IGNORE_ATTRIBUTE) &&
                 (typeof this.options.ignoreElements !== 'function' || !this.options.ignoreElements(child)))
         ) {
-            if (!this.options.copyStyles || !isElementNode(child) || !isStyleElement(child)) {
+            // Skip <style> elements only when styles are already inlined via copyCSSStyles
+            // (either via the global option or the local copyStyles flag propagated from custom elements)
+            if (!(this.options.copyStyles || copyStyles) || !isElementNode(child) || !isStyleElement(child)) {
                 clone.appendChild(this.cloneNode(child, copyStyles));
             }
         }
@@ -369,7 +396,7 @@ export class DocumentCloner {
                 copyStyles = true;
             }
 
-            if (!isVideoElement(node)) {
+            if (!isVideoElement(node) && !isStyleElement(node)) {
                 this.cloneChildNodes(node, clone, copyStyles);
             }
 
@@ -388,9 +415,15 @@ export class DocumentCloner {
                 (style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
                 copyStyles
             ) {
-                copyCSSStyles(style, clone, this.options.onCopyProperty);
+                // Pass node.style as the inline style reference so that background properties
+                // defined only in a stylesheet (not inline) are not overwritten by the
+                // getComputedStyle value, which Chromium may serialize differently in an iframe.
+                const inlineStyle =
+                    isHTMLElementNode(node) || isSVGElementNode(node)
+                        ? (node as HTMLElement | SVGElement).style
+                        : undefined;
+                copyCSSStyles(style, clone, this.options.onCopyProperty, inlineStyle);
             }
-
             if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
                 this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
             }
@@ -605,15 +638,26 @@ const iframeLoader = (iframe: HTMLIFrameElement): Promise<HTMLIFrameElement> => 
 
         const documentClone = cloneWindow.document;
 
-        cloneWindow.onload = iframe.onload = () => {
-            cloneWindow.onload = iframe.onload = null;
-            const interval = setInterval(() => {
-                if (documentClone.body.childNodes.length > 0 && documentClone.readyState === 'complete') {
-                    clearInterval(interval);
-                    resolve(iframe);
-                }
-            }, 50);
+        const checkReady = () => {
+            if (documentClone.readyState === 'complete') {
+                resolve(iframe);
+                return true;
+            }
+            return false;
         };
+
+        // Firefox may fire onload synchronously during document.write()/close(), before
+        // we have a chance to attach the handler. Check readyState immediately first.
+        if (!checkReady()) {
+            cloneWindow.onload = iframe.onload = () => {
+                cloneWindow.onload = iframe.onload = null;
+                const interval = setInterval(() => {
+                    if (checkReady()) {
+                        clearInterval(interval);
+                    }
+                }, 50);
+            };
+        }
     });
 };
 
@@ -623,10 +667,31 @@ const ignoredStyleProperties = new Set([
     'content', // Safari shows pseudoelements if content is set
 ]);
 
+// Background shorthand properties that Chromium may serialize differently when read back
+// via getComputedStyle in an iframe context, causing gradients to be lost. When an element
+// receives its background from a stylesheet rule (not an inline style), skip copying these
+// properties so that the cloned stylesheet rule takes precedence instead.
+const backgroundProperties = new Set([
+    'background',
+    'background-image',
+    'background-color',
+    'background-position',
+    'background-position-x',
+    'background-position-y',
+    'background-size',
+    'background-repeat',
+    'background-repeat-x',
+    'background-repeat-y',
+    'background-origin',
+    'background-clip',
+    'background-attachment',
+]);
+
 export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     style: CSSStyleDeclaration,
     target: T,
     onCopyProperty?: (property: string, style: CSSStyleDeclaration, target: T) => boolean | void,
+    inlineStyle?: CSSStyleDeclaration,
 ): T => {
     // Edge does not provide value for cssText.
     // Iterate forward so we can break early when reaching CSS custom properties (--*)
@@ -635,6 +700,13 @@ export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     for (let i = 0; i < style.length; i++) {
         const property = style.item(i);
         if (ignoredStyleProperties.has(property)) {
+            continue;
+        }
+        // When an inline style reference is provided, skip background properties that are not
+        // explicitly set as inline styles on the source element. This prevents Chromium's
+        // getComputedStyle serialization of stylesheet-defined gradients from overwriting the
+        // cloned stylesheet rules with a potentially malformed inline value.
+        if (inlineStyle && backgroundProperties.has(property) && !inlineStyle.getPropertyValue(property)) {
             continue;
         }
         if (onCopyProperty) {

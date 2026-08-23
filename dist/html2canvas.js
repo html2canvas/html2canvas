@@ -808,6 +808,27 @@
         };
     };
 
+    var elementDebuggerAttribute = 'data-html2canvas-debug';
+    var getElementDebugType = function (element) {
+        var attribute = element.getAttribute(elementDebuggerAttribute);
+        switch (attribute) {
+            case 'all':
+                return 1 /* DebuggerType.ALL */;
+            case 'clone':
+                return 2 /* DebuggerType.CLONE */;
+            case 'parse':
+                return 3 /* DebuggerType.PARSE */;
+            case 'render':
+                return 4 /* DebuggerType.RENDER */;
+            default:
+                return 0 /* DebuggerType.NONE */;
+        }
+    };
+    var isDebugging = function (element, type) {
+        var elementType = getElementDebugType(element);
+        return elementType === 1 /* DebuggerType.ALL */ || type === elementType;
+    };
+
     var contains = function (bit, value) { return (bit & value) !== 0; };
 
     // https://www.w3.org/TR/css-syntax-3
@@ -11693,7 +11714,7 @@
     }());
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     var parse = function (context, descriptor, style) {
-        var value = style !== null && typeof style !== 'undefined' ? style.toString() : descriptor.initialValue;
+        var value = style !== null && typeof style !== 'undefined' && style !== '' ? style.toString() : descriptor.initialValue;
         // Fast-path for IDENT_VALUE: skip tokenization when the value is a simple identifier
         if (descriptor.type === 2 /* PropertyDescriptorParsingType.IDENT_VALUE */) {
             // Simple ident values contain only letters, hyphens, and don't need full parsing
@@ -11770,29 +11791,9 @@
         return new Bounds(0, 0, width, height);
     };
 
-    var elementDebuggerAttribute = 'data-html2canvas-debug';
-    var getElementDebugType = function (element) {
-        var attribute = element.getAttribute(elementDebuggerAttribute);
-        switch (attribute) {
-            case 'all':
-                return 1 /* DebuggerType.ALL */;
-            case 'clone':
-                return 2 /* DebuggerType.CLONE */;
-            case 'parse':
-                return 3 /* DebuggerType.PARSE */;
-            case 'render':
-                return 4 /* DebuggerType.RENDER */;
-            default:
-                return 0 /* DebuggerType.NONE */;
-        }
-    };
-    var isDebugging = function (element, type) {
-        var elementType = getElementDebugType(element);
-        return elementType === 1 /* DebuggerType.ALL */ || type === elementType;
-    };
-
     var ElementContainer = /** @class */ (function () {
         function ElementContainer(context, element) {
+            var _a, _b;
             this.context = context;
             this.textNodes = [];
             this.elements = [];
@@ -11800,7 +11801,8 @@
             if (isDebugging(element, 3 /* DebuggerType.PARSE */)) {
                 debugger;
             }
-            this.styles = new CSSParsedDeclaration(context, window.getComputedStyle(element, null));
+            var computedStyle = ((_b = (_a = element.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) !== null && _b !== void 0 ? _b : window).getComputedStyle(element, null);
+            this.styles = new CSSParsedDeclaration(context, computedStyle);
             if (isHTMLElementNode(element)) {
                 if (this.styles.animationDuration.some(function (duration) { return duration > 0; })) {
                     element.style.animationDuration = '0s';
@@ -13769,10 +13771,32 @@
             /* Chrome doesn't detect relative background-images assigned in inline <style> sheets when fetched through getComputedStyle
              if window url is about:blank, we can assign the url to current by writing onto the document
              */
+            // Stamp the reference element with a unique marker attribute so we can locate
+            // it in the parsed document after document.write() (which re-parses the HTML
+            // and creates new DOM nodes, discarding the in-memory clone references).
+            var REFERENCE_ATTR = 'data-html2canvas-ref';
+            // clonedReferenceElement is set during cloneNode() in the constructor; stamp it
+            // on the in-memory clone so the attribute appears in the serialized HTML.
+            if (this.clonedReferenceElement) {
+                this.clonedReferenceElement.setAttribute(REFERENCE_ATTR, '1');
+            }
+            // Serialize the full cloned document as HTML — including the <base> tag — so
+            // Chromium parses it natively. This is the only reliable way to ensure that
+            // stylesheet rules (including background-image gradients) are applied: Chromium
+            // only resolves the cascade during the initial HTML parse, not when nodes are
+            // injected via replaceChild/adoptNode after the fact.
+            addBase(this.documentElement, documentClone);
+            var fullHTML = this.documentElement.outerHTML;
+            // Open the document before attaching the load listener so that readyState is
+            // 'loading' when iframeLoader registers its onload handler. Without this,
+            // Firefox may have already fired onload on the initial empty document and the
+            // promise would never resolve.
+            documentClone.open();
             var iframeLoad = iframeLoader(iframe).then(function () { return __awaiter(_this, void 0, void 0, function () {
-                var onclone, referenceElement;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
+                var referenceElement, onclone;
+                var _a, _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
                         case 0:
                             this.scrolledElements.forEach(restoreNodeScroll);
                             if (cloneWindow) {
@@ -13783,11 +13807,15 @@
                                     this.context.windowBounds = this.context.windowBounds.add(cloneWindow.scrollX - windowSize.left, cloneWindow.scrollY - windowSize.top, 0, 0);
                                 }
                             }
-                            onclone = this.options.onclone;
-                            referenceElement = this.clonedReferenceElement;
-                            if (typeof referenceElement === 'undefined') {
+                            referenceElement = (_a = documentClone.querySelector("[".concat(REFERENCE_ATTR, "]"))) !== null && _a !== void 0 ? _a : (this.referenceElement === ((_b = this.referenceElement.ownerDocument) === null || _b === void 0 ? void 0 : _b.documentElement)
+                                ? documentClone.documentElement
+                                : null);
+                            referenceElement === null || referenceElement === void 0 ? void 0 : referenceElement.removeAttribute(REFERENCE_ATTR);
+                            if (!referenceElement) {
                                 return [2 /*return*/, Promise.reject("Error finding the ".concat(this.referenceElement.nodeName, " in the cloned document"))];
                             }
+                            this.clonedReferenceElement = referenceElement;
+                            onclone = this.options.onclone;
                             if (!(documentClone.fonts && documentClone.fonts.status === 'loading')) return [3 /*break*/, 2];
                             return [4 /*yield*/, Promise.race([
                                     documentClone.fonts.ready,
@@ -13801,14 +13829,14 @@
                                     }),
                                 ])];
                         case 1:
-                            _a.sent();
-                            _a.label = 2;
+                            _c.sent();
+                            _c.label = 2;
                         case 2:
                             if (!/(AppleWebKit)/g.test(navigator.userAgent)) return [3 /*break*/, 4];
                             return [4 /*yield*/, imagesReady(documentClone)];
                         case 3:
-                            _a.sent();
-                            _a.label = 4;
+                            _c.sent();
+                            _c.label = 4;
                         case 4:
                             if (typeof onclone === 'function') {
                                 return [2 /*return*/, Promise.resolve()
@@ -13819,17 +13847,9 @@
                     }
                 });
             }); });
-            var adoptedNode = documentClone.adoptNode(this.documentElement);
-            /**
-             * The baseURI of the document will be lost after documentClone.open().
-             * We can avoid it by adding <base> element.
-             * */
-            addBase(adoptedNode, documentClone);
-            documentClone.open();
-            documentClone.write("".concat(serializeDoctype(document.doctype), "<html></html>"));
+            documentClone.write("".concat(serializeDoctype(document.doctype)).concat(fullHTML));
             // Chrome scrolls the parent document for some reason after the write to the cloned window???
             restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
-            documentClone.replaceChild(adoptedNode, documentClone.documentElement);
             documentClone.close();
             return iframeLoad;
         };
@@ -13959,7 +13979,9 @@
                 (!isScriptElement(child) &&
                     !child.hasAttribute(IGNORE_ATTRIBUTE) &&
                     (typeof this.options.ignoreElements !== 'function' || !this.options.ignoreElements(child)))) {
-                if (!this.options.copyStyles || !isElementNode(child) || !isStyleElement(child)) {
+                // Skip <style> elements only when styles are already inlined via copyCSSStyles
+                // (either via the global option or the local copyStyles flag propagated from custom elements)
+                if (!(this.options.copyStyles || copyStyles) || !isElementNode(child) || !isStyleElement(child)) {
                     clone.appendChild(this.cloneNode(child, copyStyles));
                 }
             }
@@ -14003,7 +14025,7 @@
                 if (isCustomElement(node)) {
                     copyStyles = true;
                 }
-                if (!isVideoElement(node)) {
+                if (!isVideoElement(node) && !isStyleElement(node)) {
                     this.cloneChildNodes(node, clone, copyStyles);
                 }
                 if (before) {
@@ -14016,7 +14038,13 @@
                 this.counters.pop(counters);
                 if ((style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
                     copyStyles) {
-                    copyCSSStyles(style, clone, this.options.onCopyProperty);
+                    // Pass node.style as the inline style reference so that background properties
+                    // defined only in a stylesheet (not inline) are not overwritten by the
+                    // getComputedStyle value, which Chromium may serialize differently in an iframe.
+                    var inlineStyle = isHTMLElementNode(node) || isSVGElementNode(node)
+                        ? node.style
+                        : undefined;
+                    copyCSSStyles(style, clone, this.options.onCopyProperty, inlineStyle);
                 }
                 if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
                     this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
@@ -14194,15 +14222,25 @@
                 return reject("No window assigned for iframe");
             }
             var documentClone = cloneWindow.document;
-            cloneWindow.onload = iframe.onload = function () {
-                cloneWindow.onload = iframe.onload = null;
-                var interval = setInterval(function () {
-                    if (documentClone.body.childNodes.length > 0 && documentClone.readyState === 'complete') {
-                        clearInterval(interval);
-                        resolve(iframe);
-                    }
-                }, 50);
+            var checkReady = function () {
+                if (documentClone.readyState === 'complete') {
+                    resolve(iframe);
+                    return true;
+                }
+                return false;
             };
+            // Firefox may fire onload synchronously during document.write()/close(), before
+            // we have a chance to attach the handler. Check readyState immediately first.
+            if (!checkReady()) {
+                cloneWindow.onload = iframe.onload = function () {
+                    cloneWindow.onload = iframe.onload = null;
+                    var interval = setInterval(function () {
+                        if (checkReady()) {
+                            clearInterval(interval);
+                        }
+                    }, 50);
+                };
+            }
         });
     };
     var ignoredStyleProperties = new Set([
@@ -14210,7 +14248,26 @@
         'd', // #2483
         'content', // Safari shows pseudoelements if content is set
     ]);
-    var copyCSSStyles = function (style, target, onCopyProperty) {
+    // Background shorthand properties that Chromium may serialize differently when read back
+    // via getComputedStyle in an iframe context, causing gradients to be lost. When an element
+    // receives its background from a stylesheet rule (not an inline style), skip copying these
+    // properties so that the cloned stylesheet rule takes precedence instead.
+    var backgroundProperties = new Set([
+        'background',
+        'background-image',
+        'background-color',
+        'background-position',
+        'background-position-x',
+        'background-position-y',
+        'background-size',
+        'background-repeat',
+        'background-repeat-x',
+        'background-repeat-y',
+        'background-origin',
+        'background-clip',
+        'background-attachment',
+    ]);
+    var copyCSSStyles = function (style, target, onCopyProperty, inlineStyle) {
         // Edge does not provide value for cssText.
         // Iterate forward so we can break early when reaching CSS custom properties (--*)
         // which browsers like Firefox report first and in large numbers, causing significant
@@ -14218,6 +14275,13 @@
         for (var i = 0; i < style.length; i++) {
             var property = style.item(i);
             if (ignoredStyleProperties.has(property)) {
+                continue;
+            }
+            // When an inline style reference is provided, skip background properties that are not
+            // explicitly set as inline styles on the source element. This prevents Chromium's
+            // getComputedStyle serialization of stylesheet-defined gradients from overwriting the
+            // cloned stylesheet rules with a potentially malformed inline value.
+            if (inlineStyle && backgroundProperties.has(property) && !inlineStyle.getPropertyValue(property)) {
                 continue;
             }
             if (onCopyProperty) {
@@ -17660,7 +17724,7 @@
         CacheStorage.setContext(window);
     }
     var renderElement = function (element, opts) { return __awaiter(void 0, void 0, void 0, function () {
-        var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, clonedElement, container, _a, width, height, left, top, backgroundColor, renderOptions, canvas, renderer, root, renderer;
+        var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, container, clonedElement, _a, width, height, left, top, backgroundColor, renderOptions, canvas, renderer, root, renderer;
         var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
         return __generator(this, function (_u) {
             switch (_u.label) {
@@ -17702,13 +17766,16 @@
                     };
                     context.logger.debug("Starting document clone with size ".concat(windowBounds.width, "x").concat(windowBounds.height, " scrolled to ").concat(-windowBounds.left, ",").concat(-windowBounds.top));
                     documentCloner = new DocumentCloner(context, element, cloneOptions);
-                    clonedElement = documentCloner.clonedReferenceElement;
-                    if (!clonedElement) {
+                    if (!documentCloner.clonedReferenceElement) {
                         return [2 /*return*/, Promise.reject("Unable to find element in cloned iframe")];
                     }
                     return [4 /*yield*/, documentCloner.toIFrame(ownerDocument, windowBounds)];
                 case 1:
                     container = _u.sent();
+                    clonedElement = documentCloner.clonedReferenceElement;
+                    if (!clonedElement) {
+                        return [2 /*return*/, Promise.reject("Unable to find element in cloned iframe")];
+                    }
                     _a = isBodyElement(clonedElement) || isHTMLElement(clonedElement)
                         ? parseDocumentSize(clonedElement.ownerDocument)
                         : parseBounds(context, clonedElement), width = _a.width, height = _a.height, left = _a.left, top = _a.top;
