@@ -119,6 +119,12 @@ export class DocumentCloner {
         addBase(this.documentElement, documentClone);
         const fullHTML = this.documentElement.outerHTML;
 
+        // Open the document before attaching the load listener so that readyState is
+        // 'loading' when iframeLoader registers its onload handler. Without this,
+        // Firefox may have already fired onload on the initial empty document and the
+        // promise would never resolve.
+        documentClone.open();
+
         const iframeLoad = iframeLoader(iframe).then(async () => {
             this.scrolledElements.forEach(restoreNodeScroll);
             if (cloneWindow) {
@@ -181,7 +187,6 @@ export class DocumentCloner {
             return iframe;
         });
 
-        documentClone.open();
         documentClone.write(`${serializeDoctype(document.doctype)}${fullHTML}`);
         // Chrome scrolls the parent document for some reason after the write to the cloned window???
         restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
@@ -633,15 +638,26 @@ const iframeLoader = (iframe: HTMLIFrameElement): Promise<HTMLIFrameElement> => 
 
         const documentClone = cloneWindow.document;
 
-        cloneWindow.onload = iframe.onload = () => {
-            cloneWindow.onload = iframe.onload = null;
-            const interval = setInterval(() => {
-                if (documentClone.readyState === 'complete') {
-                    clearInterval(interval);
-                    resolve(iframe);
-                }
-            }, 50);
+        const checkReady = () => {
+            if (documentClone.readyState === 'complete') {
+                resolve(iframe);
+                return true;
+            }
+            return false;
         };
+
+        // Firefox may fire onload synchronously during document.write()/close(), before
+        // we have a chance to attach the handler. Check readyState immediately first.
+        if (!checkReady()) {
+            cloneWindow.onload = iframe.onload = () => {
+                cloneWindow.onload = iframe.onload = null;
+                const interval = setInterval(() => {
+                    if (checkReady()) {
+                        clearInterval(interval);
+                    }
+                }, 50);
+            };
+        }
     });
 };
 
