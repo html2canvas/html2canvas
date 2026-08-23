@@ -1,6 +1,24 @@
 # Changelog
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.9.0](https://github.com/html2canvas/html2canvas/compare/v1.8.0...v1.9.0) (2026-08-23)
+
+### Features
+
+* add CSS clip-path and clip:rect() support ([1472db0](https://github.com/html2canvas/html2canvas/commit/1472db063d465a3e7ef330549d51a89c346793a3))
+* add full CSS transform function support ([406573a](https://github.com/html2canvas/html2canvas/commit/406573a2d13935ae25a36d4e61a61163f55eb2ea))
+* add support for repeating-linear-gradient, repeating-radial-gradient, conic-gradient and repeating-conic-gradient ([27bc1c6](https://github.com/html2canvas/html2canvas/commit/27bc1c60364ad8fe36215bcf3f0c83a56e5f9c5d))
+* **www:** refactor styles, remove Carbon, add Examples page ([44581a6](https://github.com/html2canvas/html2canvas/commit/44581a68288d8318f2c1829be7644d781a1decc0))
+
+### Bug Fixes
+
+* apply stylesheet rules correctly in Chromium iframe clone ([6822053](https://github.com/html2canvas/html2canvas/commit/68220538987d61d17a067e9a4610c1eae0a5701b))
+* CI — dist artifact before www/npm install, Safari continue-on-error ([3533d21](https://github.com/html2canvas/html2canvas/commit/3533d21ac48576a523e86c4525e454b64fbe5ec3))
+* CI fixes — prettier, webpack tsconfig, puppeteer executablePath, Node versions ([f9e67f9](https://github.com/html2canvas/html2canvas/commit/f9e67f9a5796cf532b3bf33fd014075cb38384c2))
+* remove Safari macOS from CI — Karma v6 crashes on arm64, is deprecated ([d789faf](https://github.com/html2canvas/html2canvas/commit/d789fafcbc0b4603b70da72a4c6df8fc26990f97))
+* resolve iframeLoader race condition in Firefox ([5d59f5c](https://github.com/html2canvas/html2canvas/commit/5d59f5cd67b48dd7f62238e80db479329a4eebca))
+* use element's own window for getComputedStyle in ElementContainer ([b89847c](https://github.com/html2canvas/html2canvas/commit/b89847c69c6c0b977687b6d43cef2dacffabb4e8))
+
 ## [1.8.0](https://github.com/html2canvas/html2canvas/compare/v1.7.1...v1.8.0) (2026-08-22)
 
 ### Features
