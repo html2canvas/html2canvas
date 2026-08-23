@@ -21,7 +21,16 @@ import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { isDimensionToken } from '../../css/syntax/parser';
 import { asString, Color, isTransparent } from '../../css/types/color';
 import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
-import { CSSImageType, CSSURLImage, isLinearGradient, isRadialGradient } from '../../css/types/image';
+import {
+    CSSImageType,
+    CSSURLImage,
+    isConicGradient,
+    isLinearGradient,
+    isRadialGradient,
+    isRepeatingConicGradient,
+    isRepeatingLinearGradient,
+    isRepeatingRadialGradient,
+} from '../../css/types/image';
 import { FIFTY_PERCENT, getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
 import { ElementContainer, FLAGS } from '../../dom/element-container';
 import { SelectElementContainer } from '../../dom/elements/select-element-container';
@@ -1354,6 +1363,8 @@ export class CanvasRenderer extends Renderer {
     async renderBackgroundImage(container: ElementContainer): Promise<void> {
         let index = container.styles.backgroundImage.length - 1;
         for (const backgroundImage of container.styles.backgroundImage.slice(0).reverse()) {
+            console.log('>>>', backgroundImage.type);
+
             const blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
             if (blendMode !== 'source-over') {
                 this.ctx.globalCompositeOperation = blendMode;
@@ -1399,6 +1410,65 @@ export class CanvasRenderer extends Renderer {
                     const pattern = this.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                     this.renderRepeat(path, pattern, x, y);
                 }
+            } else if (isRepeatingLinearGradient(backgroundImage)) {
+                const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+                const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, width);
+                canvas.height = Math.max(1, height);
+                const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+                const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+
+                // processColorStops normalises stops to [0,1] relative to lineLength
+                const processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
+                const tileStart = processedStops[0].stop;
+                const tileEnd = processedStops[processedStops.length - 1].stop;
+                const tileSize = tileEnd - tileStart;
+
+                if (tileSize > 0) {
+                    // Build all tiled stops in [0,1] by repeating the tile backward and forward.
+                    // Use a max-iterations guard to prevent runaway loops on degenerate inputs.
+                    const MAX_ITER = 512;
+                    const allStops: Array<{ stop: number; color: (typeof processedStops)[0]['color'] }> = [];
+
+                    // Tile backward: while the tile still contributes stops >= 0
+                    for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                        const offset = iter * tileSize;
+                        processedStops.forEach(s => {
+                            allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color });
+                        });
+                        if (tileStart - offset <= 0) break;
+                    }
+                    // Original tile
+                    processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+                    // Tile forward: while the tile still contributes stops <= 1
+                    for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                        const offset = iter * tileSize;
+                        processedStops.forEach(s => {
+                            allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color });
+                        });
+                    }
+
+                    // Clamp edges: ensure 0 and 1 are covered with the boundary stop's colour
+                    if (allStops[0].stop > 0) {
+                        allStops.unshift({ stop: 0, color: allStops[0].color });
+                    }
+                    if (allStops[allStops.length - 1].stop < 1) {
+                        allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
+                    }
+
+                    allStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                } else {
+                    processedStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                }
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+                if (width > 0 && height > 0) {
+                    const pattern = this.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
+                    this.renderRepeat(path, pattern, x, y);
+                }
             } else if (isRadialGradient(backgroundImage)) {
                 const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
                     null,
@@ -1436,6 +1506,183 @@ export class CanvasRenderer extends Renderer {
                     } else {
                         this.ctx.fill();
                     }
+                }
+            } else if (isRepeatingRadialGradient(backgroundImage)) {
+                const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
+                    null,
+                    null,
+                    null,
+                ]);
+                const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                const x = getAbsoluteValue(position[0], width);
+                const y = getAbsoluteValue(position[position.length - 1], height);
+
+                const [rx, ry] = calculateRadius(backgroundImage, x, y, width, height);
+                if (rx > 0 && ry > 0) {
+                    // Centre in page-space coordinates
+                    const cx = left + x;
+                    const cy = top + y;
+
+                    // Calculate maxRadius based on the deformation (f)
+                    const f = rx !== ry ? ry / rx : 1;
+                    const invF = rx !== ry ? rx / ry : 1;
+
+                    // Apply the inverse ratio (invF) to the Y distance to compensate for the subsequent transform
+                    const maxDistX = Math.max(x, width - x);
+                    const maxDistY = Math.max(y, height - y) * invF;
+                    const maxRadius = Math.sqrt(maxDistX ** 2 + maxDistY ** 2);
+
+                    const drawRadius = Math.max(rx, maxRadius);
+
+                    // Normalise stops against rx...
+                    const processedStops = processColorStops(backgroundImage.stops, rx);
+                    const scale = rx / drawRadius;
+                    const scaledStops = processedStops.map(s => ({ color: s.color, stop: s.stop * scale }));
+                    const tileStart = scaledStops[0].stop;
+                    const tileEnd = scaledStops[scaledStops.length - 1].stop;
+                    const tileSize = tileEnd - tileStart;
+
+                    const allStops: Array<{ stop: number; color: (typeof scaledStops)[0]['color'] }> = [];
+                    if (tileSize > 0) {
+                        const MAX_ITER = 512;
+                        for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                            const offset = iter * tileSize;
+                            scaledStops.forEach(s => {
+                                allStops.push({ color: s.color, stop: Math.max(0, s.stop - offset) });
+                            });
+                            if (tileStart - offset <= 0) break;
+                        }
+                        scaledStops.forEach(s => allStops.push({ color: s.color, stop: s.stop }));
+                        for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                            const offset = iter * tileSize;
+                            scaledStops.forEach(s => {
+                                allStops.push({ color: s.color, stop: Math.min(1, s.stop + offset) });
+                            });
+                        }
+                    } else {
+                        scaledStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+                    }
+
+                    const radialGradient = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, drawRadius);
+                    allStops.forEach(s => radialGradient.addColorStop(s.stop, asString(s.color)));
+
+                    // Prepare the path (e.g., the box with its border-radius)
+                    this.path(path);
+                    this.ctx.fillStyle = radialGradient;
+
+                    if (rx !== ry) {
+                        // Ellipse
+                        this.ctx.save();
+                        this.ctx.clip();
+                        this.ctx.translate(cx, cy);
+                        this.ctx.transform(1, 0, 0, f, 0, 0);
+                        this.ctx.translate(-cx, -cy);
+
+                        this.ctx.fillRect(left, invF * (top - cy) + cy, width, height * invF);
+                        this.ctx.restore();
+                    } else {
+                        // Perfect circle
+                        this.ctx.fill();
+                    }
+                }
+            } else if (isConicGradient(backgroundImage)) {
+                if (
+                    typeof CanvasRenderingContext2D !== 'undefined' &&
+                    typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
+                ) {
+                    const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
+                        null,
+                        null,
+                        null,
+                    ]);
+                    const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                    const cx = left + getAbsoluteValue(position[0], width);
+                    const cy = top + getAbsoluteValue(position[position.length - 1], height);
+
+                    // CSS conic starts at top (12 o'clock); Canvas createConicGradient starts at right (3 o'clock).
+                    // Compensate by subtracting π/2.
+                    const conicGrad = this.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
+                    processColorStops(backgroundImage.stops, 360).forEach(colorStop =>
+                        conicGrad.addColorStop(colorStop.stop, asString(colorStop.color)),
+                    );
+
+                    this.path(path);
+                    this.ctx.fillStyle = conicGrad;
+                    this.ctx.fill();
+                } else {
+                    this.context.logger.error('conic-gradient is not supported in this browser');
+                }
+            } else if (isRepeatingConicGradient(backgroundImage)) {
+                if (
+                    typeof CanvasRenderingContext2D !== 'undefined' &&
+                    typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
+                ) {
+                    const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
+                        null,
+                        null,
+                        null,
+                    ]);
+                    const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                    // Centre in page-space coordinates (same as radial gradient)
+                    const cx = left + getAbsoluteValue(position[0], width);
+                    const cy = top + getAbsoluteValue(position[position.length - 1], height);
+
+                    // Conic stops use degree values; normalise against 360 so that e.g. 90deg → 0.25
+                    // CSS conic starts at top (12 o'clock); Canvas createConicGradient starts at right (3 o'clock).
+                    // Compensate by subtracting π/2 from the start angle.
+                    const processedStops = processColorStops(backgroundImage.stops, 360);
+                    const tileStart = processedStops[0].stop;
+                    const tileEnd = processedStops[processedStops.length - 1].stop;
+                    const tileSize = tileEnd - tileStart;
+
+                    const conicGrad = this.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
+                    if (tileSize > 0) {
+                        const MAX_ITER = 512;
+                        const allStops: Array<{ stop: number; color: (typeof processedStops)[0]['color'] }> = [];
+
+                        for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                            const offset = iter * tileSize;
+                            processedStops.forEach(s => {
+                                allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color });
+                            });
+                            if (tileStart - offset <= 0) break;
+                        }
+                        processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+                        for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                            const offset = iter * tileSize;
+                            processedStops.forEach(s => {
+                                allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color });
+                            });
+                            // Interpolate the colour at exactly position 1.0 within this tile
+                            const tilePos = 1 - processedStops[0].stop - offset;
+                            if (tilePos >= 0 && tilePos <= tileSize) {
+                                // Find the stop colour just before position 1.0
+                                for (let si = processedStops.length - 1; si >= 0; si--) {
+                                    if (processedStops[si].stop + offset <= 1) {
+                                        allStops.push({ stop: 1, color: processedStops[si].color });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (allStops[0].stop > 0) {
+                            allStops.unshift({ stop: 0, color: allStops[0].color });
+                        }
+                        if (allStops[allStops.length - 1].stop < 1) {
+                            allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
+                        }
+
+                        allStops.forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
+                    } else {
+                        processedStops.forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
+                    }
+
+                    this.path(path);
+                    this.ctx.fillStyle = conicGrad;
+                    this.ctx.fill();
+                } else {
+                    this.context.logger.error('repeating-conic-gradient is not supported in this browser');
                 }
             }
             index--;

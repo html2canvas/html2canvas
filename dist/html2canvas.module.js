@@ -1630,8 +1630,10 @@ var parseColorStop = function (context, args) {
     return stop && isLengthPercentage(stop) ? { color: color, stop: stop } : { color: color, stop: null };
 };
 var processColorStops = function (stops, lineLength) {
-    var first = stops[0];
-    var last = stops[stops.length - 1];
+    // Work on a shallow copy to avoid mutating the original stop objects
+    var stops_ = stops.map(function (s) { return (__assign({}, s)); });
+    var first = stops_[0];
+    var last = stops_[stops_.length - 1];
     if (first.stop === null) {
         first.stop = ZERO_LENGTH;
     }
@@ -1640,8 +1642,8 @@ var processColorStops = function (stops, lineLength) {
     }
     var processStops = [];
     var previous = 0;
-    for (var i = 0; i < stops.length; i++) {
-        var stop_1 = stops[i].stop;
+    for (var i = 0; i < stops_.length; i++) {
+        var stop_1 = stops_[i].stop;
         if (stop_1 !== null) {
             var absoluteValue = getAbsoluteValue(stop_1, lineLength);
             if (absoluteValue > previous) {
@@ -1669,12 +1671,12 @@ var processColorStops = function (stops, lineLength) {
             var beforeGap = processStops[gapBegin - 1];
             var gapValue = (stop_2 - beforeGap) / (gapLength + 1);
             for (var g = 1; g <= gapLength; g++) {
-                processStops[gapBegin + g - 1] = gapValue * g;
+                processStops[gapBegin + g - 1] = beforeGap + gapValue * g;
             }
             gapBegin = null;
         }
     }
-    return stops.map(function (_a, i) {
+    return stops_.map(function (_a, i) {
         var color = _a.color;
         return { color: color, stop: Math.max(Math.min(1, processStops[i] / lineLength), 0) };
     });
@@ -2016,6 +2018,64 @@ var webkitGradient = function (context, tokens) {
         : { size: size, shape: shape, stops: stops, position: position, type: type };
 };
 
+var conicGradient = function (context, tokens) {
+    var startAngle = 0;
+    var stops = [];
+    var position = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        if (i === 0) {
+            // First argument may contain "from <angle>" and/or "at <position>"
+            var j = 0;
+            while (j < arg.length) {
+                var token = arg[j];
+                if (isIdentToken(token) && token.value === 'from') {
+                    j++;
+                    if (j < arg.length && isAngle(arg[j])) {
+                        startAngle = angle.parse(context, arg[j]);
+                        j++;
+                    }
+                }
+                else if (isIdentToken(token) && token.value === 'at') {
+                    j++;
+                    while (j < arg.length) {
+                        var posToken = arg[j];
+                        if (isIdentToken(posToken)) {
+                            switch (posToken.value) {
+                                case 'center':
+                                    position.push(FIFTY_PERCENT);
+                                    break;
+                                case 'top':
+                                case 'left':
+                                    position.push(ZERO_LENGTH);
+                                    break;
+                                case 'right':
+                                case 'bottom':
+                                    position.push(HUNDRED_PERCENT);
+                                    break;
+                            }
+                        }
+                        else if (isLengthPercentage(posToken) || isLength(posToken)) {
+                            position.push(posToken);
+                        }
+                        else if (posToken.type === 4 /* TokenType.COMMA_TOKEN */) {
+                            break;
+                        }
+                        j++;
+                    }
+                }
+                else {
+                    // No recognised keyword — treat whole first arg as a color stop
+                    stops.push(parseColorStop(context, arg));
+                    return;
+                }
+            }
+            return;
+        }
+        stops.push(parseColorStop(context, arg));
+    });
+    return { startAngle: startAngle, stops: stops, position: position, type: 5 /* CSSImageType.CONIC_GRADIENT */ };
+};
+
 var linearGradient = function (context, tokens) {
     var angle$1 = deg(180);
     var stops = [];
@@ -2037,11 +2097,176 @@ var linearGradient = function (context, tokens) {
     return { angle: angle$1, stops: stops, type: 1 /* CSSImageType.LINEAR_GRADIENT */ };
 };
 
+var repeatingConicGradient = function (context, tokens) {
+    var startAngle = 0;
+    var stops = [];
+    var position = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        if (i === 0) {
+            var j = 0;
+            while (j < arg.length) {
+                var token = arg[j];
+                if (isIdentToken(token) && token.value === 'from') {
+                    j++;
+                    if (j < arg.length && isAngle(arg[j])) {
+                        startAngle = angle.parse(context, arg[j]);
+                        j++;
+                    }
+                }
+                else if (isIdentToken(token) && token.value === 'at') {
+                    j++;
+                    while (j < arg.length) {
+                        var posToken = arg[j];
+                        if (isIdentToken(posToken)) {
+                            switch (posToken.value) {
+                                case 'center':
+                                    position.push(FIFTY_PERCENT);
+                                    break;
+                                case 'top':
+                                case 'left':
+                                    position.push(ZERO_LENGTH);
+                                    break;
+                                case 'right':
+                                case 'bottom':
+                                    position.push(HUNDRED_PERCENT);
+                                    break;
+                            }
+                        }
+                        else if (isLengthPercentage(posToken) || isLength(posToken)) {
+                            position.push(posToken);
+                        }
+                        else if (posToken.type === 4 /* TokenType.COMMA_TOKEN */) {
+                            break;
+                        }
+                        j++;
+                    }
+                }
+                else {
+                    // No recognised keyword — treat whole first arg as a color stop
+                    stops.push(parseColorStop(context, arg));
+                    return;
+                }
+            }
+            return;
+        }
+        stops.push(parseColorStop(context, arg));
+    });
+    return { startAngle: startAngle, stops: stops, position: position, type: 6 /* CSSImageType.REPEATING_CONIC_GRADIENT */ };
+};
+
+var repeatingLinearGradient = function (context, tokens) {
+    var angle$1 = deg(180);
+    var stops = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        if (i === 0) {
+            var firstToken = arg[0];
+            if (firstToken.type === 20 /* TokenType.IDENT_TOKEN */ && firstToken.value === 'to') {
+                angle$1 = parseNamedSide(arg);
+                return;
+            }
+            else if (isAngle(firstToken)) {
+                angle$1 = angle.parse(context, firstToken);
+                return;
+            }
+        }
+        var colorStop = parseColorStop(context, arg);
+        stops.push(colorStop);
+    });
+    return { angle: angle$1, stops: stops, type: 3 /* CSSImageType.REPEATING_LINEAR_GRADIENT */ };
+};
+
+var repeatingRadialGradient = function (context, tokens) {
+    var shape = 0 /* CSSRadialShape.CIRCLE */;
+    var size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+    var stops = [];
+    var position = [];
+    parseFunctionArgs(tokens).forEach(function (arg, i) {
+        var isColorStop = true;
+        if (i === 0) {
+            var isAtPosition_1 = false;
+            isColorStop = arg.reduce(function (acc, token) {
+                if (isAtPosition_1) {
+                    if (isIdentToken(token)) {
+                        switch (token.value) {
+                            case 'center':
+                                position.push(FIFTY_PERCENT);
+                                return acc;
+                            case 'top':
+                            case 'left':
+                                position.push(ZERO_LENGTH);
+                                return acc;
+                            case 'right':
+                            case 'bottom':
+                                position.push(HUNDRED_PERCENT);
+                                return acc;
+                        }
+                    }
+                    else if (isLengthPercentage(token) || isLength(token)) {
+                        position.push(token);
+                    }
+                }
+                else if (isIdentToken(token)) {
+                    switch (token.value) {
+                        case CIRCLE:
+                            shape = 0 /* CSSRadialShape.CIRCLE */;
+                            return false;
+                        case ELLIPSE:
+                            shape = 1 /* CSSRadialShape.ELLIPSE */;
+                            return false;
+                        case 'at':
+                            isAtPosition_1 = true;
+                            return false;
+                        case CLOSEST_SIDE:
+                            size = 0 /* CSSRadialExtent.CLOSEST_SIDE */;
+                            return false;
+                        case COVER:
+                        case FARTHEST_SIDE:
+                            size = 1 /* CSSRadialExtent.FARTHEST_SIDE */;
+                            return false;
+                        case CONTAIN:
+                        case CLOSEST_CORNER:
+                            size = 2 /* CSSRadialExtent.CLOSEST_CORNER */;
+                            return false;
+                        case FARTHEST_CORNER:
+                            size = 3 /* CSSRadialExtent.FARTHEST_CORNER */;
+                            return false;
+                    }
+                }
+                else if (isLength(token) || isLengthPercentage(token)) {
+                    if (!Array.isArray(size)) {
+                        size = [];
+                    }
+                    size.push(token);
+                    return false;
+                }
+                return acc;
+            }, isColorStop);
+        }
+        if (isColorStop) {
+            var colorStop = parseColorStop(context, arg);
+            stops.push(colorStop);
+        }
+    });
+    return { size: size, shape: shape, stops: stops, position: position, type: 4 /* CSSImageType.REPEATING_RADIAL_GRADIENT */ };
+};
+
 var isLinearGradient = function (background) {
     return background.type === 1 /* CSSImageType.LINEAR_GRADIENT */;
 };
 var isRadialGradient = function (background) {
     return background.type === 2 /* CSSImageType.RADIAL_GRADIENT */;
+};
+var isRepeatingLinearGradient = function (background) {
+    return background.type === 3 /* CSSImageType.REPEATING_LINEAR_GRADIENT */;
+};
+var isRepeatingRadialGradient = function (background) {
+    return background.type === 4 /* CSSImageType.REPEATING_RADIAL_GRADIENT */;
+};
+var isConicGradient = function (background) {
+    return background.type === 5 /* CSSImageType.CONIC_GRADIENT */;
+};
+var isRepeatingConicGradient = function (background) {
+    return background.type === 6 /* CSSImageType.REPEATING_CONIC_GRADIENT */;
 };
 var image = {
     name: 'image',
@@ -2073,6 +2298,10 @@ var SUPPORTED_IMAGE_FUNCTIONS = {
     '-moz-radial-gradient': prefixRadialGradient,
     '-webkit-radial-gradient': prefixRadialGradient,
     '-webkit-gradient': webkitGradient,
+    'repeating-linear-gradient': repeatingLinearGradient,
+    'repeating-radial-gradient': repeatingRadialGradient,
+    'conic-gradient': conicGradient,
+    'repeating-conic-gradient': repeatingConicGradient,
 };
 
 var backgroundImage = {
@@ -2090,7 +2319,15 @@ var backgroundImage = {
         }
         return tokens
             .filter(function (value) { return nonFunctionArgSeparator(value) && isSupportedImage(value); })
-            .map(function (value) { return image.parse(context, value); });
+            .reduce(function (acc, value) {
+            try {
+                acc.push(image.parse(context, value));
+            }
+            catch (e) {
+                context.logger.error("Error parsing background-image: ".concat(e));
+            }
+            return acc;
+        }, []);
     },
 };
 
@@ -8835,10 +9072,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
                     case 0:
                         index = container.styles.backgroundImage.length - 1;
                         _loop_1 = function (backgroundImage) {
-                            var blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, left, top_1, width, height, position, x, y, _g, rx, ry, radialGradient_1, midX, midY, f, invF;
-                            return __generator(this, function (_h) {
-                                switch (_h.label) {
+                            var blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, x, y, width, height, _g, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_2, processedStops, tileStart, tileEnd, tileSize, MAX_ITER, allStops_1, _loop_2, iter, state_1, _loop_3, iter, pattern, _h, path, left, top_1, width, height, position, x, y, _j, rx, ry, radialGradient_1, midX, midY, f, invF, _k, path, left, top_2, width, height, position, x, y, _l, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_2, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_4, iter, state_2, _loop_5, iter, radialGradient_2, _m, path, left, top_3, width, height, position, cx, cy, conicGrad_1, _o, path, left, top_4, width, height, position, cx, cy, processedStops, tileStart, tileEnd, tileSize, conicGrad_2, MAX_ITER, allStops_3, _loop_6, iter, state_3, _loop_7, iter;
+                            return __generator(this, function (_p) {
+                                switch (_p.label) {
                                     case 0:
+                                        console.log('>>>', backgroundImage.type);
                                         blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
                                         if (blendMode !== 'source-over') {
                                             this_1.ctx.globalCompositeOperation = blendMode;
@@ -8846,15 +9084,15 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                         if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
                                         image = void 0;
                                         url = backgroundImage.url;
-                                        _h.label = 1;
+                                        _p.label = 1;
                                     case 1:
-                                        _h.trys.push([1, 3, , 4]);
+                                        _p.trys.push([1, 3, , 4]);
                                         return [4 /*yield*/, this_1.context.cache.match(url)];
                                     case 2:
-                                        image = _h.sent();
+                                        image = _p.sent();
                                         return [3 /*break*/, 4];
                                     case 3:
-                                        _h.sent();
+                                        _p.sent();
                                         this_1.context.logger.error("Error loading background-image ".concat(url));
                                         return [3 /*break*/, 4];
                                     case 4:
@@ -8887,16 +9125,76 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                                 this_1.renderRepeat(path, pattern, x, y);
                                             }
                                         }
+                                        else if (isRepeatingLinearGradient(backgroundImage)) {
+                                            _f = calculateBackgroundRendering(container, index, [null, null, null]), path = _f[0], x = _f[1], y = _f[2], width = _f[3], height = _f[4];
+                                            _g = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _g[0], x0 = _g[1], x1 = _g[2], y0 = _g[3], y1 = _g[4];
+                                            canvas = document.createElement('canvas');
+                                            canvas.width = Math.max(1, width);
+                                            canvas.height = Math.max(1, height);
+                                            ctx = canvas.getContext('2d');
+                                            gradient_2 = ctx.createLinearGradient(x0, y0, x1, y1);
+                                            processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
+                                            tileStart = processedStops[0].stop;
+                                            tileEnd = processedStops[processedStops.length - 1].stop;
+                                            tileSize = tileEnd - tileStart;
+                                            if (tileSize > 0) {
+                                                MAX_ITER = 512;
+                                                allStops_1 = [];
+                                                _loop_2 = function (iter) {
+                                                    var offset = iter * tileSize;
+                                                    processedStops.forEach(function (s) {
+                                                        allStops_1.push({ stop: Math.max(0, s.stop - offset), color: s.color });
+                                                    });
+                                                    if (tileStart - offset <= 0)
+                                                        return "break";
+                                                };
+                                                // Tile backward: while the tile still contributes stops >= 0
+                                                for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                                    state_1 = _loop_2(iter);
+                                                    if (state_1 === "break")
+                                                        break;
+                                                }
+                                                // Original tile
+                                                processedStops.forEach(function (s) { return allStops_1.push({ stop: s.stop, color: s.color }); });
+                                                _loop_3 = function (iter) {
+                                                    var offset = iter * tileSize;
+                                                    processedStops.forEach(function (s) {
+                                                        allStops_1.push({ stop: Math.min(1, s.stop + offset), color: s.color });
+                                                    });
+                                                };
+                                                // Tile forward: while the tile still contributes stops <= 1
+                                                for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                                    _loop_3(iter);
+                                                }
+                                                // Clamp edges: ensure 0 and 1 are covered with the boundary stop's colour
+                                                if (allStops_1[0].stop > 0) {
+                                                    allStops_1.unshift({ stop: 0, color: allStops_1[0].color });
+                                                }
+                                                if (allStops_1[allStops_1.length - 1].stop < 1) {
+                                                    allStops_1.push({ stop: 1, color: allStops_1[allStops_1.length - 1].color });
+                                                }
+                                                allStops_1.forEach(function (s) { return gradient_2.addColorStop(s.stop, asString(s.color)); });
+                                            }
+                                            else {
+                                                processedStops.forEach(function (s) { return gradient_2.addColorStop(s.stop, asString(s.color)); });
+                                            }
+                                            ctx.fillStyle = gradient_2;
+                                            ctx.fillRect(0, 0, width, height);
+                                            if (width > 0 && height > 0) {
+                                                pattern = this_1.ctx.createPattern(canvas, 'repeat');
+                                                this_1.renderRepeat(path, pattern, x, y);
+                                            }
+                                        }
                                         else if (isRadialGradient(backgroundImage)) {
-                                            _f = calculateBackgroundRendering(container, index, [
+                                            _h = calculateBackgroundRendering(container, index, [
                                                 null,
                                                 null,
                                                 null,
-                                            ]), path = _f[0], left = _f[1], top_1 = _f[2], width = _f[3], height = _f[4];
+                                            ]), path = _h[0], left = _h[1], top_1 = _h[2], width = _h[3], height = _h[4];
                                             position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                                             x = getAbsoluteValue(position[0], width);
                                             y = getAbsoluteValue(position[position.length - 1], height);
-                                            _g = calculateRadius(backgroundImage, x, y, width, height), rx = _g[0], ry = _g[1];
+                                            _j = calculateRadius(backgroundImage, x, y, width, height), rx = _j[0], ry = _j[1];
                                             if (rx > 0 && ry > 0) {
                                                 radialGradient_1 = this_1.ctx.createRadialGradient(left + x, top_1 + y, 0, left + x, top_1 + y, rx);
                                                 processColorStops(backgroundImage.stops, rx * 2).forEach(function (colorStop) {
@@ -8921,7 +9219,178 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                                 }
                                             }
                                         }
-                                        _h.label = 6;
+                                        else if (isRepeatingRadialGradient(backgroundImage)) {
+                                            _k = calculateBackgroundRendering(container, index, [
+                                                null,
+                                                null,
+                                                null,
+                                            ]), path = _k[0], left = _k[1], top_2 = _k[2], width = _k[3], height = _k[4];
+                                            position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                                            x = getAbsoluteValue(position[0], width);
+                                            y = getAbsoluteValue(position[position.length - 1], height);
+                                            _l = calculateRadius(backgroundImage, x, y, width, height), rx = _l[0], ry = _l[1];
+                                            if (rx > 0 && ry > 0) {
+                                                cx = left + x;
+                                                cy = top_2 + y;
+                                                f = rx !== ry ? ry / rx : 1;
+                                                invF = rx !== ry ? rx / ry : 1;
+                                                maxDistX = Math.max(x, width - x);
+                                                maxDistY = Math.max(y, height - y) * invF;
+                                                maxRadius = Math.sqrt(Math.pow(maxDistX, 2) + Math.pow(maxDistY, 2));
+                                                drawRadius = Math.max(rx, maxRadius);
+                                                processedStops = processColorStops(backgroundImage.stops, rx);
+                                                scale_2 = rx / drawRadius;
+                                                scaledStops = processedStops.map(function (s) { return ({ color: s.color, stop: s.stop * scale_2 }); });
+                                                tileStart = scaledStops[0].stop;
+                                                tileEnd = scaledStops[scaledStops.length - 1].stop;
+                                                tileSize = tileEnd - tileStart;
+                                                allStops_2 = [];
+                                                if (tileSize > 0) {
+                                                    MAX_ITER = 512;
+                                                    _loop_4 = function (iter) {
+                                                        var offset = iter * tileSize;
+                                                        scaledStops.forEach(function (s) {
+                                                            allStops_2.push({ color: s.color, stop: Math.max(0, s.stop - offset) });
+                                                        });
+                                                        if (tileStart - offset <= 0)
+                                                            return "break";
+                                                    };
+                                                    for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                                        state_2 = _loop_4(iter);
+                                                        if (state_2 === "break")
+                                                            break;
+                                                    }
+                                                    scaledStops.forEach(function (s) { return allStops_2.push({ color: s.color, stop: s.stop }); });
+                                                    _loop_5 = function (iter) {
+                                                        var offset = iter * tileSize;
+                                                        scaledStops.forEach(function (s) {
+                                                            allStops_2.push({ color: s.color, stop: Math.min(1, s.stop + offset) });
+                                                        });
+                                                    };
+                                                    for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                                        _loop_5(iter);
+                                                    }
+                                                }
+                                                else {
+                                                    scaledStops.forEach(function (s) { return allStops_2.push({ stop: s.stop, color: s.color }); });
+                                                }
+                                                radialGradient_2 = this_1.ctx.createRadialGradient(cx, cy, 0, cx, cy, drawRadius);
+                                                allStops_2.forEach(function (s) { return radialGradient_2.addColorStop(s.stop, asString(s.color)); });
+                                                // Prepare the path (e.g., the box with its border-radius)
+                                                this_1.path(path);
+                                                this_1.ctx.fillStyle = radialGradient_2;
+                                                if (rx !== ry) {
+                                                    // Ellipse
+                                                    this_1.ctx.save();
+                                                    this_1.ctx.clip();
+                                                    this_1.ctx.translate(cx, cy);
+                                                    this_1.ctx.transform(1, 0, 0, f, 0, 0);
+                                                    this_1.ctx.translate(-cx, -cy);
+                                                    this_1.ctx.fillRect(left, invF * (top_2 - cy) + cy, width, height * invF);
+                                                    this_1.ctx.restore();
+                                                }
+                                                else {
+                                                    // Perfect circle
+                                                    this_1.ctx.fill();
+                                                }
+                                            }
+                                        }
+                                        else if (isConicGradient(backgroundImage)) {
+                                            if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                                                typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                                                _m = calculateBackgroundRendering(container, index, [
+                                                    null,
+                                                    null,
+                                                    null,
+                                                ]), path = _m[0], left = _m[1], top_3 = _m[2], width = _m[3], height = _m[4];
+                                                position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                                                cx = left + getAbsoluteValue(position[0], width);
+                                                cy = top_3 + getAbsoluteValue(position[position.length - 1], height);
+                                                conicGrad_1 = this_1.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
+                                                processColorStops(backgroundImage.stops, 360).forEach(function (colorStop) {
+                                                    return conicGrad_1.addColorStop(colorStop.stop, asString(colorStop.color));
+                                                });
+                                                this_1.path(path);
+                                                this_1.ctx.fillStyle = conicGrad_1;
+                                                this_1.ctx.fill();
+                                            }
+                                            else {
+                                                this_1.context.logger.error('conic-gradient is not supported in this browser');
+                                            }
+                                        }
+                                        else if (isRepeatingConicGradient(backgroundImage)) {
+                                            if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                                                typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                                                _o = calculateBackgroundRendering(container, index, [
+                                                    null,
+                                                    null,
+                                                    null,
+                                                ]), path = _o[0], left = _o[1], top_4 = _o[2], width = _o[3], height = _o[4];
+                                                position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                                                cx = left + getAbsoluteValue(position[0], width);
+                                                cy = top_4 + getAbsoluteValue(position[position.length - 1], height);
+                                                processedStops = processColorStops(backgroundImage.stops, 360);
+                                                tileStart = processedStops[0].stop;
+                                                tileEnd = processedStops[processedStops.length - 1].stop;
+                                                tileSize = tileEnd - tileStart;
+                                                conicGrad_2 = this_1.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
+                                                if (tileSize > 0) {
+                                                    MAX_ITER = 512;
+                                                    allStops_3 = [];
+                                                    _loop_6 = function (iter) {
+                                                        var offset = iter * tileSize;
+                                                        processedStops.forEach(function (s) {
+                                                            allStops_3.push({ stop: Math.max(0, s.stop - offset), color: s.color });
+                                                        });
+                                                        if (tileStart - offset <= 0)
+                                                            return "break";
+                                                    };
+                                                    for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                                        state_3 = _loop_6(iter);
+                                                        if (state_3 === "break")
+                                                            break;
+                                                    }
+                                                    processedStops.forEach(function (s) { return allStops_3.push({ stop: s.stop, color: s.color }); });
+                                                    _loop_7 = function (iter) {
+                                                        var offset = iter * tileSize;
+                                                        processedStops.forEach(function (s) {
+                                                            allStops_3.push({ stop: Math.min(1, s.stop + offset), color: s.color });
+                                                        });
+                                                        // Interpolate the colour at exactly position 1.0 within this tile
+                                                        var tilePos = 1 - processedStops[0].stop - offset;
+                                                        if (tilePos >= 0 && tilePos <= tileSize) {
+                                                            // Find the stop colour just before position 1.0
+                                                            for (var si = processedStops.length - 1; si >= 0; si--) {
+                                                                if (processedStops[si].stop + offset <= 1) {
+                                                                    allStops_3.push({ stop: 1, color: processedStops[si].color });
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    };
+                                                    for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                                        _loop_7(iter);
+                                                    }
+                                                    if (allStops_3[0].stop > 0) {
+                                                        allStops_3.unshift({ stop: 0, color: allStops_3[0].color });
+                                                    }
+                                                    if (allStops_3[allStops_3.length - 1].stop < 1) {
+                                                        allStops_3.push({ stop: 1, color: allStops_3[allStops_3.length - 1].color });
+                                                    }
+                                                    allStops_3.forEach(function (s) { return conicGrad_2.addColorStop(s.stop, asString(s.color)); });
+                                                }
+                                                else {
+                                                    processedStops.forEach(function (s) { return conicGrad_2.addColorStop(s.stop, asString(s.color)); });
+                                                }
+                                                this_1.path(path);
+                                                this_1.ctx.fillStyle = conicGrad_2;
+                                                this_1.ctx.fill();
+                                            }
+                                            else {
+                                                this_1.context.logger.error('repeating-conic-gradient is not supported in this browser');
+                                            }
+                                        }
+                                        _p.label = 6;
                                     case 6:
                                         index--;
                                         if (blendMode !== 'source-over') {
@@ -8994,7 +9463,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
      */
     CanvasRenderer.prototype.renderBackgroundClipText = function (paint) {
         return __awaiter(this, void 0, void 0, function () {
-            var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _loop_2, this_2, _c, _d, textBound;
+            var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _loop_8, this_2, _c, _d, textBound;
             return __generator(this, function (_e) {
                 switch (_e.label) {
                     case 0:
@@ -9045,7 +9514,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
                         for (_i = 0, _b = container.textNodes; _i < _b.length; _i++) {
                             textNode = _b[_i];
-                            _loop_2 = function (textBound) {
+                            _loop_8 = function (textBound) {
                                 if (isVertical) {
                                     var cx = textBound.bounds.left + textBound.bounds.width / 2;
                                     var cy = textBound.bounds.top + textBound.bounds.height / 2;
@@ -9091,7 +9560,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             this_2 = this;
                             for (_c = 0, _d = textNode.textBounds; _c < _d.length; _c++) {
                                 textBound = _d[_c];
-                                _loop_2(textBound);
+                                _loop_8(textBound);
                             }
                         }
                         // Step 3: Apply the text mask to the background using 'destination-in'.

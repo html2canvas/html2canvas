@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background repeating-radial-gradient tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      html {
+        background-color: red;
+      }
+      .small div {
+        width: 100px;
+        height: 100px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .medium div {
+        width: 210px;
+        height: 200px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .small,
+      .medium {
+        clear: both;
+      }
+      div {
+        display: block;
+      }
+
+      /* Basic concentric rings */
+      .repeatingRadialGradient1 {
+        background: repeating-radial-gradient(circle, #e66465, #e66465 10px, #9198e5 10px, #9198e5 20px);
+      }
+
+      /* Ellipse shape */
+      .repeatingRadialGradient2 {
+        background: repeating-radial-gradient(ellipse, #3f87a6, #3f87a6 15px, #ebf8e1 15px, #ebf8e1 30px);
+      }
+
+      /* Three-color rings */
+      .repeatingRadialGradient3 {
+        background: repeating-radial-gradient(circle, red 0px, red 10px, white 10px, white 20px, blue 20px, blue 30px);
+      }
+
+      /* Off-center position */
+      .repeatingRadialGradient4 {
+        background: repeating-radial-gradient(circle at 25% 75%, #f06 0px, #f06 15px, #aef 15px, #aef 30px);
+      }
+
+      /* Translucent colors */
+      .repeatingRadialGradient5 {
+        background: repeating-radial-gradient(
+          circle at center,
+          rgba(255, 0, 0, 0.8) 0px,
+          rgba(255, 0, 0, 0.8) 10px,
+          rgba(0, 0, 255, 0.3) 10px,
+          rgba(0, 0, 255, 0.3) 20px
+        );
+      }
+
+      /* Closest-side extent */
+      .repeatingRadialGradient6 {
+        background: repeating-radial-gradient(
+          circle closest-side at 60% 55%,
+          #e66465,
+          #e66465 10%,
+          #9198e5 10%,
+          #9198e5 20%
+        );
+      }
+
+      /* Explicit radius sizes */
+      .repeatingRadialGradient7 {
+        background: repeating-radial-gradient(20px 10px at top, #ff0000, #0000ff 20px);
+      }
+
+      /* Smooth fade-and-repeat */
+      .repeatingRadialGradient8 {
+        background: repeating-radial-gradient(circle, #fff 0%, #000 25%, #fff 50%);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="small">
+      <div class="repeatingRadialGradient1">&nbsp;</div>
+      <div class="repeatingRadialGradient2">&nbsp;</div>
+      <div class="repeatingRadialGradient3">&nbsp;</div>
+      <div class="repeatingRadialGradient4">&nbsp;</div>
+      <div class="repeatingRadialGradient5">&nbsp;</div>
+      <div class="repeatingRadialGradient6">&nbsp;</div>
+      <div class="repeatingRadialGradient7">&nbsp;</div>
+      <div class="repeatingRadialGradient8">&nbsp;</div>
+    </div>
+  </body>
+</html>

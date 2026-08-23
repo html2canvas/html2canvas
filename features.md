@@ -19,6 +19,10 @@ Below is a list of all the supported CSS properties and values.
         - url()
         - linear-gradient()
         - radial-gradient()
+        - repeating-linear-gradient()
+        - repeating-radial-gradient()
+        - conic-gradient()
+        - repeating-conic-gradient()
     - background-origin
     - background-position
     - background-size
@@ -32,6 +36,11 @@ Below is a list of all the supported CSS properties and values.
 - box-sizing
 - clip
 - clip-path
+    - inset()
+    - circle()
+    - ellipse()
+    - polygon()
+    - path()
 - content
 - color
 - display
@@ -68,6 +77,7 @@ Below is a list of all the supported CSS properties and values.
 - min-height
 - min-width
 - mix-blend-mode
+- object-fit
 - opacity
 - overflow
 - overflow-wrap
@@ -110,12 +120,11 @@ Below is a list of all the supported CSS properties and values.
 - white-space
 - writing-mode (**Limited support**)
 - width
-- webkit-text-stroke
 - word-break
 - word-spacing
 - word-wrap
 - z-index
-- object-fit
+- -webkit-text-stroke
 
 ## Values
 
@@ -156,5 +165,4 @@ These CSS properties are **NOT** currently supported
 - [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
 - object-position
-- [repeating-linear-gradient()](https://github.com/niklasvh/html2canvas/issues/1162)
 - [zoom](https://github.com/niklasvh/html2canvas/issues/732)

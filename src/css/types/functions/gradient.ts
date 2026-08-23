@@ -1,15 +1,16 @@
+import { Context } from '../../../core/context';
 import { CSSValue } from '../../syntax/parser';
+import { color as colorType } from '../color';
 import {
     CSSRadialExtent,
     CSSRadialGradientImage,
     CSSRadialShape,
+    CSSRepeatingRadialGradientImage,
     GradientColorStop,
     GradientCorner,
     UnprocessedGradientColorStop,
 } from '../image';
-import { color as colorType } from '../color';
 import { getAbsoluteValue, HUNDRED_PERCENT, isLengthPercentage, ZERO_LENGTH } from '../length-percentage';
-import { Context } from '../../../core/context';
 
 export const parseColorStop = (context: Context, args: CSSValue[]): UnprocessedGradientColorStop => {
     const color = colorType.parse(context, args[0]);
@@ -18,8 +19,10 @@ export const parseColorStop = (context: Context, args: CSSValue[]): UnprocessedG
 };
 
 export const processColorStops = (stops: UnprocessedGradientColorStop[], lineLength: number): GradientColorStop[] => {
-    const first = stops[0];
-    const last = stops[stops.length - 1];
+    // Work on a shallow copy to avoid mutating the original stop objects
+    const stops_ = stops.map(s => ({ ...s }));
+    const first = stops_[0];
+    const last = stops_[stops_.length - 1];
     if (first.stop === null) {
         first.stop = ZERO_LENGTH;
     }
@@ -30,8 +33,8 @@ export const processColorStops = (stops: UnprocessedGradientColorStop[], lineLen
 
     const processStops: (number | null)[] = [];
     let previous = 0;
-    for (let i = 0; i < stops.length; i++) {
-        const stop = stops[i].stop;
+    for (let i = 0; i < stops_.length; i++) {
+        const stop = stops_[i].stop;
         if (stop !== null) {
             const absoluteValue = getAbsoluteValue(stop, lineLength);
             if (absoluteValue > previous) {
@@ -57,13 +60,13 @@ export const processColorStops = (stops: UnprocessedGradientColorStop[], lineLen
             const beforeGap = processStops[gapBegin - 1] as number;
             const gapValue = (stop - beforeGap) / (gapLength + 1);
             for (let g = 1; g <= gapLength; g++) {
-                processStops[gapBegin + g - 1] = gapValue * g;
+                processStops[gapBegin + g - 1] = beforeGap + gapValue * g;
             }
             gapBegin = null;
         }
     }
 
-    return stops.map(({ color }, i) => {
+    return stops_.map(({ color }, i) => {
         return { color, stop: Math.max(Math.min(1, (processStops[i] as number) / lineLength), 0) };
     });
 };
@@ -127,7 +130,7 @@ const findCorner = (width: number, height: number, x: number, y: number, closest
 };
 
 export const calculateRadius = (
-    gradient: CSSRadialGradientImage,
+    gradient: CSSRadialGradientImage | CSSRepeatingRadialGradientImage,
     x: number,
     y: number,
     width: number,

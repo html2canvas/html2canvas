@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background conic-gradient tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      html {
+        background-color: red;
+      }
+      .small div {
+        width: 100px;
+        height: 100px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .medium div {
+        width: 210px;
+        height: 200px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .small,
+      .medium {
+        clear: both;
+      }
+      div {
+        display: block;
+      }
+
+      /* Basic two-color pie */
+      .conicGradient1 {
+        background: conic-gradient(red, blue);
+      }
+
+      /* Named color stops at angles */
+      .conicGradient2 {
+        background: conic-gradient(red 0deg, yellow 90deg, green 180deg, blue 270deg, red 360deg);
+      }
+
+      /* Rotated start angle */
+      .conicGradient3 {
+        background: conic-gradient(from 45deg, red, blue);
+      }
+
+      /* Off-center position */
+      .conicGradient4 {
+        background: conic-gradient(at 25% 75%, red, yellow, green, blue, red);
+      }
+
+      /* from + at combined */
+      .conicGradient5 {
+        background: conic-gradient(from 90deg at 50% 50%, #f06, #aef, #f06);
+      }
+
+      /* Hard-stop color wheel using separate stops */
+      .conicGradient6 {
+        background: conic-gradient(
+          red 0deg,
+          red 60deg,
+          yellow 60deg,
+          yellow 120deg,
+          green 120deg,
+          green 180deg,
+          cyan 180deg,
+          cyan 240deg,
+          blue 240deg,
+          blue 300deg,
+          magenta 300deg,
+          magenta 360deg
+        );
+      }
+
+      /* Percentage stops */
+      .conicGradient7 {
+        background: conic-gradient(#fff 0%, #000 50%, #fff 100%);
+      }
+
+      /* Translucent */
+      .conicGradient8 {
+        background: conic-gradient(rgba(255, 0, 0, 0.9), rgba(0, 255, 0, 0.6), rgba(0, 0, 255, 0.9));
+      }
+    </style>
+  </head>
+  <body>
+    <div class="small">
+      <div class="conicGradient1">&nbsp;</div>
+      <div class="conicGradient2">&nbsp;</div>
+      <div class="conicGradient3">&nbsp;</div>
+      <div class="conicGradient4">&nbsp;</div>
+      <div class="conicGradient5">&nbsp;</div>
+      <div class="conicGradient6">&nbsp;</div>
+      <div class="conicGradient7">&nbsp;</div>
+      <div class="conicGradient8">&nbsp;</div>
+    </div>
+  </body>
+</html>
