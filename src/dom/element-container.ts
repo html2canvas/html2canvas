@@ -27,10 +27,8 @@ export class ElementContainer {
             debugger;
         }
 
-        this.styles = new CSSParsedDeclaration(
-            context,
-            (element.ownerDocument?.defaultView ?? window).getComputedStyle(element, null),
-        );
+        const computedStyle = (element.ownerDocument?.defaultView ?? window).getComputedStyle(element, null);
+        this.styles = new CSSParsedDeclaration(context, computedStyle);
 
         if (isHTMLElementNode(element)) {
             if (this.styles.animationDuration.some(duration => duration > 0)) {

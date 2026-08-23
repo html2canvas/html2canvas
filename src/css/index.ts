@@ -319,7 +319,8 @@ export class CSSParsedCounterDeclaration {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const parse = (context: Context, descriptor: CSSPropertyDescriptor<any>, style?: string | null) => {
-    const value = style !== null && typeof style !== 'undefined' ? style.toString() : descriptor.initialValue;
+    const value =
+        style !== null && typeof style !== 'undefined' && style !== '' ? style.toString() : descriptor.initialValue;
 
     // Fast-path for IDENT_VALUE: skip tokenization when the value is a simple identifier
     if (descriptor.type === PropertyDescriptorParsingType.IDENT_VALUE) {

@@ -89,12 +89,19 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
     );
 
     const documentCloner = new DocumentCloner(context, element, cloneOptions);
-    const clonedElement = documentCloner.clonedReferenceElement;
-    if (!clonedElement) {
+    if (!documentCloner.clonedReferenceElement) {
         return Promise.reject(`Unable to find element in cloned iframe`);
     }
 
     const container = await documentCloner.toIFrame(ownerDocument, windowBounds);
+
+    // clonedReferenceElement is updated inside toIFrame() to point to the node in the
+    // freshly parsed iframe document (document.write re-creates the DOM from HTML, so
+    // the original in-memory clone reference is no longer in the live document).
+    const clonedElement = documentCloner.clonedReferenceElement;
+    if (!clonedElement) {
+        return Promise.reject(`Unable to find element in cloned iframe`);
+    }
 
     const { width, height, left, top } =
         isBodyElement(clonedElement) || isHTMLElement(clonedElement)
