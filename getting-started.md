@@ -11,19 +11,19 @@ nextTitle: 'Configuration'
 
 You can install `html2canvas` through npm or [download a built release](https://github.com/html2canvas/html2canvas/releases).
 
-### npm
+### npm / yarn / pnpm
 
-    npm install @html2canvas/html2canvas
-
-```javascript
-import html2canvas from '@html2canvas/html2canvas';
+```shell
+npm install @html2canvas/html2canvas
+# yarn add @html2canvas/html2canvas
+# pnpm add @html2canvas/html2canvas
 ```
 
-## cdn
+### CDN
 
 ```html
 <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas-next/1.7.1/html2canvas.min.js"
+    src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas-next/1.8.0/html2canvas.min.js"
     crossorigin="anonymous"
     referrerpolicy="no-referrer"
 ></script>
@@ -31,10 +31,69 @@ import html2canvas from '@html2canvas/html2canvas';
 
 ## Usage
 
-To render an `element` with html2canvas with some (optional) [options](/configuration/), simply call `html2canvas(element, options);`
+Call `html2canvas(element, options?)` with any DOM element. The function returns a
+[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+that resolves with a `<canvas>` element.
+
+### Promise `.then()`
 
 ```javascript
 html2canvas(document.body).then(function (canvas) {
     document.body.appendChild(canvas);
 });
 ```
+
+### Arrow function
+
+```javascript
+html2canvas(document.body).then(canvas => {
+    document.body.appendChild(canvas);
+});
+```
+
+### async / await
+
+```javascript
+const canvas = await html2canvas(document.body);
+document.body.appendChild(canvas);
+```
+
+### TypeScript
+
+```typescript
+import html2canvas from '@html2canvas/html2canvas';
+
+const canvas = await html2canvas(document.body);
+document.body.appendChild(canvas);
+```
+
+## Browser compatibility
+
+**html2canvas** works on all modern evergreen browsers:
+
+| Browser                                  | Support |
+| ---------------------------------------- | ------- |
+| Chrome / Chromium-based (Edge, Opera, …) | ✓       |
+| Firefox                                  | ✓       |
+| Safari                                   | ✓       |
+
+The library runs entirely in the browser — **no server rendering required**. However,
+because it depends on browser APIs it is **not suitable for Node.js**.
+
+## Cross-origin content
+
+**html2canvas** cannot circumvent browser content policy restrictions. Images or resources
+loaded from a different origin will taint the canvas, making it unreadable.
+
+To include cross-origin content, use a proxy that accepts a `?url=` query parameter and
+returns the resource as a base64 data URI, then pass it via the `proxy` option:
+
+```javascript
+html2canvas(document.body, {
+    proxy: 'https://your-proxy-server.com/proxy',
+}).then(canvas => {
+    document.body.appendChild(canvas);
+});
+```
+
+See the [Proxy](./proxy) page for available options.
