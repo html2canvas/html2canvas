@@ -1,14 +1,11 @@
+import { Context } from '../../../core/context';
 import { CSSValue, parseFunctionArgs } from '../../syntax/parser';
 import { TokenType } from '../../syntax/tokenizer';
-import { isAngle, angle as angleType, parseNamedSide, deg } from '../angle';
+import { angle as angleType, deg, isAngle, parseNamedSide } from '../angle';
 import { CSSImageType, CSSRepeatingLinearGradientImage, GradientCorner, UnprocessedGradientColorStop } from '../image';
 import { parseColorStop } from './gradient';
-import { Context } from '../../../core/context';
 
-export const repeatingLinearGradient = (
-    context: Context,
-    tokens: CSSValue[],
-): CSSRepeatingLinearGradientImage => {
+export const repeatingLinearGradient = (context: Context, tokens: CSSValue[]): CSSRepeatingLinearGradientImage => {
     let angle: number | GradientCorner = deg(180);
     const stops: UnprocessedGradientColorStop[] = [];
 
