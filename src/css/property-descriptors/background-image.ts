@@ -1,8 +1,8 @@
-import { TokenType } from '../syntax/tokenizer';
-import { ICSSImage, image, isSupportedImage } from '../types/image';
+import { Context } from '../../core/context';
 import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 import { CSSValue, nonFunctionArgSeparator } from '../syntax/parser';
-import { Context } from '../../core/context';
+import { TokenType } from '../syntax/tokenizer';
+import { ICSSImage, image, isSupportedImage } from '../types/image';
 
 export const backgroundImage: IPropertyListDescriptor<ICSSImage[]> = {
     name: 'background-image',
@@ -22,6 +22,13 @@ export const backgroundImage: IPropertyListDescriptor<ICSSImage[]> = {
 
         return tokens
             .filter(value => nonFunctionArgSeparator(value) && isSupportedImage(value))
-            .map(value => image.parse(context, value));
+            .reduce((acc: ICSSImage[], value) => {
+                try {
+                    acc.push(image.parse(context, value));
+                } catch (e) {
+                    context.logger.error(`Error parsing background-image: ${e}`);
+                }
+                return acc;
+            }, []);
     },
 };

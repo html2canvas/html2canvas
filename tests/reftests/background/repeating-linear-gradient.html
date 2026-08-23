@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background repeating-linear-gradient tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      html {
+        background-color: red;
+      }
+      .small div {
+        width: 100px;
+        height: 100px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .medium div {
+        width: 210px;
+        height: 200px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .small,
+      .medium {
+        clear: both;
+      }
+      div {
+        display: block;
+      }
+
+      /* Basic top-to-bottom stripe */
+      .repeatingLinearGradient1 {
+        background: repeating-linear-gradient(#e66465, #e66465 20px, #9198e5 20px, #9198e5 40px);
+      }
+
+      /* Diagonal stripe at 45deg */
+      .repeatingLinearGradient2 {
+        background: repeating-linear-gradient(45deg, #3f87a6, #3f87a6 15px, #ebf8e1 15px, #ebf8e1 30px);
+      }
+
+      /* Three-color stripe */
+      .repeatingLinearGradient3 {
+        background: repeating-linear-gradient(to right, red 0px, red 10px, white 10px, white 20px, blue 20px, blue 30px);
+      }
+
+      /* Smooth fade-and-repeat */
+      .repeatingLinearGradient4 {
+        background: repeating-linear-gradient(to bottom, #fff 0%, #000 25%, #fff 50%);
+      }
+
+      /* Named direction: to bottom right */
+      .repeatingLinearGradient5 {
+        background: repeating-linear-gradient(to bottom right, #f06 0px, #f06 20px, #aef 20px, #aef 40px);
+      }
+
+      /* Translucent colors */
+      .repeatingLinearGradient6 {
+        background: repeating-linear-gradient(
+          to top,
+          rgba(255, 0, 0, 0.8) 0px,
+          rgba(255, 0, 0, 0.8) 10px,
+          rgba(0, 0, 255, 0.4) 10px,
+          rgba(0, 0, 255, 0.4) 20px
+        );
+      }
+
+      /* Stops starting not at 0% */
+      .repeatingLinearGradient7 {
+        background: repeating-linear-gradient(to right, #f00 10px, #ff0 30px, #0f0 50px);
+      }
+
+      /* 90deg — horizontal stripes */
+      .repeatingLinearGradient8 {
+        background: repeating-linear-gradient(90deg, #a18cd1 0px, #fbc2eb 20px, #a18cd1 40px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="small">
+      <div class="repeatingLinearGradient1">&nbsp;</div>
+      <div class="repeatingLinearGradient2">&nbsp;</div>
+      <div class="repeatingLinearGradient3">&nbsp;</div>
+      <div class="repeatingLinearGradient4">&nbsp;</div>
+      <div class="repeatingLinearGradient5">&nbsp;</div>
+      <div class="repeatingLinearGradient6">&nbsp;</div>
+      <div class="repeatingLinearGradient7">&nbsp;</div>
+      <div class="repeatingLinearGradient8">&nbsp;</div>
+    </div>
+  </body>
+</html>

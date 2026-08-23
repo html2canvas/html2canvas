@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background repeating-conic-gradient tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      html {
+        background-color: red;
+      }
+      .small div {
+        width: 100px;
+        height: 100px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .medium div {
+        width: 210px;
+        height: 200px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .small,
+      .medium {
+        clear: both;
+      }
+      div {
+        display: block;
+      }
+
+      /* Basic repeating pie slice */
+      .repeatingConicGradient1 {
+        background: repeating-conic-gradient(red 0deg, blue 30deg);
+      }
+
+      /* Sharp stripes */
+      .repeatingConicGradient2 {
+        background: repeating-conic-gradient(#e66465 0deg, #e66465 30deg, #9198e5 30deg, #9198e5 60deg);
+      }
+
+      /* Three-color slice using separate stops */
+      .repeatingConicGradient3 {
+        background: repeating-conic-gradient(red 0deg, red 20deg, white 20deg, white 40deg, blue 40deg, blue 60deg);
+      }
+
+      /* Rotated start */
+      .repeatingConicGradient4 {
+        background: repeating-conic-gradient(from 45deg, red, blue 45deg);
+      }
+
+      /* Off-center position */
+      .repeatingConicGradient5 {
+        background: repeating-conic-gradient(at 25% 75%, #f06 0deg, #aef 45deg);
+      }
+
+      /* Translucent */
+      .repeatingConicGradient6 {
+        background: repeating-conic-gradient(
+          rgba(255, 0, 0, 0.8) 0deg,
+          rgba(255, 0, 0, 0.8) 20deg,
+          rgba(0, 0, 255, 0.4) 20deg,
+          rgba(0, 0, 255, 0.4) 40deg
+        );
+      }
+
+      /* Percentage-based tile */
+      .repeatingConicGradient7 {
+        background: repeating-conic-gradient(#fff 0%, #000 12.5%, #fff 25%);
+      }
+
+      /* from + at combined */
+      .repeatingConicGradient8 {
+        background: repeating-conic-gradient(from 90deg at 60% 40%, #a18cd1 0deg, #fbc2eb 30deg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="small">
+      <div class="repeatingConicGradient1">&nbsp;</div>
+      <div class="repeatingConicGradient2">&nbsp;</div>
+      <div class="repeatingConicGradient3">&nbsp;</div>
+      <div class="repeatingConicGradient4">&nbsp;</div>
+      <div class="repeatingConicGradient5">&nbsp;</div>
+      <div class="repeatingConicGradient6">&nbsp;</div>
+      <div class="repeatingConicGradient7">&nbsp;</div>
+      <div class="repeatingConicGradient8">&nbsp;</div>
+    </div>
+  </body>
+</html>
