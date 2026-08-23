@@ -3,7 +3,7 @@
 <head>
     <title>Inline text in the top element</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <script type="text/javascript" src="../test.js"></script>
+    <script type="text/javascript" src="../../test.js"></script>
     <style>
         span {
             color:blue;
@@ -26,9 +26,11 @@
     <p>Then a block level element.</p>
     Then more inline text.</div>
 
+<!-- clip: rect() only applies to position:absolute and position:fixed per CSS spec.
+     position:relative is intentionally NOT clipped by browsers. -->
 <div style="clip: rect(0px, 400px, 50px, 200px); position: relative; ">Some inline text <span> followed by text in span </span> followed by more inline text.
     <p>Then a block level element.</p>
-    Then more inline text.</div>
+    Then more inline text. (not clipped — position:relative)</div>
 
 <div style="clip: rect(0px, 400px, 50px, 200px); position: fixed; ">Some inline text <span> followed by text in span </span> followed by more inline text.
     <p>Then a block level element.</p>

@@ -37,6 +37,8 @@ import {
     borderTopWidth,
 } from './property-descriptors/border-width';
 import { boxShadow } from './property-descriptors/box-shadow';
+import { clip as clipDescriptor } from './property-descriptors/clip';
+import { clipPath as clipPathDescriptor } from './property-descriptors/clip-path';
 import { color } from './property-descriptors/color';
 import { content } from './property-descriptors/content';
 import { counterIncrement } from './property-descriptors/counter-increment';
@@ -118,6 +120,8 @@ export class CSSParsedDeclaration {
     borderBottomWidth: ReturnType<typeof borderBottomWidth.parse>;
     borderLeftWidth: ReturnType<typeof borderLeftWidth.parse>;
     boxShadow: ReturnType<typeof boxShadow.parse>;
+    clip: ReturnType<typeof clipDescriptor.parse>;
+    clipPath: ReturnType<typeof clipPathDescriptor.parse>;
     color: Color;
     direction: ReturnType<typeof direction.parse>;
     display: ReturnType<typeof display.parse>;
@@ -193,6 +197,8 @@ export class CSSParsedDeclaration {
         this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
         this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
         this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
+        this.clip = parse(context, clipDescriptor, declaration.clip);
+        this.clipPath = parse(context, clipPathDescriptor, declaration.clipPath);
         this.color = parse(context, color, declaration.color);
         this.direction = parse(context, direction, declaration.direction);
         this.display = parse(context, display, declaration.display);

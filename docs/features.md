@@ -30,6 +30,8 @@ Below is a list of all the supported CSS properties and values.
 - bottom
 - box-shadow
 - box-sizing
+- clip
+- clip-path
 - content
 - color
 - display
