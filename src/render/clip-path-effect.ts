@@ -99,28 +99,28 @@ const buildEllipsePaths = (cx: number, cy: number, rx: number, ry: number): Path
     // Q4: left  → top
     return [
         new BezierCurve(
-            new Vector(cx, cy - ry),         // start: top centre
-            new Vector(cx + ox, cy - ry),    // ctrl1
-            new Vector(cx + rx, cy - oy),    // ctrl2
-            new Vector(cx + rx, cy),         // end: right centre
+            new Vector(cx, cy - ry), // start: top centre
+            new Vector(cx + ox, cy - ry), // ctrl1
+            new Vector(cx + rx, cy - oy), // ctrl2
+            new Vector(cx + rx, cy), // end: right centre
         ),
         new BezierCurve(
-            new Vector(cx + rx, cy),         // start: right centre
-            new Vector(cx + rx, cy + oy),    // ctrl1
-            new Vector(cx + ox, cy + ry),    // ctrl2
-            new Vector(cx, cy + ry),         // end: bottom centre
+            new Vector(cx + rx, cy), // start: right centre
+            new Vector(cx + rx, cy + oy), // ctrl1
+            new Vector(cx + ox, cy + ry), // ctrl2
+            new Vector(cx, cy + ry), // end: bottom centre
         ),
         new BezierCurve(
-            new Vector(cx, cy + ry),         // start: bottom centre
-            new Vector(cx - ox, cy + ry),    // ctrl1
-            new Vector(cx - rx, cy + oy),    // ctrl2
-            new Vector(cx - rx, cy),         // end: left centre
+            new Vector(cx, cy + ry), // start: bottom centre
+            new Vector(cx - ox, cy + ry), // ctrl1
+            new Vector(cx - rx, cy + oy), // ctrl2
+            new Vector(cx - rx, cy), // end: left centre
         ),
         new BezierCurve(
-            new Vector(cx - rx, cy),         // start: left centre
-            new Vector(cx - rx, cy - oy),    // ctrl1
-            new Vector(cx - ox, cy - ry),    // ctrl2
-            new Vector(cx, cy - ry),         // end: top centre
+            new Vector(cx - rx, cy), // start: left centre
+            new Vector(cx - rx, cy - oy), // ctrl1
+            new Vector(cx - ox, cy - ry), // ctrl2
+            new Vector(cx, cy - ry), // end: top centre
         ),
     ];
 };
@@ -138,18 +138,18 @@ const buildEllipsePaths = (cx: number, cy: number, rx: number, ry: number): Path
 const buildInsetPath = (clip: InsetClipPath, bounds: Bounds): Path[] => {
     const { left: bLeft, top: bTop, width: bWidth, height: bHeight } = bounds;
 
-    const topVal    = getAbsoluteValue(clip.top,    bHeight);
-    const rightVal  = getAbsoluteValue(clip.right,  bWidth);
+    const topVal = getAbsoluteValue(clip.top, bHeight);
+    const rightVal = getAbsoluteValue(clip.right, bWidth);
     const bottomVal = getAbsoluteValue(clip.bottom, bHeight);
-    const leftVal   = getAbsoluteValue(clip.left,   bWidth);
+    const leftVal = getAbsoluteValue(clip.left, bWidth);
 
     // Inset rectangle corners
-    const x0 = bLeft  + leftVal;
-    const y0 = bTop   + topVal;
-    const x1 = bLeft  + bWidth  - rightVal;
-    const y1 = bTop   + bHeight - bottomVal;
-    const w  = x1 - x0;
-    const h  = y1 - y0;
+    const x0 = bLeft + leftVal;
+    const y0 = bTop + topVal;
+    const x1 = bLeft + bWidth - rightVal;
+    const y1 = bTop + bHeight - bottomVal;
+    const w = x1 - x0;
+    const h = y1 - y0;
 
     if (w <= 0 || h <= 0) {
         // Collapsed — return a degenerate path that clips everything
@@ -159,22 +159,14 @@ const buildInsetPath = (clip: InsetClipPath, bounds: Bounds): Path[] => {
 
     if (clip.radii.length === 0) {
         // Sharp rectangle
-        return [
-            new Vector(x0, y0),
-            new Vector(x1, y0),
-            new Vector(x1, y1),
-            new Vector(x0, y1),
-        ];
+        return [new Vector(x0, y0), new Vector(x1, y0), new Vector(x1, y1), new Vector(x0, y1)];
     }
 
     // Resolve radii — 4 entries [TL, TR, BR, BL] of [h, v] pairs
     // If fewer than 4 entries were parsed, fall back to zero.
     const getR = (index: number): [number, number] => {
         if (index < clip.radii.length) {
-            return [
-                getAbsoluteValue(clip.radii[index][0], w),
-                getAbsoluteValue(clip.radii[index][1], h),
-            ];
+            return [getAbsoluteValue(clip.radii[index][0], w), getAbsoluteValue(clip.radii[index][1], h)];
         }
         return [0, 0];
     };
@@ -185,62 +177,65 @@ const buildInsetPath = (clip: InsetClipPath, bounds: Bounds): Path[] => {
     let [blH, blV] = getR(3);
 
     // Clamp overlapping radii (CSS spec §4.3)
-    const factors = [
-        (tlH + trH) / w,
-        (blH + brH) / w,
-        (tlV + blV) / h,
-        (trV + brV) / h,
-    ];
+    const factors = [(tlH + trH) / w, (blH + brH) / w, (tlV + blV) / h, (trV + brV) / h];
     const maxFactor = Math.max(...factors);
     if (maxFactor > 1) {
-        tlH /= maxFactor; tlV /= maxFactor;
-        trH /= maxFactor; trV /= maxFactor;
-        brH /= maxFactor; brV /= maxFactor;
-        blH /= maxFactor; blV /= maxFactor;
+        tlH /= maxFactor;
+        tlV /= maxFactor;
+        trH /= maxFactor;
+        trV /= maxFactor;
+        brH /= maxFactor;
+        brV /= maxFactor;
+        blH /= maxFactor;
+        blV /= maxFactor;
     }
 
     // Build corner Bézier curves using the same getCurvePoints logic as BoundCurves
     const kappa = KAPPA;
 
     // TOP-LEFT corner: starts at (x0, y0+tlV), ends at (x0+tlH, y0)
-    const topLeft: Path = (tlH > 0 || tlV > 0)
-        ? new BezierCurve(
-            new Vector(x0,       y0 + tlV),
-            new Vector(x0,       y0 + tlV - tlV * kappa),
-            new Vector(x0 + tlH - tlH * kappa, y0),
-            new Vector(x0 + tlH, y0),
-        )
-        : new Vector(x0, y0);
+    const topLeft: Path =
+        tlH > 0 || tlV > 0
+            ? new BezierCurve(
+                  new Vector(x0, y0 + tlV),
+                  new Vector(x0, y0 + tlV - tlV * kappa),
+                  new Vector(x0 + tlH - tlH * kappa, y0),
+                  new Vector(x0 + tlH, y0),
+              )
+            : new Vector(x0, y0);
 
     // TOP-RIGHT corner: starts at (x1-trH, y0), ends at (x1, y0+trV)
-    const topRight: Path = (trH > 0 || trV > 0)
-        ? new BezierCurve(
-            new Vector(x1 - trH, y0),
-            new Vector(x1 - trH + trH * kappa, y0),
-            new Vector(x1,       y0 + trV - trV * kappa),
-            new Vector(x1,       y0 + trV),
-        )
-        : new Vector(x1, y0);
+    const topRight: Path =
+        trH > 0 || trV > 0
+            ? new BezierCurve(
+                  new Vector(x1 - trH, y0),
+                  new Vector(x1 - trH + trH * kappa, y0),
+                  new Vector(x1, y0 + trV - trV * kappa),
+                  new Vector(x1, y0 + trV),
+              )
+            : new Vector(x1, y0);
 
     // BOTTOM-RIGHT corner: starts at (x1, y1-brV), ends at (x1-brH, y1)
-    const bottomRight: Path = (brH > 0 || brV > 0)
-        ? new BezierCurve(
-            new Vector(x1,       y1 - brV),
-            new Vector(x1,       y1 - brV + brV * kappa),
-            new Vector(x1 - brH + brH * kappa, y1),
-            new Vector(x1 - brH, y1),
-        )
-        : new Vector(x1, y1);
+    const bottomRight: Path =
+        brH > 0 || brV > 0
+            ? new BezierCurve(
+                  new Vector(x1, y1 - brV),
+                  new Vector(x1, y1 - brV + brV * kappa),
+                  new Vector(x1 - brH + brH * kappa, y1),
+                  new Vector(x1 - brH, y1),
+              )
+            : new Vector(x1, y1);
 
     // BOTTOM-LEFT corner: starts at (x0+blH, y1), ends at (x0, y1-blV)
-    const bottomLeft: Path = (blH > 0 || blV > 0)
-        ? new BezierCurve(
-            new Vector(x0 + blH, y1),
-            new Vector(x0 + blH - blH * kappa, y1),
-            new Vector(x0,       y1 - blV + blV * kappa),
-            new Vector(x0,       y1 - blV),
-        )
-        : new Vector(x0, y1);
+    const bottomLeft: Path =
+        blH > 0 || blV > 0
+            ? new BezierCurve(
+                  new Vector(x0 + blH, y1),
+                  new Vector(x0 + blH - blH * kappa, y1),
+                  new Vector(x0, y1 - blV + blV * kappa),
+                  new Vector(x0, y1 - blV),
+              )
+            : new Vector(x0, y1);
 
     return [topLeft, topRight, bottomRight, bottomLeft];
 };
@@ -253,11 +248,11 @@ const buildCirclePath = (clip: CircleClipPath, bounds: Bounds): Path[] => {
     const { left: bLeft, top: bTop, width: bWidth, height: bHeight } = bounds;
 
     const cx = bLeft + getAbsoluteValue(clip.cx, bWidth);
-    const cy = bTop  + getAbsoluteValue(clip.cy, bHeight);
+    const cy = bTop + getAbsoluteValue(clip.cy, bHeight);
 
     // For `closest-side` / `farthest-side` keywords we stored 50% as a fallback.
     // Resolve the radius relative to the smaller dimension so circles stay circular.
-    const r = getAbsoluteValue(clip.radius, Math.min(bWidth, bHeight) / 2 * 2);
+    const r = getAbsoluteValue(clip.radius, (Math.min(bWidth, bHeight) / 2) * 2);
 
     if (r <= 0) {
         const mid = new Vector(cx, cy);
@@ -275,7 +270,7 @@ const buildEllipsePath = (clip: EllipseClipPath, bounds: Bounds): Path[] => {
     const { left: bLeft, top: bTop, width: bWidth, height: bHeight } = bounds;
 
     const cx = bLeft + getAbsoluteValue(clip.cx, bWidth);
-    const cy = bTop  + getAbsoluteValue(clip.cy, bHeight);
+    const cy = bTop + getAbsoluteValue(clip.cy, bHeight);
     const rx = getAbsoluteValue(clip.rx, bWidth);
     const ry = getAbsoluteValue(clip.ry, bHeight);
 
@@ -296,10 +291,7 @@ const buildPolygonPath = (clip: PolygonClipPath, bounds: Bounds): Path[] => {
 
     return clip.points.map(
         ([xToken, yToken]) =>
-            new Vector(
-                bLeft + getAbsoluteValue(xToken, bWidth),
-                bTop  + getAbsoluteValue(yToken, bHeight),
-            ),
+            new Vector(bLeft + getAbsoluteValue(xToken, bWidth), bTop + getAbsoluteValue(yToken, bHeight)),
     );
 };
 

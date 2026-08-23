@@ -9794,11 +9794,16 @@
     var expandSides = function (values) {
         var z = ZERO_LENGTH;
         switch (values.length) {
-            case 0: return [z, z, z, z];
-            case 1: return [values[0], values[0], values[0], values[0]];
-            case 2: return [values[0], values[1], values[0], values[1]];
-            case 3: return [values[0], values[1], values[2], values[1]];
-            default: return [values[0], values[1], values[2], values[3]];
+            case 0:
+                return [z, z, z, z];
+            case 1:
+                return [values[0], values[0], values[0], values[0]];
+            case 2:
+                return [values[0], values[1], values[0], values[1]];
+            case 3:
+                return [values[0], values[1], values[2], values[1]];
+            default:
+                return [values[0], values[1], values[2], values[3]];
         }
     };
     /**
@@ -9809,12 +9814,8 @@
     var parseInsetRadii = function (tokens) {
         // Split on '/' delimiter
         var slashIndex = tokens.findIndex(function (t) { return t.type === 6 /* TokenType.DELIM_TOKEN */ && t.value === '/'; });
-        var hTokens = tokens
-            .slice(0, slashIndex < 0 ? tokens.length : slashIndex)
-            .filter(isLengthPercentage);
-        var vTokens = slashIndex >= 0
-            ? tokens.slice(slashIndex + 1).filter(isLengthPercentage)
-            : [];
+        var hTokens = tokens.slice(0, slashIndex < 0 ? tokens.length : slashIndex).filter(isLengthPercentage);
+        var vTokens = slashIndex >= 0 ? tokens.slice(slashIndex + 1).filter(isLengthPercentage) : [];
         var hSides = expandSides(hTokens);
         var vSides = vTokens.length > 0 ? expandSides(vTokens) : hSides;
         return [
@@ -15045,21 +15046,13 @@
         }
         if (clip.radii.length === 0) {
             // Sharp rectangle
-            return [
-                new Vector(x0, y0),
-                new Vector(x1, y0),
-                new Vector(x1, y1),
-                new Vector(x0, y1),
-            ];
+            return [new Vector(x0, y0), new Vector(x1, y0), new Vector(x1, y1), new Vector(x0, y1)];
         }
         // Resolve radii — 4 entries [TL, TR, BR, BL] of [h, v] pairs
         // If fewer than 4 entries were parsed, fall back to zero.
         var getR = function (index) {
             if (index < clip.radii.length) {
-                return [
-                    getAbsoluteValue(clip.radii[index][0], w),
-                    getAbsoluteValue(clip.radii[index][1], h),
-                ];
+                return [getAbsoluteValue(clip.radii[index][0], w), getAbsoluteValue(clip.radii[index][1], h)];
             }
             return [0, 0];
         };
@@ -15068,12 +15061,7 @@
         var _c = getR(2), brH = _c[0], brV = _c[1];
         var _d = getR(3), blH = _d[0], blV = _d[1];
         // Clamp overlapping radii (CSS spec §4.3)
-        var factors = [
-            (tlH + trH) / w,
-            (blH + brH) / w,
-            (tlV + blV) / h,
-            (trV + brV) / h,
-        ];
+        var factors = [(tlH + trH) / w, (blH + brH) / w, (tlV + blV) / h, (trV + brV) / h];
         var maxFactor = Math.max.apply(Math, factors);
         if (maxFactor > 1) {
             tlH /= maxFactor;
@@ -15088,19 +15076,19 @@
         // Build corner Bézier curves using the same getCurvePoints logic as BoundCurves
         var kappa = KAPPA;
         // TOP-LEFT corner: starts at (x0, y0+tlV), ends at (x0+tlH, y0)
-        var topLeft = (tlH > 0 || tlV > 0)
+        var topLeft = tlH > 0 || tlV > 0
             ? new BezierCurve(new Vector(x0, y0 + tlV), new Vector(x0, y0 + tlV - tlV * kappa), new Vector(x0 + tlH - tlH * kappa, y0), new Vector(x0 + tlH, y0))
             : new Vector(x0, y0);
         // TOP-RIGHT corner: starts at (x1-trH, y0), ends at (x1, y0+trV)
-        var topRight = (trH > 0 || trV > 0)
+        var topRight = trH > 0 || trV > 0
             ? new BezierCurve(new Vector(x1 - trH, y0), new Vector(x1 - trH + trH * kappa, y0), new Vector(x1, y0 + trV - trV * kappa), new Vector(x1, y0 + trV))
             : new Vector(x1, y0);
         // BOTTOM-RIGHT corner: starts at (x1, y1-brV), ends at (x1-brH, y1)
-        var bottomRight = (brH > 0 || brV > 0)
+        var bottomRight = brH > 0 || brV > 0
             ? new BezierCurve(new Vector(x1, y1 - brV), new Vector(x1, y1 - brV + brV * kappa), new Vector(x1 - brH + brH * kappa, y1), new Vector(x1 - brH, y1))
             : new Vector(x1, y1);
         // BOTTOM-LEFT corner: starts at (x0+blH, y1), ends at (x0, y1-blV)
-        var bottomLeft = (blH > 0 || blV > 0)
+        var bottomLeft = blH > 0 || blV > 0
             ? new BezierCurve(new Vector(x0 + blH, y1), new Vector(x0 + blH - blH * kappa, y1), new Vector(x0, y1 - blV + blV * kappa), new Vector(x0, y1 - blV))
             : new Vector(x0, y1);
         return [topLeft, topRight, bottomRight, bottomLeft];
@@ -15114,7 +15102,7 @@
         var cy = bTop + getAbsoluteValue(clip.cy, bHeight);
         // For `closest-side` / `farthest-side` keywords we stored 50% as a fallback.
         // Resolve the radius relative to the smaller dimension so circles stay circular.
-        var r = getAbsoluteValue(clip.radius, Math.min(bWidth, bHeight) / 2 * 2);
+        var r = getAbsoluteValue(clip.radius, (Math.min(bWidth, bHeight) / 2) * 2);
         if (r <= 0) {
             var mid = new Vector(cx, cy);
             return [mid, mid, mid, mid];
@@ -15216,8 +15204,7 @@
             // clip: rect() — deprecated property, applies only to absolutely/fixed positioned elements (CSS spec).
             var clipRect = this.container.styles.clip;
             if (clipRect !== null &&
-                (this.container.styles.position === 2 /* POSITION.ABSOLUTE */ ||
-                    this.container.styles.position === 3 /* POSITION.FIXED */)) {
+                (this.container.styles.position === 2 /* POSITION.ABSOLUTE */ || this.container.styles.position === 3 /* POSITION.FIXED */)) {
                 var b = this.container.bounds;
                 // rect(top, right, bottom, left): all values are offsets from the element's top-left corner.
                 var t = getAbsoluteValue(clipRect.top, b.height);

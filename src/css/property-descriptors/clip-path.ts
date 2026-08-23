@@ -76,12 +76,7 @@ export interface PathClipPath {
 }
 
 export type CSSClipPath =
-    | NoneClipPath
-    | InsetClipPath
-    | CircleClipPath
-    | EllipseClipPath
-    | PolygonClipPath
-    | PathClipPath;
+    NoneClipPath | InsetClipPath | CircleClipPath | EllipseClipPath | PolygonClipPath | PathClipPath;
 
 export const NONE_CLIP_PATH: NoneClipPath = { type: ClipPathType.NONE };
 
@@ -171,14 +166,21 @@ const parseInset = (values: CSSValue[]): InsetClipPath | NoneClipPath => {
 /**
  * Expand 1–4 length values to [top, right, bottom, left] following CSS shorthand rules.
  */
-const expandSides = (values: LengthPercentage[]): [LengthPercentage, LengthPercentage, LengthPercentage, LengthPercentage] => {
+const expandSides = (
+    values: LengthPercentage[],
+): [LengthPercentage, LengthPercentage, LengthPercentage, LengthPercentage] => {
     const z = ZERO_LENGTH;
     switch (values.length) {
-        case 0: return [z, z, z, z];
-        case 1: return [values[0], values[0], values[0], values[0]];
-        case 2: return [values[0], values[1], values[0], values[1]];
-        case 3: return [values[0], values[1], values[2], values[1]];
-        default: return [values[0], values[1], values[2], values[3]];
+        case 0:
+            return [z, z, z, z];
+        case 1:
+            return [values[0], values[0], values[0], values[0]];
+        case 2:
+            return [values[0], values[1], values[0], values[1]];
+        case 3:
+            return [values[0], values[1], values[2], values[1]];
+        default:
+            return [values[0], values[1], values[2], values[3]];
     }
 };
 
@@ -193,12 +195,8 @@ const parseInsetRadii = (tokens: CSSValue[]): [LengthPercentage, LengthPercentag
         t => t.type === TokenType.DELIM_TOKEN && (t as { value: string }).value === '/',
     );
 
-    const hTokens = tokens
-        .slice(0, slashIndex < 0 ? tokens.length : slashIndex)
-        .filter(isLengthPercentage);
-    const vTokens = slashIndex >= 0
-        ? tokens.slice(slashIndex + 1).filter(isLengthPercentage)
-        : [];
+    const hTokens = tokens.slice(0, slashIndex < 0 ? tokens.length : slashIndex).filter(isLengthPercentage);
+    const vTokens = slashIndex >= 0 ? tokens.slice(slashIndex + 1).filter(isLengthPercentage) : [];
 
     const hSides = expandSides(hTokens);
     const vSides = vTokens.length > 0 ? expandSides(vTokens) : hSides;

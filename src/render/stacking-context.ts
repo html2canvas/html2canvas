@@ -92,8 +92,7 @@ export class ElementPaint {
         const clipRect = this.container.styles.clip;
         if (
             clipRect !== null &&
-            (this.container.styles.position === POSITION.ABSOLUTE ||
-                this.container.styles.position === POSITION.FIXED)
+            (this.container.styles.position === POSITION.ABSOLUTE || this.container.styles.position === POSITION.FIXED)
         ) {
             const b = this.container.bounds;
             // rect(top, right, bottom, left): all values are offsets from the element's top-left corner.
