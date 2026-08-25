@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+    <head>
+        <title>text-decoration-style tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: arial, sans-serif;
+                font-size: 20px;
+                line-height: 2;
+            }
+            .solid {
+                text-decoration-line: underline;
+                text-decoration-style: solid;
+            }
+            .double {
+                text-decoration-line: underline;
+                text-decoration-style: double;
+            }
+            .dotted {
+                text-decoration-line: underline;
+                text-decoration-style: dotted;
+            }
+            .dashed {
+                text-decoration-line: underline;
+                text-decoration-style: dashed;
+            }
+            .wavy {
+                text-decoration-line: underline;
+                text-decoration-style: wavy;
+            }
+            .wavy-red {
+                text-decoration-line: underline;
+                text-decoration-style: wavy;
+                text-decoration-color: red;
+            }
+            .linethrough-wavy {
+                text-decoration-line: line-through;
+                text-decoration-style: wavy;
+            }
+            .overline-dashed {
+                text-decoration-line: overline;
+                text-decoration-style: dashed;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="solid">Solid underline (default)</div>
+        <div class="double">Double underline</div>
+        <div class="dotted">Dotted underline</div>
+        <div class="dashed">Dashed underline</div>
+        <div class="wavy">Wavy underline</div>
+        <div class="wavy-red">Wavy underline in red</div>
+        <div class="linethrough-wavy">Wavy line-through</div>
+        <div class="overline-dashed">Dashed overline</div>
+    </body>
+</html>

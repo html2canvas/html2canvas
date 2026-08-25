@@ -17,6 +17,7 @@ import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
 import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
 import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
 import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { TEXT_UNDERLINE_POSITION } from '../../css/property-descriptors/text-underline-position';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { isDimensionToken } from '../../css/syntax/parser';
 import { asString, Color, isTransparent } from '../../css/types/color';
@@ -492,10 +493,52 @@ export class CanvasRenderer extends Renderer {
                 }
                 break;
             }
+            case TEXT_DECORATION_STYLE.WAVY: {
+                // Wavy line drawn using quadratic bezier curves.
+                const length = isVertical ? h : w;
+                const thickness2 = isVertical ? w : h;
+                const amplitude = Math.max(3, thickness2 * 3);
+                const wavelength = Math.max(6, thickness2 * 6);
+
+                this.ctx.save();
+                this.ctx.beginPath();
+
+                if (isVertical) {
+                    const midX = x + w / 2;
+                    this.ctx.moveTo(midX, y);
+                    let currentY = y;
+                    let direction = 1;
+                    while (currentY < y + length) {
+                        const nextY = Math.min(currentY + wavelength / 2, y + length);
+                        const controlY = (currentY + nextY) / 2;
+                        const controlX = midX + amplitude * direction;
+                        this.ctx.quadraticCurveTo(controlX, controlY, midX, nextY);
+                        currentY = nextY;
+                        direction *= -1;
+                    }
+                } else {
+                    const midY = y + h / 2 + thickness2 * 1.5;
+                    this.ctx.moveTo(x, midY);
+                    let currentX = x;
+                    let direction = 1;
+                    while (currentX < x + length) {
+                        const nextX = Math.min(currentX + wavelength / 2, x + length);
+                        const controlX = (currentX + nextX) / 2;
+                        const controlY = midY + amplitude * direction;
+                        this.ctx.quadraticCurveTo(controlX, controlY, nextX, midY);
+                        currentX = nextX;
+                        direction *= -1;
+                    }
+                }
+
+                this.ctx.strokeStyle = this.ctx.fillStyle;
+                this.ctx.lineWidth = isVertical ? w : h;
+                this.ctx.stroke();
+                this.ctx.restore();
+                break;
+            }
             case TEXT_DECORATION_STYLE.SOLID:
-            case TEXT_DECORATION_STYLE.WAVY:
             default:
-                // solid (and unimplemented wavy) fall back to a simple filled rectangle.
                 this.ctx.fillRect(x, y, w, h);
                 break;
         }
@@ -601,6 +644,8 @@ export class CanvasRenderer extends Renderer {
                             // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
                             const thickness =
                                 typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
+                            const underlineOffset = styles.textUnderlineOffset ? styles.textUnderlineOffset - 2 : 0;
+                            const inset = styles.textDecorationInset;
                             styles.textDecorationLine.forEach(textDecorationLine => {
                                 if (isVertical) {
                                     const underlineOnLeft =
@@ -622,12 +667,17 @@ export class CanvasRenderer extends Renderer {
                                             lineX = text.bounds.left + text.bounds.width / 2 - thickness / 2;
                                             break;
                                     }
+                                    // Apply text-decoration-inset (vertical: inset applies to top/bottom)
+                                    const vInsetStart = inset.start;
+                                    const vInsetEnd = inset.end;
+                                    const insetY = text.bounds.top + vInsetStart;
+                                    const insetH = Math.max(0, text.bounds.height - vInsetStart - vInsetEnd);
                                     this.renderDecorationLine(
                                         styles.textDecorationStyle,
                                         lineX,
-                                        text.bounds.top,
+                                        insetY,
                                         thickness,
-                                        text.bounds.height,
+                                        insetH,
                                         true,
                                         textDecorationLine,
                                     );
@@ -639,7 +689,14 @@ export class CanvasRenderer extends Renderer {
                                     let lineY: number;
                                     switch (textDecorationLine) {
                                         case TEXT_DECORATION_LINE.UNDERLINE:
-                                            lineY = baselineY + 2;
+                                            if (styles.textUnderlinePosition === TEXT_UNDERLINE_POSITION.UNDER) {
+                                                // 'under' places the line below the descenders
+                                                lineY = text.bounds.top + text.bounds.height;
+                                            } else {
+                                                lineY = baselineY + 2;
+                                            }
+                                            // Apply text-underline-offset
+                                            lineY += underlineOffset;
                                             break;
                                         case TEXT_DECORATION_LINE.OVERLINE:
                                             lineY = Math.round(text.bounds.top + (text.bounds.height - baseline) * 0.1);
@@ -649,11 +706,16 @@ export class CanvasRenderer extends Renderer {
                                             lineY = Math.round(baselineY - baseline * 0.4) + 2;
                                             break;
                                     }
+                                    // Apply text-decoration-inset (horizontal: inset applies to left/right)
+                                    const hInsetStart = inset.start;
+                                    const hInsetEnd = inset.end;
+                                    const insetX = text.bounds.left + hInsetStart;
+                                    const insetW = Math.max(0, text.bounds.width - hInsetStart - hInsetEnd);
                                     this.renderDecorationLine(
                                         styles.textDecorationStyle,
-                                        text.bounds.left,
+                                        insetX,
                                         lineY,
-                                        text.bounds.width,
+                                        insetW,
                                         thickness,
                                         false,
                                         textDecorationLine,
@@ -1396,7 +1458,6 @@ export class CanvasRenderer extends Renderer {
 
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.max(1, width);
-                canvas.height = Math.max(1, height);
                 const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
                 const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 

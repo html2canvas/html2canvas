@@ -71,11 +71,14 @@ import { POSITION, position } from './property-descriptors/position';
 import { quotes } from './property-descriptors/quotes';
 import { textAlign } from './property-descriptors/text-align';
 import { textDecorationColor } from './property-descriptors/text-decoration-color';
+import { textDecorationInset } from './property-descriptors/text-decoration-inset';
 import { textDecorationLine } from './property-descriptors/text-decoration-line';
-import { TEXT_DECORATION_STYLE, textDecorationStyle } from './property-descriptors/text-decoration-style';
-import { TextDecorationThickness, textDecorationThickness } from './property-descriptors/text-decoration-thickness';
+import { textDecorationStyle } from './property-descriptors/text-decoration-style';
+import { textDecorationThickness } from './property-descriptors/text-decoration-thickness';
 import { textShadow } from './property-descriptors/text-shadow';
 import { textTransform } from './property-descriptors/text-transform';
+import { textUnderlineOffset } from './property-descriptors/text-underline-offset';
+import { textUnderlinePosition } from './property-descriptors/text-underline-position';
 import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
@@ -156,11 +159,14 @@ export class CSSParsedDeclaration {
     position: ReturnType<typeof position.parse>;
     textAlign: ReturnType<typeof textAlign.parse>;
     textDecorationColor: Color;
+    textDecorationInset: ReturnType<typeof textDecorationInset.parse>;
     textDecorationLine: ReturnType<typeof textDecorationLine.parse>;
-    textDecorationStyle: TEXT_DECORATION_STYLE;
-    textDecorationThickness: TextDecorationThickness;
+    textDecorationStyle: ReturnType<typeof textDecorationStyle.parse>;
+    textDecorationThickness: ReturnType<typeof textDecorationThickness.parse>;
     textShadow: ReturnType<typeof textShadow.parse>;
     textTransform: ReturnType<typeof textTransform.parse>;
+    textUnderlineOffset: ReturnType<typeof textUnderlineOffset.parse>;
+    textUnderlinePosition: ReturnType<typeof textUnderlinePosition.parse>;
     transform: ReturnType<typeof transform.parse>;
     transformOrigin: ReturnType<typeof transformOrigin.parse>;
     visibility: ReturnType<typeof visibility.parse>;
@@ -238,6 +244,7 @@ export class CSSParsedDeclaration {
             textDecorationColor,
             declaration.textDecorationColor ?? declaration.color,
         );
+        this.textDecorationInset = parse(context, textDecorationInset, (declaration as any).textDecorationInset);
         this.textDecorationLine = parse(
             context,
             textDecorationLine,
@@ -247,6 +254,8 @@ export class CSSParsedDeclaration {
         this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
+        this.textUnderlineOffset = parse(context, textUnderlineOffset, declaration.textUnderlineOffset);
+        this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
         this.transform = parse(context, transform, declaration.transform);
         this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
         this.visibility = parse(context, visibility, declaration.visibility);

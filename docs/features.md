@@ -89,8 +89,11 @@ Below is a list of all the supported CSS properties and values.
 - text-decoration
     - text-decoration-color
     - text-decoration-line
-    - text-decoration-style (**Only `solid`, `double`, `dotted` and `dashed` are supported**)
+    - text-decoration-style
     - text-decoration-thickness
+    - text-decoration-inset
+- text-underline-offset
+- text-underline-position
 - text-shadow
 - text-transform
 - top

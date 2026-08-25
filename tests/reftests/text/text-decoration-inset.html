@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+    <head>
+        <title>text-decoration-inset tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: arial, sans-serif;
+                font-size: 20px;
+                line-height: 2.5;
+            }
+            .default {
+                text-decoration: underline 3px limegreen;
+            }
+            .inset-10 {
+                text-decoration: underline 3px limegreen;
+                text-decoration-inset: 10px;
+            }
+            .inset-20 {
+                text-decoration: underline 3px limegreen;
+                text-decoration-inset: 20px;
+            }
+            .inset-negative {
+                text-decoration: underline 3px limegreen;
+                text-decoration-inset: -10px;
+            }
+            .inset-two-values {
+                text-decoration: underline 3px blue;
+                text-decoration-inset: 20px 5px;
+            }
+            .inset-wavy {
+                text-decoration: underline wavy 2px red;
+                text-decoration-inset: 15px;
+            }
+            .inset-linethrough {
+                text-decoration: line-through 3px orange;
+                text-decoration-inset: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="default">Default (no inset)</div>
+        <div class="inset-10">Inset: 10px (shorter both sides)</div>
+        <div class="inset-20">Inset: 20px (even shorter)</div>
+        <div class="inset-negative">Inset: -10px (extends beyond text)</div>
+        <div class="inset-two-values">Inset: 20px start, 5px end (blue)</div>
+        <div class="inset-wavy">Wavy + inset: 15px (red)</div>
+        <div class="inset-linethrough">Line-through + inset: 10px (orange)</div>
+    </body>
+</html>
