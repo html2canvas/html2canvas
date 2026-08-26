@@ -127,6 +127,7 @@ Below is a list of all the supported CSS properties and values.
 - word-spacing
 - word-wrap
 - z-index
+- zoom (**accumulated nested zoom supported**)
 - -webkit-text-stroke
 
 ## Values
@@ -168,4 +169,3 @@ These CSS properties are **NOT** currently supported
 - [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
 - object-position
-- [zoom](https://github.com/niklasvh/html2canvas/issues/732)

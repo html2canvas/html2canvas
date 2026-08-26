@@ -88,13 +88,39 @@ import { wordBreak } from './property-descriptors/word-break';
 import { writingMode } from './property-descriptors/writing-mode';
 import { zIndex } from './property-descriptors/z-index';
 import { CSSValue, Parser, isIdentToken } from './syntax/parser';
-import { Tokenizer } from './syntax/tokenizer';
+import { TokenType, Tokenizer } from './syntax/tokenizer';
 import { angle } from './types/angle';
 import { Color, color as colorType, isTransparent } from './types/color';
 import { image } from './types/image';
-import { isLength } from './types/length';
+import { Length, isLength } from './types/length';
 import { LengthPercentage, ZERO_LENGTH, isLengthPercentage } from './types/length-percentage';
 import { time } from './types/time';
+
+// ---------------------------------------------------------------------------
+// Zoom scaling helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Scale a LengthPercentage token by `factor`.
+ * - DIMENSION_TOKEN / NUMBER_TOKEN (absolute lengths): multiply .number
+ * - PERCENTAGE_TOKEN: leave unchanged — percentages resolve against bounds
+ *   which are already post-zoom, so no scaling is needed.
+ */
+const scaleLengthPercentage = (token: LengthPercentage, factor: number): LengthPercentage => {
+    // PERCENTAGE_TOKEN: leave unchanged — resolves against post-zoom bounds
+    // FUNCTION (calc()): leave unchanged — too complex to scale safely
+    if (token.type === TokenType.PERCENTAGE_TOKEN || token.type === TokenType.FUNCTION) {
+        return token;
+    }
+    // DimensionToken and NumberValueToken both have a .number property
+    return { ...token, number: (token as any).number * factor };
+};
+
+/** Scale an absolute Length token (DIMENSION or NUMBER) by `factor`. */
+const scaleLength = (token: Length, factor: number): Length => ({
+    ...token,
+    number: token.number * factor,
+});
 
 export class CSSParsedDeclaration {
     animationDuration: ReturnType<typeof duration.parse>;
@@ -176,7 +202,7 @@ export class CSSParsedDeclaration {
     writingMode: ReturnType<typeof writingMode.parse>;
     zIndex: ReturnType<typeof zIndex.parse>;
 
-    constructor(context: Context, declaration: CSSStyleDeclaration) {
+    constructor(context: Context, declaration: CSSStyleDeclaration, zoomFactor = 1) {
         this.animationDuration = parse(context, duration, declaration.animationDuration);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
         this.backgroundBlendMode = parse(context, backgroundBlendModeDescriptor, declaration.backgroundBlendMode);
@@ -264,6 +290,97 @@ export class CSSParsedDeclaration {
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
         this.writingMode = parse(context, writingMode, declaration.writingMode);
         this.zIndex = parse(context, zIndex, declaration.zIndex);
+
+        // -----------------------------------------------------------------------
+        // CSS zoom scaling
+        // When an element has zoom != 1, getComputedStyle returns pre-zoom values
+        // while getBoundingClientRect returns post-zoom dimensions. We scale all
+        // absolute dimensional values here so they are consistent with the bounds.
+        // Percentage-based values are left unchanged — they resolve against bounds
+        // which are already post-zoom.
+        // -----------------------------------------------------------------------
+        if (zoomFactor !== 1 && zoomFactor > 0) {
+            const z = zoomFactor;
+
+            // Border widths (plain numbers in px)
+            this.borderTopWidth *= z;
+            this.borderRightWidth *= z;
+            this.borderBottomWidth *= z;
+            this.borderLeftWidth *= z;
+
+            // Border radii (LengthPercentageTuple — scale each component)
+            this.borderTopLeftRadius = this.borderTopLeftRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderTopLeftRadius;
+            this.borderTopRightRadius = this.borderTopRightRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderTopRightRadius;
+            this.borderBottomRightRadius = this.borderBottomRightRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderBottomRightRadius;
+            this.borderBottomLeftRadius = this.borderBottomLeftRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderBottomLeftRadius;
+
+            // Padding (LengthPercentage)
+            this.paddingTop = scaleLengthPercentage(this.paddingTop, z);
+            this.paddingRight = scaleLengthPercentage(this.paddingRight, z);
+            this.paddingBottom = scaleLengthPercentage(this.paddingBottom, z);
+            this.paddingLeft = scaleLengthPercentage(this.paddingLeft, z);
+
+            // Font size (LengthPercentage)
+            this.fontSize = scaleLengthPercentage(this.fontSize, z);
+
+            // Letter spacing (plain number in px)
+            this.letterSpacing *= z;
+
+            // webkit-text-stroke-width (plain number in px)
+            this.webkitTextStrokeWidth *= z;
+
+            // Text decoration thickness (number | null)
+            if (typeof this.textDecorationThickness === 'number') {
+                this.textDecorationThickness *= z;
+            }
+
+            // Text underline offset (number | null)
+            if (typeof this.textUnderlineOffset === 'number') {
+                this.textUnderlineOffset *= z;
+            }
+
+            // box-shadow: scale offsetX, offsetY, blur, spread
+            this.boxShadow = this.boxShadow.map(shadow => ({
+                ...shadow,
+                offsetX: scaleLength(shadow.offsetX, z),
+                offsetY: scaleLength(shadow.offsetY, z),
+                blur: scaleLength(shadow.blur, z),
+                spread: scaleLength(shadow.spread, z),
+            }));
+
+            // text-shadow: scale offsetX, offsetY, blur
+            this.textShadow = this.textShadow.map(shadow => ({
+                ...shadow,
+                offsetX: scaleLength(shadow.offsetX, z),
+                offsetY: scaleLength(shadow.offsetY, z),
+                blur: scaleLength(shadow.blur, z),
+            }));
+
+            // transform: scale the translation components (e=matrix[4], f=matrix[5])
+            if (this.transform !== null) {
+                this.transform = [
+                    this.transform[0],
+                    this.transform[1],
+                    this.transform[2],
+                    this.transform[3],
+                    this.transform[4] * z,
+                    this.transform[5] * z,
+                ];
+            }
+
+            // transform-origin: scale absolute (px) components, leave percentages alone
+            this.transformOrigin = this.transformOrigin.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.transformOrigin;
+        }
     }
 
     isVisible(): boolean {
