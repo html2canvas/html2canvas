@@ -429,6 +429,8 @@ export class CanvasRenderer extends Renderer {
      * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
      * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
      * The `isVertical` flag swaps the semantics of w/h for dotted/dashed segment sizing.
+     * `lineStart` is the absolute start of the full decoration line (across all words/segments),
+     * used by WAVY to keep the phase continuous between individual word segments.
      */
     renderDecorationLine(
         style: number,
@@ -438,6 +440,8 @@ export class CanvasRenderer extends Renderer {
         h: number,
         isVertical: boolean,
         textDecorationLine: TEXT_DECORATION_LINE,
+        lineStart?: number,
+        _fontSizePx?: number,
     ): void {
         switch (style) {
             case TEXT_DECORATION_STYLE.DOUBLE: {
@@ -494,47 +498,82 @@ export class CanvasRenderer extends Renderer {
                 break;
             }
             case TEXT_DECORATION_STYLE.WAVY: {
-                // Wavy line drawn using quadratic bezier curves.
+                // Wavy line using quadratic Bezier curves (one per half-wavelength).
+                // Quadratic curves are required (not cubic) so that the tangent at each
+                // midline crossing is horizontal, giving a smooth continuous wave when
+                // segments are chained.
+                //
+                // Sizing from Chromium's MakeWave() (thickness-based):
+                //   clamped         = max(1, thickness)
+                //   wavelength      = 1 + 2 * round(2 * clamped + 0.5)
+                //   amplitude       = 0.5 + round(3 * clamped + 0.5)   (= cpDist)
+                //
+                // Phase continuity across word/space segments is maintained by aligning
+                // the half-wave grid to `lineStart` (the absolute start of the decoration line).
                 const length = isVertical ? h : w;
                 const thickness2 = isVertical ? w : h;
-                const amplitude = Math.max(3, thickness2 * 3);
-                const wavelength = Math.max(6, thickness2 * 6);
+                const clamped = Math.max(1, thickness2);
+                const wavelength = 1 + 2 * Math.round(2 * clamped + 0.5);
+                const amplitude = Math.max(3, thickness2 * 1.5);
+                const halfWave = wavelength / 2;
 
                 this.ctx.save();
                 this.ctx.beginPath();
 
                 if (isVertical) {
+                    const ref = lineStart ?? y;
                     const midX = x + w / 2;
+                    // Align to half-wave grid from ref.
+                    const phaseOffset = (((y - ref) % halfWave) + halfWave) % halfWave;
+                    const halfWaveOrigin = y - phaseOffset;
+                    // Count half-waves elapsed to determine initial direction.
+                    const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                    let direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+
                     this.ctx.moveTo(midX, y);
-                    let currentY = y;
-                    let direction = 1;
-                    while (currentY < y + length) {
-                        const nextY = Math.min(currentY + wavelength / 2, y + length);
-                        const controlY = (currentY + nextY) / 2;
-                        const controlX = midX + amplitude * direction;
-                        this.ctx.quadraticCurveTo(controlX, controlY, midX, nextY);
-                        currentY = nextY;
+                    let pos = halfWaveOrigin;
+                    while (pos < y + length) {
+                        const nextPos = pos + halfWave;
+                        const controlPos = (pos + nextPos) / 2;
+                        this.ctx.quadraticCurveTo(
+                            midX + amplitude * direction,
+                            controlPos,
+                            midX,
+                            Math.min(nextPos, y + length),
+                        );
+                        pos = nextPos;
                         direction *= -1;
                     }
                 } else {
-                    const midY = y + h / 2 + thickness2 * 1.5;
+                    const ref = lineStart ?? x;
+                    // midY is set so the top of the wave starts at y (top of the decoration band).
+                    const midY = y + amplitude;
+                    // Align to half-wave grid from ref.
+                    const phaseOffset = (((x - ref) % halfWave) + halfWave) % halfWave;
+                    const halfWaveOrigin = x - phaseOffset;
+                    const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                    let direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+
                     this.ctx.moveTo(x, midY);
-                    let currentX = x;
-                    let direction = 1;
-                    while (currentX < x + length) {
-                        const nextX = Math.min(currentX + wavelength / 2, x + length);
-                        const controlX = (currentX + nextX) / 2;
-                        const controlY = midY + amplitude * direction;
-                        this.ctx.quadraticCurveTo(controlX, controlY, nextX, midY);
-                        currentX = nextX;
+                    let pos = halfWaveOrigin;
+                    while (pos < x + length) {
+                        const nextPos = pos + halfWave;
+                        const controlPos = (pos + nextPos) / 2;
+                        this.ctx.quadraticCurveTo(
+                            controlPos,
+                            midY + amplitude * direction,
+                            Math.min(nextPos, x + length),
+                            midY,
+                        );
+                        pos = nextPos;
                         direction *= -1;
                     }
                 }
 
                 this.ctx.strokeStyle = this.ctx.fillStyle;
-                this.ctx.lineWidth = isVertical ? w : h;
+                this.ctx.lineWidth = thickness2 + 1;
                 this.ctx.stroke();
-                this.ctx.restore();
+                this.ctx.restore;
                 break;
             }
             case TEXT_DECORATION_STYLE.SOLID:
@@ -546,6 +585,8 @@ export class CanvasRenderer extends Renderer {
 
     async renderTextNode(text: TextContainer, styles: CSSParsedDeclaration): Promise<void> {
         const [font, fontFamily, fontSize] = this.createFontStyle(styles);
+        // Numeric font-size in px, used for WAVY decoration sizing.
+        const fontSizePx = getNumber(styles.fontSize);
 
         this.ctx.font = font;
 
@@ -563,6 +604,44 @@ export class CanvasRenderer extends Renderer {
         // Use the real measured baseline offset so that Firefox and Chrome both
         // place text at the correct vertical position regardless of line-height.
         const { baseline } = this.fontMetrics.getMetrics(fontFamily, fontSize);
+
+        // Pre-compute per-segment line metadata used for decoration rendering:
+        //   lineStartMap  – absolute start coordinate of the full decoration line
+        //                   (used by WAVY to keep phase continuous across words)
+        //   isFirstInLine – true only for the first segment on each visual line
+        //                   (insetStart is applied only here)
+        //   isLastInLine  – true only for the last segment on each visual line
+        //                   (insetEnd is applied only here)
+        //
+        // For horizontal text we group by bounds.top (rounded to 1px to absorb
+        // sub-pixel jitter); for vertical text we group by bounds.left.
+        const lineStartMap = new Map<TextBounds, number>();
+        const isFirstInLine = new Set<TextBounds>();
+        const isLastInLine = new Set<TextBounds>();
+        if (styles.textDecorationLine.length) {
+            // Group bounds by line key, tracking min/max start and the corresponding segment.
+            const lineMin = new Map<number, { val: number; tb: TextBounds }>();
+            const lineMax = new Map<number, { val: number; tb: TextBounds }>();
+            for (const tb of text.textBounds) {
+                const lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
+                const start = isVertical ? tb.bounds.top : tb.bounds.left;
+                const end = isVertical ? tb.bounds.top + tb.bounds.height : tb.bounds.left + tb.bounds.width;
+                const minEntry = lineMin.get(lineKey);
+                if (minEntry === undefined || start < minEntry.val) {
+                    lineMin.set(lineKey, { val: start, tb });
+                }
+                const maxEntry = lineMax.get(lineKey);
+                if (maxEntry === undefined || end > maxEntry.val) {
+                    lineMax.set(lineKey, { val: end, tb });
+                }
+            }
+            lineMin.forEach(({ tb }) => isFirstInLine.add(tb));
+            lineMax.forEach(({ tb }) => isLastInLine.add(tb));
+            for (const tb of text.textBounds) {
+                const lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
+                lineStartMap.set(tb, lineMin.get(lineKey)!.val);
+            }
+        }
 
         text.textBounds.forEach(text => {
             paintOrder.forEach(paintOrderLayer => {
@@ -667,9 +746,10 @@ export class CanvasRenderer extends Renderer {
                                             lineX = text.bounds.left + text.bounds.width / 2 - thickness / 2;
                                             break;
                                     }
-                                    // Apply text-decoration-inset (vertical: inset applies to top/bottom)
-                                    const vInsetStart = inset.start;
-                                    const vInsetEnd = inset.end;
+                                    // Apply text-decoration-inset (vertical: inset applies to top/bottom).
+                                    // insetStart only on first segment of the line; insetEnd only on last.
+                                    const vInsetStart = isFirstInLine.has(text) ? inset.start : 0;
+                                    const vInsetEnd = isLastInLine.has(text) ? inset.end : 0;
                                     const insetY = text.bounds.top + vInsetStart;
                                     const insetH = Math.max(0, text.bounds.height - vInsetStart - vInsetEnd);
                                     this.renderDecorationLine(
@@ -680,6 +760,8 @@ export class CanvasRenderer extends Renderer {
                                         insetH,
                                         true,
                                         textDecorationLine,
+                                        lineStartMap.get(text),
+                                        fontSizePx,
                                     );
                                 } else {
                                     // baseline = distance from bounds.top to the alphabetic baseline.
@@ -706,9 +788,10 @@ export class CanvasRenderer extends Renderer {
                                             lineY = Math.round(baselineY - baseline * 0.4) + 2;
                                             break;
                                     }
-                                    // Apply text-decoration-inset (horizontal: inset applies to left/right)
-                                    const hInsetStart = inset.start;
-                                    const hInsetEnd = inset.end;
+                                    // Apply text-decoration-inset (horizontal: inset applies to left/right).
+                                    // insetStart only on first segment of the line; insetEnd only on last.
+                                    const hInsetStart = isFirstInLine.has(text) ? inset.start : 0;
+                                    const hInsetEnd = isLastInLine.has(text) ? inset.end : 0;
                                     const insetX = text.bounds.left + hInsetStart;
                                     const insetW = Math.max(0, text.bounds.width - hInsetStart - hInsetEnd);
                                     this.renderDecorationLine(
@@ -719,6 +802,8 @@ export class CanvasRenderer extends Renderer {
                                         thickness,
                                         false,
                                         textDecorationLine,
+                                        lineStartMap.get(text),
+                                        fontSizePx,
                                     );
                                 }
                             });
