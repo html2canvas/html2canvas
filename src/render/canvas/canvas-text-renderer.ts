@@ -332,21 +332,27 @@ export async function renderTextNode(
 
     const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
 
-    // Pre-compute per-segment line metadata used for decoration rendering:
-    //   lineStartMap  – absolute start coordinate of the full decoration line
-    //                   (used by WAVY to keep phase continuous across words)
-    //   isFirstInLine – true only for the first segment on each visual line
-    //                   (insetStart is applied only here)
-    //   isLastInLine  – true only for the last segment on each visual line
-    //                   (insetEnd is applied only here)
+    // Pre-compute per-segment line metadata used for decoration rendering.
     //
     // For horizontal text we group by bounds.top (rounded to 1px to absorb
     // sub-pixel jitter); for vertical text we group by bounds.left.
+    //
+    // Instead of drawing one decoration rect per word/segment, we gather the
+    // full extent of each visual line so we can draw the decoration in a
+    // single call per line (covering all segments at once).
+    //
+    //   lineStartMap  – absolute start coordinate of the full decoration span
+    //                   (used by WAVY to keep phase continuous, and as origin
+    //                    for the merged single-draw optimisation)
+    //   lineEndMap    – absolute end coordinate of the full decoration span
+    //   isFirstInLine – true for the first segment on each visual line;
+    //                   decoration is drawn only here (one draw per line)
     const lineStartMap = new Map<TextBounds, number>();
+    const lineEndMap = new Map<TextBounds, number>();
     const isFirstInLine = new Set<TextBounds>();
-    const isLastInLine = new Set<TextBounds>();
     if (styles.textDecorationLine.length) {
-        // Group bounds by line key, tracking min/max start and the corresponding segment.
+        // Group bounds by line key, tracking min start / max end and the
+        // corresponding first/last segment on that line.
         const lineMin = new Map<number, { val: number; tb: TextBounds }>();
         const lineMax = new Map<number, { val: number; tb: TextBounds }>();
         for (const tb of text.textBounds) {
@@ -362,12 +368,15 @@ export async function renderTextNode(
                 lineMax.set(lineKey, { val: end, tb });
             }
         }
-        lineMin.forEach(({ tb }) => isFirstInLine.add(tb));
-        lineMax.forEach(({ tb }) => isLastInLine.add(tb));
-        for (const tb of text.textBounds) {
-            const lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
-            lineStartMap.set(tb, lineMin.get(lineKey)!.val);
-        }
+        // Mark only the first segment of each line; store start/end on it.
+        lineMin.forEach(({ val: startVal, tb: firstTb }) => {
+            isFirstInLine.add(firstTb);
+            lineStartMap.set(firstTb, startVal);
+        });
+        // Attach lineEnd to each line's first TextBounds.
+        lineMin.forEach(({ tb: firstTb }, lineKey) => {
+            lineEndMap.set(firstTb, lineMax.get(lineKey)!.val);
+        });
     }
 
     text.textBounds.forEach(textBound => {
@@ -389,8 +398,8 @@ export async function renderTextNode(
                         fontSizePx,
                         isVertical,
                         lineStartMap,
+                        lineEndMap,
                         isFirstInLine,
-                        isLastInLine,
                     );
                     break;
 
@@ -423,8 +432,8 @@ function _renderTextFill(
     fontSizePx: number,
     isVertical: boolean,
     lineStartMap: Map<TextBounds, number>,
+    lineEndMap: Map<TextBounds, number>,
     isFirstInLine: Set<TextBounds>,
-    isLastInLine: Set<TextBounds>,
 ): void {
     const textShadows: TextShadow = styles.textShadow;
 
@@ -444,8 +453,8 @@ function _renderTextFill(
             isVertical,
             fontSizePx,
             lineStartMap,
+            lineEndMap,
             isFirstInLine,
-            isLastInLine,
         );
     }
 }
@@ -517,9 +526,15 @@ function _renderTextDecorations(
     isVertical: boolean,
     fontSizePx: number,
     lineStartMap: Map<TextBounds, number>,
+    lineEndMap: Map<TextBounds, number>,
     isFirstInLine: Set<TextBounds>,
-    isLastInLine: Set<TextBounds>,
 ): void {
+    // Decoration is drawn once per visual line, using the full span from
+    // lineStart to lineEnd.  Skip all non-first segments — nothing to draw.
+    if (!isFirstInLine.has(textBound)) {
+        return;
+    }
+
     state.ctx.fillStyle = asString(
         isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor,
     );
@@ -527,6 +542,10 @@ function _renderTextDecorations(
     const thickness = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
     const underlineOffset = styles.textUnderlineOffset ? styles.textUnderlineOffset - 2 : 0;
     const inset = styles.textDecorationInset;
+
+    // Full extent of the decoration span across all words on this line.
+    const lineStart = lineStartMap.get(textBound)!;
+    const lineEnd = lineEndMap.get(textBound)!;
 
     styles.textDecorationLine.forEach(textDecorationLine => {
         if (isVertical) {
@@ -548,12 +567,9 @@ function _renderTextDecorations(
                     lineX = textBound.bounds.left + textBound.bounds.width / 2 - thickness / 2;
                     break;
             }
-            const vInsetStart = isFirstInLine.has(textBound) ? inset.start : 0;
-            const vInsetEnd = isLastInLine.has(textBound) ? inset.end : 0;
-            // Apply text-decoration-inset (vertical: inset applies to top/bottom).
-            // insetStart only on first segment of the line; insetEnd only on last.
-            const insetY = textBound.bounds.top + vInsetStart;
-            const insetH = Math.max(0, textBound.bounds.height - vInsetStart - vInsetEnd);
+            // Draw the full vertical span in one call, applying insets at both ends.
+            const insetY = lineStart + inset.start;
+            const insetH = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
             renderDecorationLine(
                 state,
                 styles.textDecorationStyle,
@@ -563,24 +579,19 @@ function _renderTextDecorations(
                 insetH,
                 true,
                 textDecorationLine,
-                lineStartMap.get(textBound),
+                lineStart,
                 fontSizePx,
             );
         } else {
             const baselineY = textBound.bounds.top + baseline;
-            // baseline = distance from bounds.top to the alphabetic baseline.
-            // Use it to position decorations relative to actual glyph positions
-            // rather than the full line-height bounding box.
             let lineY: number;
             switch (textDecorationLine) {
                 case TEXT_DECORATION_LINE.UNDERLINE:
                     if (styles.textUnderlinePosition === TEXT_UNDERLINE_POSITION.UNDER) {
-                        // 'under' places the line below the descenders
                         lineY = textBound.bounds.top + textBound.bounds.height;
                     } else {
                         lineY = baselineY + 2;
                     }
-                    // Apply text-underline-offset
                     lineY += underlineOffset;
                     break;
                 case TEXT_DECORATION_LINE.OVERLINE:
@@ -591,12 +602,9 @@ function _renderTextDecorations(
                     lineY = Math.round(baselineY - baseline * 0.4) + 2;
                     break;
             }
-            const hInsetStart = isFirstInLine.has(textBound) ? inset.start : 0;
-            const hInsetEnd = isLastInLine.has(textBound) ? inset.end : 0;
-            // Apply text-decoration-inset (horizontal: inset applies to left/right).
-            // insetStart only on first segment of the line; insetEnd only on last.
-            const insetX = textBound.bounds.left + hInsetStart;
-            const insetW = Math.max(0, textBound.bounds.width - hInsetStart - hInsetEnd);
+            // Draw the full horizontal span in one call, applying insets at both ends.
+            const insetX = lineStart + inset.start;
+            const insetW = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
             renderDecorationLine(
                 state,
                 styles.textDecorationStyle,
@@ -606,7 +614,7 @@ function _renderTextDecorations(
                 thickness,
                 false,
                 textDecorationLine,
-                lineStartMap.get(textBound),
+                lineStart,
                 fontSizePx,
             );
         }
