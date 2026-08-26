@@ -1,10 +1,10 @@
 {
-    "extends": "../tsconfig.json",
-    "compilerOptions": {
-        "types": ["node"],
-        "rootDir": "../",
-        "declaration": false,
-        "declarationDir": null
-    },
-    "include": ["**/*.ts"]
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": "../",
+    "declaration": false,
+    "declarationDir": null
+  },
+  "include": ["**/*.ts", "../src/global.d.ts"]
 }
