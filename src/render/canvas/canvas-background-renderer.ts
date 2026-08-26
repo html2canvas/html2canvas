@@ -106,6 +106,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
 
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, width);
+            canvas.height = Math.max(1, height);
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
