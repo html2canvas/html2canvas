@@ -1,6 +1,7 @@
 interface CSSStyleDeclaration {
     textDecorationColor: string;
     textDecorationLine: string;
+    textDecorationInset: string;
     overflowWrap: string;
 }
 

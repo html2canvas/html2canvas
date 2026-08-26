@@ -88,7 +88,7 @@ import { wordBreak } from './property-descriptors/word-break';
 import { writingMode } from './property-descriptors/writing-mode';
 import { zIndex } from './property-descriptors/z-index';
 import { CSSValue, Parser, isIdentToken } from './syntax/parser';
-import { TokenType, Tokenizer } from './syntax/tokenizer';
+import { NumberValueToken, TokenType, Tokenizer } from './syntax/tokenizer';
 import { angle } from './types/angle';
 import { Color, color as colorType, isTransparent } from './types/color';
 import { image } from './types/image';
@@ -113,7 +113,7 @@ const scaleLengthPercentage = (token: LengthPercentage, factor: number): LengthP
         return token;
     }
     // DimensionToken and NumberValueToken both have a .number property
-    return { ...token, number: (token as any).number * factor };
+    return { ...token, number: (token as NumberValueToken).number * factor };
 };
 
 /** Scale an absolute Length token (DIMENSION or NUMBER) by `factor`. */
@@ -270,7 +270,7 @@ export class CSSParsedDeclaration {
             textDecorationColor,
             declaration.textDecorationColor ?? declaration.color,
         );
-        this.textDecorationInset = parse(context, textDecorationInset, (declaration as any).textDecorationInset);
+        this.textDecorationInset = parse(context, textDecorationInset, declaration.textDecorationInset);
         this.textDecorationLine = parse(
             context,
             textDecorationLine,
