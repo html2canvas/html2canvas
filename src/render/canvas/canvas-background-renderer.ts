@@ -129,15 +129,19 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
+            // processColorStops normalises stops to [0,1] relative to lineLength
             const processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
             const tileStart = processedStops[0].stop;
             const tileEnd = processedStops[processedStops.length - 1].stop;
             const tileSize = tileEnd - tileStart;
 
             if (tileSize > 0) {
+                // Build all tiled stops in [0,1] by repeating the tile backward and forward.
+                // Use a max-iterations guard to prevent runaway loops on degenerate inputs.
                 const MAX_ITER = 512;
                 const allStops: Array<{ stop: number; color: (typeof processedStops)[0]['color'] }> = [];
 
+                // Tile backward: while the tile still contributes stops >= 0
                 for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
                     const offset = iter * tileSize;
                     processedStops.forEach(s => {
@@ -146,6 +150,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     if (tileStart - offset <= 0) break;
                 }
                 processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+                // Tile forward: while the tile still contributes stops <= 1
                 for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
                     const offset = iter * tileSize;
                     processedStops.forEach(s => {
@@ -153,6 +158,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     });
                 }
 
+                // Clamp edges: ensure 0 and 1 are covered with the boundary stop's colour
                 if (allStops[0].stop > 0) {
                     allStops.unshift({ stop: 0, color: allStops[0].color });
                 }
@@ -188,6 +194,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 canvasPath(state, path);
                 state.ctx.fillStyle = radialGradient;
                 if (rx !== ry) {
+                    // transforms for elliptical radial gradient
                     const midX = container.bounds.left + 0.5 * container.bounds.width;
                     const midY = container.bounds.top + 0.5 * container.bounds.height;
                     const f = ry / rx;
@@ -212,17 +219,21 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
 
             const [rx, ry] = calculateRadius(backgroundImage, x, y, width, height);
             if (rx > 0 && ry > 0) {
+                // Centre in page-space coordinates
                 const cx = left + x;
                 const cy = top + y;
 
+                // Calculate maxRadius based on the deformation (f)
                 const f = rx !== ry ? ry / rx : 1;
                 const invF = rx !== ry ? rx / ry : 1;
 
+                // Apply the inverse ratio (invF) to the Y distance to compensate for the subsequent transform
                 const maxDistX = Math.max(x, width - x);
                 const maxDistY = Math.max(y, height - y) * invF;
                 const maxRadius = Math.sqrt(maxDistX ** 2 + maxDistY ** 2);
                 const drawRadius = Math.max(rx, maxRadius);
 
+                // Normalise stops against rx...
                 const processedStops = processColorStops(backgroundImage.stops, rx);
                 const scale = rx / drawRadius;
                 const scaledStops = processedStops.map(s => ({ color: s.color, stop: s.stop * scale }));
@@ -258,6 +269,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 state.ctx.fillStyle = radialGradient;
 
                 if (rx !== ry) {
+                    // Ellipse
                     state.ctx.save();
                     state.ctx.clip();
                     state.ctx.translate(cx, cy);
@@ -266,6 +278,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     state.ctx.fillRect(left, invF * (top - cy) + cy, width, height * invF);
                     state.ctx.restore();
                 } else {
+                    // Perfect circle
                     state.ctx.fill();
                 }
             }
@@ -397,7 +410,8 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
     offCtx.scale(state.options.scale, state.options.scale);
     offCtx.translate(-bounds.left, -bounds.top);
 
-    // Step 1: draw background onto offscreen canvas
+    // Step 1: Draw the background onto the offscreen canvas.
+    // Temporarily swap state.ctx so rendering methods target the offscreen canvas.
     const mainCtx = state.ctx;
     state.ctx = offCtx;
 
@@ -410,6 +424,9 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
     state.ctx = mainCtx;
 
     // Step 2: create text mask canvas
+    // All text is drawn as opaque black on a separate canvas so we can apply
+    // the mask in a single 'destination-in' operation (avoiding the problem
+    // where multiple fillText calls with destination-in erase each other).
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = width;
     maskCanvas.height = height;
@@ -483,11 +500,12 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
     }
 
     // Step 3: clip background to text shape with destination-in
+    // This is a single drawImage call so it clips the entire background at once.
     offCtx.globalCompositeOperation = 'destination-in';
-    offCtx.setTransform(1, 0, 0, 1, 0, 0);
+    offCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pixel-to-pixel copy
     offCtx.drawImage(maskCanvas, 0, 0);
 
-    // Step 4: composite result onto main canvas
+    // Step 4: Draw the clipped result onto the main canvas
     state.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
 }
 
@@ -694,6 +712,13 @@ export async function renderNodeBackgroundAndBorders(state: CanvasRenderState, p
             .forEach(shadow => {
                 state.ctx.save();
                 const borderBoxArea = calculateBorderBoxPath(paint.curves);
+                // Build the painting area by applying offset and spread.
+                // expandBorderBoxPath rebuilds the Bézier curves with adjusted radii
+                // (border-radius ± spread) per the CSS spec, unlike transformPath which
+                // only translates corners without updating the curve geometry.
+                // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur
+                // that occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
+                // See https://github.com/html2canvas/html2canvas/issues/21
                 const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
                 const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
                     p.add(shadow.offsetX.number, shadow.offsetY.number),

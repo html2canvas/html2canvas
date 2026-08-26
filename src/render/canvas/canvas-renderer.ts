@@ -251,6 +251,7 @@ export class CanvasRenderer extends Renderer {
         // doesn't call ctx.restore() on the wrong context.
         const savedActiveEffects = this._activeEffects.splice(0);
 
+        // Offscreen canvas — same physical size, same transform as the main canvas.
         const offscreen = document.createElement('canvas');
         offscreen.width = mainCanvas.width;
         offscreen.height = mainCanvas.height;
@@ -269,7 +270,9 @@ export class CanvasRenderer extends Renderer {
         this.state.ctx = mainCtx;
         this._activeEffects.push(...savedActiveEffects);
 
-        // Pop ancestor effects from main ctx so setTransform(identity) works cleanly.
+        // Pop all active ancestor effects from the main ctx so we can use
+        // setTransform(identity) for the drawImage without misaligned clips.
+        // The next applyEffects() call will re-establish them for the next element.
         const activeCount = this._activeEffects.length;
         for (let i = 0; i < activeCount; i++) {
             this.state.ctx.restore();
@@ -288,33 +291,46 @@ export class CanvasRenderer extends Renderer {
             debugger;
         }
         // https://www.w3.org/TR/css-position-3/#painting-order
-        // 1. background and borders of the stacking context element
+        // 1. the background and borders of the element forming the stacking context.
         await this.renderNodeBackgroundAndBorders(stack.element);
-        // 2. child stacking contexts with negative z-index (most negative first)
+        // 2. the child stacking contexts with negative stack levels (most negative first).
         for (const child of stack.negativeZIndex) {
             await this.renderStack(child);
         }
-        // 3. in-flow, non-positioned, block-level descendants
+        // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
         await this.renderNodeContent(stack.element);
         for (const child of stack.nonInlineLevel) {
             await this.renderNode(child);
         }
-        // 4. non-positioned floating descendants
+        // 4. All non-positioned floating descendants, in tree order. For each one of these,
+        // treat the element as if it created a new stacking context, but any positioned descendants and descendants
+        // which actually create a new stacking context should be considered part of the parent stacking context,
+        // not this new one.
         for (const child of stack.nonPositionedFloats) {
             await this.renderStack(child);
         }
-        // 5. in-flow, inline-level, non-positioned descendants
+        // 5. the in-flow, inline-level, non-positioned descendants, including inline tables and inline blocks.
         for (const child of stack.nonPositionedInlineLevel) {
             await this.renderStack(child);
         }
         for (const child of stack.inlineLevel) {
             await this.renderNode(child);
         }
-        // 6. positioned descendants with z-index: auto/0, opacity < 1, or transform
+        // 6. All positioned, opacity or transform descendants, in tree order that fall into the following categories:
+        //  All positioned descendants with 'z-index: auto' or 'z-index: 0', in tree order.
+        //  For those with 'z-index: auto', treat the element as if it created a new stacking context,
+        //  but any positioned descendants and descendants which actually create a new stacking context should be
+        //  considered part of the parent stacking context, not this new one. For those with 'z-index: 0',
+        //  treat the stacking context generated atomically.
+        //
+        //  All opacity descendants with opacity less than 1
+        //
+        //  All transform descendants with transform other than none
         for (const child of stack.zeroOrAutoZIndexOrTransformedOrOpacity) {
             await this.renderStack(child);
         }
-        // 7. stacking contexts with z-index >= 1
+        // 7. Stacking contexts formed by positioned descendants with z-indices greater than or equal to 1 in z-index
+        // order (smallest first) then tree order.
         for (const child of stack.positiveZIndex) {
             await this.renderStack(child);
         }

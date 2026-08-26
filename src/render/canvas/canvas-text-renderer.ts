@@ -81,7 +81,11 @@ export function renderTextWithLetterSpacing(
         : (t: string, x: number, y: number) => state.ctx.fillText(t, x, y);
 
     if (isVertical) {
+        // For vertical writing modes the browser already positions the text bounds correctly.
+        // We rotate the canvas ±90° around the centre of the text bounds so that fillText
+        // draws along the right axis, then restore.
         const isSidewaysLR = writingMode === WRITING_MODE.SIDEWAYS_LR;
+        // sideways-lr rotates -90°; all other vertical modes rotate +90°
         const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
         const cx = text.bounds.left + text.bounds.width / 2;
         const cy = text.bounds.top + text.bounds.height / 2;
@@ -91,6 +95,8 @@ export function renderTextWithLetterSpacing(
         state.ctx.rotate(angle);
         state.ctx.translate(-cx, -cy);
 
+        // After rotation the "visual" width and height swap, so we need to
+        // paint as if the text was horizontal with swapped bounds.
         const rotatedBounds = new Bounds(
             cx - text.bounds.height / 2,
             cy - text.bounds.width / 2,
@@ -160,6 +166,8 @@ export function renderDecorationLine(
 ): void {
     switch (style) {
         case TEXT_DECORATION_STYLE.DOUBLE: {
+            // For double, `h` (or `w` in vertical) is the thickness of each individual line.
+            // Gap between the two lines = max(1, round(thickness / 2)).
             if (isVertical) {
                 const lineW = Math.max(1, w);
                 const gap = Math.max(1, Math.round(w / 2));
@@ -182,6 +190,7 @@ export function renderDecorationLine(
             break;
         }
         case TEXT_DECORATION_STYLE.DOTTED: {
+            // Dots (squares) with diameter = thickness, spaced by one dot width.
             const dotSize = isVertical ? w : h;
             const length = isVertical ? h : w;
             const step = dotSize * 2;
@@ -195,6 +204,7 @@ export function renderDecorationLine(
             break;
         }
         case TEXT_DECORATION_STYLE.DASHED: {
+            // Dashes 3× the thickness long, with a gap equal to the dash length.
             const thickness = isVertical ? w : h;
             const dashLen = thickness * 3;
             const length = isVertical ? h : w;
@@ -209,6 +219,18 @@ export function renderDecorationLine(
             break;
         }
         case TEXT_DECORATION_STYLE.WAVY: {
+            // Wavy line using quadratic Bezier curves (one per half-wavelength).
+            // Quadratic curves are required (not cubic) so that the tangent at each
+            // midline crossing is horizontal, giving a smooth continuous wave when
+            // segments are chained.
+            //
+            // Sizing from Chromium's MakeWave() (thickness-based):
+            //   clamped         = max(1, thickness)
+            //   wavelength      = 1 + 2 * round(2 * clamped + 0.5)
+            //   amplitude       = 0.5 + round(3 * clamped + 0.5)   (= cpDist)
+            //
+            // Phase continuity across word/space segments is maintained by aligning
+            // the half-wave grid to `lineStart` (the absolute start of the decoration line).
             const length = isVertical ? h : w;
             const thickness2 = isVertical ? w : h;
             const clamped = Math.max(1, thickness2);
@@ -222,8 +244,10 @@ export function renderDecorationLine(
             if (isVertical) {
                 const ref = lineStart ?? y;
                 const midX = x + w / 2;
+                // Align to half-wave grid from ref.
                 const phaseOffset = (((y - ref) % halfWave) + halfWave) % halfWave;
                 const halfWaveOrigin = y - phaseOffset;
+                // Count half-waves elapsed to determine initial direction.
                 const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
                 let direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
 
@@ -243,7 +267,9 @@ export function renderDecorationLine(
                 }
             } else {
                 const ref = lineStart ?? x;
+                // midY is set so the top of the wave starts at y (top of the decoration band).
                 const midY = y + amplitude;
+                // Align to half-wave grid from ref.
                 const phaseOffset = (((x - ref) % halfWave) + halfWave) % halfWave;
                 const halfWaveOrigin = x - phaseOffset;
                 const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
@@ -288,6 +314,7 @@ export async function renderTextNode(
     styles: CSSParsedDeclaration,
 ): Promise<void> {
     const [font, fontFamily, fontSize] = createFontStyle(styles);
+    // Numeric font-size in px, used for WAVY decoration sizing.
     const fontSizePx = getNumber(styles.fontSize);
 
     state.ctx.font = font;
@@ -305,11 +332,21 @@ export async function renderTextNode(
 
     const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
 
-    // Pre-compute per-segment line metadata for decoration rendering
+    // Pre-compute per-segment line metadata used for decoration rendering:
+    //   lineStartMap  – absolute start coordinate of the full decoration line
+    //                   (used by WAVY to keep phase continuous across words)
+    //   isFirstInLine – true only for the first segment on each visual line
+    //                   (insetStart is applied only here)
+    //   isLastInLine  – true only for the last segment on each visual line
+    //                   (insetEnd is applied only here)
+    //
+    // For horizontal text we group by bounds.top (rounded to 1px to absorb
+    // sub-pixel jitter); for vertical text we group by bounds.left.
     const lineStartMap = new Map<TextBounds, number>();
     const isFirstInLine = new Set<TextBounds>();
     const isLastInLine = new Set<TextBounds>();
     if (styles.textDecorationLine.length) {
+        // Group bounds by line key, tracking min/max start and the corresponding segment.
         const lineMin = new Map<number, { val: number; tb: TextBounds }>();
         const lineMax = new Map<number, { val: number; tb: TextBounds }>();
         for (const tb of text.textBounds) {
@@ -436,6 +473,8 @@ function _renderTextShadows(
             shadowCanvas.height = h;
             const shadowCtx = shadowCanvas.getContext('2d') as CanvasRenderingContext2D;
             shadowCtx.scale(scale, scale);
+            // Incorporate the shadow offset into the translate so the
+            // text is drawn at the correct position on the offscreen.
             shadowCtx.translate(-ox + textShadow.offsetX.number, -oy + textShadow.offsetY.number);
             shadowCtx.font = state.ctx.font;
             shadowCtx.direction = state.ctx.direction;
@@ -450,6 +489,7 @@ function _renderTextShadows(
 
             if (textShadow.blur.number > 0) {
                 state.ctx.save();
+                // Apply blur via ctx.filter on the main canvas drawImage call.
                 state.ctx.filter = `blur(${textShadow.blur.number / 2}px)`;
             }
             state.ctx.drawImage(shadowCanvas, 0, 0, w, h, ox, oy, w / scale, h / scale);
@@ -459,6 +499,7 @@ function _renderTextShadows(
         });
 
     // Draw the real text on top of all shadows.
+    // Skipped for transparent text — shadows are the only visual.
     if (!isTransparent(styles.color)) {
         state.ctx.save();
         state.ctx.fillStyle = asString(styles.color);
@@ -482,6 +523,7 @@ function _renderTextDecorations(
     state.ctx.fillStyle = asString(
         isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor,
     );
+    // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
     const thickness = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
     const underlineOffset = styles.textUnderlineOffset ? styles.textUnderlineOffset - 2 : 0;
     const inset = styles.textDecorationInset;
@@ -508,6 +550,8 @@ function _renderTextDecorations(
             }
             const vInsetStart = isFirstInLine.has(textBound) ? inset.start : 0;
             const vInsetEnd = isLastInLine.has(textBound) ? inset.end : 0;
+            // Apply text-decoration-inset (vertical: inset applies to top/bottom).
+            // insetStart only on first segment of the line; insetEnd only on last.
             const insetY = textBound.bounds.top + vInsetStart;
             const insetH = Math.max(0, textBound.bounds.height - vInsetStart - vInsetEnd);
             renderDecorationLine(
@@ -524,14 +568,19 @@ function _renderTextDecorations(
             );
         } else {
             const baselineY = textBound.bounds.top + baseline;
+            // baseline = distance from bounds.top to the alphabetic baseline.
+            // Use it to position decorations relative to actual glyph positions
+            // rather than the full line-height bounding box.
             let lineY: number;
             switch (textDecorationLine) {
                 case TEXT_DECORATION_LINE.UNDERLINE:
                     if (styles.textUnderlinePosition === TEXT_UNDERLINE_POSITION.UNDER) {
+                        // 'under' places the line below the descenders
                         lineY = textBound.bounds.top + textBound.bounds.height;
                     } else {
                         lineY = baselineY + 2;
                     }
+                    // Apply text-underline-offset
                     lineY += underlineOffset;
                     break;
                 case TEXT_DECORATION_LINE.OVERLINE:
@@ -544,6 +593,8 @@ function _renderTextDecorations(
             }
             const hInsetStart = isFirstInLine.has(textBound) ? inset.start : 0;
             const hInsetEnd = isLastInLine.has(textBound) ? inset.end : 0;
+            // Apply text-decoration-inset (horizontal: inset applies to left/right).
+            // insetStart only on first segment of the line; insetEnd only on last.
             const insetX = textBound.bounds.left + hInsetStart;
             const insetW = Math.max(0, textBound.bounds.width - hInsetStart - hInsetEnd);
             renderDecorationLine(

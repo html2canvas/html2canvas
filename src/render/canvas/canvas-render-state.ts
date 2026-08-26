@@ -1,6 +1,6 @@
 import { Context } from '../../core/context';
-import { FontMetrics } from '../font-metrics';
 import { BezierCurve, isBezierCurve } from '../bezier-curve';
+import { FontMetrics } from '../font-metrics';
 import { Path, reversePath } from '../path';
 import { Vector } from '../vector';
 import { RenderConfigurations } from './canvas-renderer';
@@ -85,6 +85,10 @@ export function resizeImage(
     width: number,
     height: number,
 ): HTMLCanvasElement | HTMLImageElement {
+    // Commented out to solve "Operation is insecure" on safari
+    // if (image.width === width && image.height === height) {
+    //     return image;
+    // }
     const ownerDocument = state.canvas.ownerDocument ?? document;
     const canvas = ownerDocument.createElement('canvas');
     canvas.width = Math.max(1, width);

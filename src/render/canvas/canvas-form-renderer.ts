@@ -127,13 +127,16 @@ export function renderRange(state: CanvasRenderState, container: InputElementCon
 
     state.ctx.save();
     if (isHorizontal) {
+        // Track
         const trackY = bounds.top + bounds.height / 2 - trackThickness / 2;
         const trackLeft = bounds.left + thumbRadius;
         const trackWidth = bounds.width - thumbRadius * 2;
         state.ctx.fillStyle = '#c0c0c0';
         state.ctx.fillRect(trackLeft, trackY, trackWidth, trackThickness);
+        // Filled portion
         state.ctx.fillStyle = '#0075ff';
         state.ctx.fillRect(trackLeft, trackY, trackWidth * ratio, trackThickness);
+        // Thumb
         const thumbX = trackLeft + trackWidth * ratio;
         const thumbY = bounds.top + bounds.height / 2;
         state.ctx.beginPath();
@@ -144,14 +147,17 @@ export function renderRange(state: CanvasRenderState, container: InputElementCon
         state.ctx.lineWidth = 2;
         state.ctx.stroke();
     } else {
+        // Vertical track
         const trackX = bounds.left + bounds.width / 2 - trackThickness / 2;
         const trackTop = bounds.top + thumbRadius;
         const trackHeight = bounds.height - thumbRadius * 2;
         state.ctx.fillStyle = '#c0c0c0';
         state.ctx.fillRect(trackX, trackTop, trackThickness, trackHeight);
+        // Filled portion (bottom to value)
         const filledHeight = trackHeight * ratio;
         state.ctx.fillStyle = '#0075ff';
         state.ctx.fillRect(trackX, trackTop + trackHeight - filledHeight, trackThickness, filledHeight);
+        // Thumb
         const thumbX = bounds.left + bounds.width / 2;
         const thumbY = trackTop + trackHeight * (1 - ratio);
         state.ctx.beginPath();
@@ -318,9 +324,25 @@ async function _renderTextarea(
     const originX = bounds.left + xOffset;
 
     const letterSpacing = styles.letterSpacing;
+    // Measure the rendered width of a string in CSS pixels.
+    //
+    // ctx has an active scale transform, so measureText returns widths in
+    // physical pixels — divide by scale to get CSS pixels comparable to
+    // bounds.width.
+    //
+    // When letterSpacing !== 0, renderTextWithLetterSpacing draws each
+    // grapheme individually and advances by ctx.measureText(g).width +
+    // letterSpacing per grapheme.  We mirror that here so the wrap budget
+    // matches the actual painted width.  The division by scale applies only
+    // to the measureText part; letterSpacing is already in CSS pixels.
     const measureWidth = (text: string): number => {
         if (letterSpacing !== 0 && text.length > 0) {
             const graphemeCount = segmentGraphemes(text).length;
+            // Measure the full string at once so that kerning between
+            // character pairs is accounted for (ctx.measureText on a single
+            // glyph misses kerning with its neighbours).  Then add
+            // letter-spacing gaps: (n-1) gaps because the browser does not
+            // count trailing letter-spacing in the wrap budget.
             const glyphsWidth = state.ctx.measureText(text).width / state.options.scale;
             return glyphsWidth + (letterSpacing - 1) * (graphemeCount - 1);
         }
@@ -330,6 +352,7 @@ async function _renderTextarea(
     const wrapParagraph = (paragraph: string, maxWidth: number): string[] => {
         const lines: string[] = [];
 
+        // Helper: break a single unsplittable chunk character-by-character.
         const breakChunk = (chunk: string): void => {
             const graphemes = segmentGraphemes(chunk);
             let current = '';
@@ -347,6 +370,9 @@ async function _renderTextarea(
             }
         };
 
+        // Tokenise on whitespace AND after hyphens so that hyphenated
+        // compounds ("many-manymany") can break after the dash, matching
+        // the browser's default line-breaking behaviour for textareas.
         const tokens = paragraph.split(/(\s+|(?<=-+))/);
         let currentLine = '';
         for (const token of tokens) {
@@ -381,6 +407,7 @@ async function _renderTextarea(
     const wrappedLines: string[] = [];
     for (const paragraph of paragraphs) {
         if (paragraph.length === 0) {
+            // Preserve blank lines produced by consecutive newlines.
             wrappedLines.push('');
             continue;
         }
@@ -391,6 +418,7 @@ async function _renderTextarea(
 
     wrappedLines.forEach((line, index) => {
         const lineTop = index * lineHeight - scrollTop;
+        // Skip lines that are completely outside the content box.
         if (lineTop + lineHeight < 0 || lineTop > bounds.height) {
             return;
         }
@@ -493,9 +521,13 @@ function _renderVerticalListMarkerOutside(
     const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
     const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
 
+    // First column center x = container.left + paddingLeft + fontSize/2
     const markerX =
         container.bounds.left + getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) + fontSize / 2;
 
+    // Inline-start differs by writing mode:
+    //   sideways-lr: inline-start is bottom → marker below content
+    //   vertical-rl/lr, sideways-rl: inline-start is top → marker above content
     let markerY: number;
     if (isSidewaysLR) {
         markerY = container.bounds.top + container.bounds.height + fontSize;
@@ -528,12 +560,14 @@ function _renderVerticalListMarkerInside(
 
     let markerY: number;
     if (isSidewaysLR) {
+        // sideways-lr: text goes bottom→top, so inline-start = bottom of content
         markerY =
             container.bounds.top +
             container.bounds.height -
             getAbsoluteValue(container.styles.paddingBottom, container.bounds.height) -
             fontSize / 2;
     } else {
+        // vertical-rl/lr: text goes top→bottom, so inline-start = top of content
         markerY =
             container.bounds.top +
             getAbsoluteValue(container.styles.paddingTop, container.bounds.height) +
@@ -563,6 +597,9 @@ function _renderHorizontalListMarker(
     const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
     const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
 
+    // Align the marker baseline with the first line of the list item.
+    // Use raw metrics (no browser-specific adjustment) so the marker
+    // sits exactly on the same baseline as the item text on all browsers.
     const markerY =
         Math.floor(
             container.bounds.top +
