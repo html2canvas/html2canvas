@@ -1,11 +1,11 @@
-import {IPropertyIdentValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {Context} from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { Context } from '../../core/context';
 
 export const enum TEXT_UNDERLINE_POSITION {
     AUTO = 0,
     UNDER = 1,
     LEFT = 2,
-    RIGHT = 3
+    RIGHT = 3,
 }
 
 export const textUnderlinePosition: IPropertyIdentValueDescriptor<TEXT_UNDERLINE_POSITION> = {
@@ -23,5 +23,5 @@ export const textUnderlinePosition: IPropertyIdentValueDescriptor<TEXT_UNDERLINE
                 return TEXT_UNDERLINE_POSITION.RIGHT;
         }
         return TEXT_UNDERLINE_POSITION.AUTO;
-    }
+    },
 };

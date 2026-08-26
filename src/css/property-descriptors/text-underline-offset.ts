@@ -1,7 +1,7 @@
-import {IPropertyValueDescriptor, PropertyDescriptorParsingType} from '../IPropertyDescriptor';
-import {CSSValue} from '../syntax/parser';
-import {TokenType} from '../syntax/tokenizer';
-import {Context} from '../../core/context';
+import { IPropertyValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
+import { CSSValue } from '../syntax/parser';
+import { TokenType } from '../syntax/tokenizer';
+import { Context } from '../../core/context';
 
 // Sentinel value for 'auto'
 export const TEXT_UNDERLINE_OFFSET_AUTO = 0;
@@ -26,5 +26,5 @@ export const textUnderlineOffset: IPropertyValueDescriptor<number> = {
         }
 
         return TEXT_UNDERLINE_OFFSET_AUTO;
-    }
+    },
 };
