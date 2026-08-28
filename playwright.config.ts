@@ -14,8 +14,9 @@ export default defineConfig({
             maxDiffPixelRatio: 0.01,
         },
         toMatchSnapshot: {
-            // Same tolerance for buffer-based comparisons
-            maxDiffPixelRatio: 0.01,
+            // Tolerance for sub-pixel rendering differences between environments
+            // (local vs CI, different Chromium versions, font hinting, etc.)
+            maxDiffPixelRatio: 0.03,
         },
     },
 
