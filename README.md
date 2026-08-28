@@ -53,7 +53,7 @@ html2canvas(document.body).then(function (canvas) {
 or
 
 ```js
-html2canvas(document.body).then((canvas) => {
+html2canvas(document.body).then(canvas => {
     document.body.appendChild(canvas);
 });
 ```
@@ -104,7 +104,9 @@ npm run build
 npm run unittest
 ```
 
-**Visual reftests** (requires a browser):
+**Visual regression tests** (Playwright):
+
+The project uses Playwright to run visual regression tests against all reftest HTML fixtures. Each fixture is rendered through html2canvas and the output is compared pixel-by-pixel against committed baseline snapshots.
 
 1. Build the project first (only needed once, or after source changes):
 
@@ -112,19 +114,40 @@ npm run unittest
     npm run build
     ```
 
-2. Start the local dev server:
+2. Run the visual regression tests:
 
     ```shell
+    npm run test:visual
+    ```
+
+3. If a test fails, open the interactive HTML report to inspect diffs:
+
+    ```shell
+    npm run test:visual:report
+    ```
+
+4. After an intentional rendering change, update the baselines:
+
+    ```shell
+    npm run test:visual:update
+    ```
+
+    This regenerates all snapshot PNGs in `tests/visual/reftests.spec.ts-snapshots/`. Review the changes and commit them.
+
+**Legacy browser reftests** (Karma):
+
+1. Build the project, then start the local dev server:
+
+    ```shell
+    npm run build
     npm start
     ```
 
-3. Open the test runner in your browser:
+2. Open the test runner in your browser:
 
     ```
     http://localhost:8080/tests/testrunner.html
     ```
-
-    Each reftest renders a page through html2canvas and compares the output against a reference PNG stored in `tests/reftests/`. Results are shown inline with pass/fail status.
 
     Individual reftest pages (e.g. `tests/reftests/background/box-shadow.html`) can also be opened directly to inspect a specific feature.
 
