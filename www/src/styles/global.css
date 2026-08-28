@@ -517,20 +517,24 @@ footer {
 }
 
 .example-fab-container {
-    width: 800px;
-    height: 800px;
+    --fab-size: min(200vw, 800px);
+
+    width: var(--fab-size);
+    height: var(--fab-size);
     position: fixed;
     z-index: 1000;
-    right: -348.4px;
-    bottom: -327.2px;
+    right: calc(var(--fab-size) / 2 * -1);
+    bottom: calc(var(--fab-size) / 2 * -1);
 }
 
 .example-fab-anchor {
+    --size: 112px;
+
     position: absolute;
-    top: 344px;
-    left: 344px;
-    width: 112px;
-    height: 112px;
+    top: calc(var(--fab-size) / 2 - var(--size) - 10px);
+    left: calc(var(--fab-size) / 2 - var(--size) - 10px);
+    width: var(--size);
+    height: var(--size);
     border-radius: 50%;
     z-index: 100001;
 }
@@ -572,9 +576,9 @@ footer {
 }
 
 .example-fab-panel {
-    width: 456px;
+    width: 60%;
     height: 600px;
-    right: 56px;
+    right: calc(var(--fab-size) / 2 - 90px);
     bottom: 56px;
     padding: 56px;
     position: fixed;

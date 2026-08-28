@@ -1,6 +1,31 @@
 # Changelog
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.10.0](https://github.com/html2canvas/html2canvas/compare/v1.9.0...v1.10.0) (2026-08-28)
+
+### Features
+
+* add Playwright visual regression tests for all reftest ([3e7a959](https://github.com/html2canvas/html2canvas/commit/3e7a95942aaeaf6009c5cd8141afc0494a05a1f1))
+* add text-decoration-style wavy, text-decoration-inset, text-underline-offset & text-underline-position support ([64f0f77](https://github.com/html2canvas/html2canvas/commit/64f0f775403e73c74b52a12f893de7d398bfdc21))
+* **css:** add CSS zoom property support ([1fb273e](https://github.com/html2canvas/html2canvas/commit/1fb273ec4dd608bd23f20116268b1646c3733fbc))
+* implement box-decoration-break (slice & clone) for inline elements ([3879e24](https://github.com/html2canvas/html2canvas/commit/3879e244fdc18d13db3311bab3460047c58f42b4))
+
+### Bug Fixes
+
+* **background:** restore missing canvas.height for linear-gradient offscreen canvas ([c783f00](https://github.com/html2canvas/html2canvas/commit/c783f008114bca7cac9bc98390b8bae4175715b3))
+* exclude tests/visual/ from Jest to avoid Playwright import conflict ([06f8e15](https://github.com/html2canvas/html2canvas/commit/06f8e154f266dff886810fd3dd6e0633b488506c))
+* exclude tests/visual/ from Jest to avoid Playwright import conflict ([089cc7a](https://github.com/html2canvas/html2canvas/commit/089cc7a9c064d1b8e2bbe12f8ec31ca49ca59167))
+* include src/global.d.ts in tests tsconfig to resolve textDecorationInset TS2551 error ([30799f3](https://github.com/html2canvas/html2canvas/commit/30799f3b1e35b8fdde9ae3ca8061aa325e49a3c6))
+* regenerate snapshots with Docker Playwright and add docker test scripts ([542cfda](https://github.com/html2canvas/html2canvas/commit/542cfda8f98c2a5b391f5adb07209428f01b828d))
+* run visual tests in Playwright Docker container for consistent snapshots ([3a98121](https://github.com/html2canvas/html2canvas/commit/3a98121cfaa499adca71be7e4ba43f8891731452))
+* set explicit font-size on overflow-wrap test to prevent dimension drift across environments ([68e079d](https://github.com/html2canvas/html2canvas/commit/68e079dcab2977ad4bf499ef835aa6529985754f))
+* **text-decoration:** continuous WAVY and line-level inset ([4c398db](https://github.com/html2canvas/html2canvas/commit/4c398db3fb3634512905ac6ca60c580dd1a46ed8))
+* wait for embedded fonts to load before Playwright capture ([ea4c7d7](https://github.com/html2canvas/html2canvas/commit/ea4c7d7b1c9f5280836b827670c3c16e9fede0a4))
+
+### Performance Improvements
+
+* draw text-decoration lines once per visual line instead of per word ([bb5de5b](https://github.com/html2canvas/html2canvas/commit/bb5de5b397cdd9c8e37bf1dbb43a180a0e691dd2))
+
 ## [1.9.0](https://github.com/html2canvas/html2canvas/compare/v1.8.0...v1.9.0) (2026-08-23)
 
 ### Features
