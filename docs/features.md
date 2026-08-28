@@ -32,6 +32,7 @@ Below is a list of all the supported CSS properties and values.
     - border-style
     - border-width
 - bottom
+- box-decoration-break (`slice` and `clone`)
 - box-shadow
 - box-sizing
 - clip
@@ -166,6 +167,5 @@ Below is a list of all the supported CSS properties and values.
 These CSS properties are **NOT** currently supported
 
 - [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
-- [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
 - object-position

@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+    <head>
+        <title>box-decoration-break</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                background: #f0f0f0;
+                padding: 10px;
+            }
+            h3 {
+                margin: 16px 0 8px;
+                font-size: 13px;
+                color: #333;
+            }
+            .container {
+                width: 180px;
+                margin-bottom: 12px;
+            }
+
+            /* ── slice (default) ─────────────────────────── */
+
+            .slice-bg {
+                display: inline;
+                background: gold;
+                padding: 6px 10px;
+                -webkit-box-decoration-break: slice;
+                box-decoration-break: slice;
+                line-height: 2.2;
+            }
+            .slice-border {
+                display: inline;
+                background: #c8e6ff;
+                padding: 6px 10px;
+                border: 3px solid #0057a8;
+                -webkit-box-decoration-break: slice;
+                box-decoration-break: slice;
+                line-height: 2.8;
+            }
+            .slice-radius {
+                display: inline;
+                background: #ffe0b2;
+                padding: 6px 10px;
+                border: 2px solid #e65100;
+                border-radius: 8px;
+                -webkit-box-decoration-break: slice;
+                box-decoration-break: slice;
+                line-height: 2.8;
+            }
+            .slice-gradient {
+                display: inline;
+                background: linear-gradient(to right, #f9a825, #e53935);
+                color: #fff;
+                padding: 6px 10px;
+                border-radius: 6px;
+                -webkit-box-decoration-break: slice;
+                box-decoration-break: slice;
+                line-height: 2.8;
+            }
+            .slice-shadow {
+                display: inline;
+                background: #b2dfdb;
+                padding: 6px 10px;
+                border-radius: 4px;
+                box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+                -webkit-box-decoration-break: slice;
+                box-decoration-break: slice;
+                line-height: 3;
+            }
+
+            /* ── clone ───────────────────────────────────── */
+
+            .clone-bg {
+                display: inline;
+                background: gold;
+                padding: 6px 10px;
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
+                line-height: 2.2;
+            }
+            .clone-border {
+                display: inline;
+                background: #c8e6ff;
+                padding: 6px 10px;
+                border: 3px solid #0057a8;
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
+                line-height: 2.8;
+            }
+            .clone-radius {
+                display: inline;
+                background: #ffe0b2;
+                padding: 6px 10px;
+                border: 2px solid #e65100;
+                border-radius: 8px;
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
+                line-height: 2.8;
+            }
+            .clone-gradient {
+                display: inline;
+                background: linear-gradient(to right, #f9a825, #e53935);
+                color: #fff;
+                padding: 6px 10px;
+                border-radius: 6px;
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
+                line-height: 2.8;
+            }
+            .clone-shadow {
+                display: inline;
+                background: #b2dfdb;
+                padding: 6px 10px;
+                border-radius: 4px;
+                box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+                -webkit-box-decoration-break: clone;
+                box-decoration-break: clone;
+                line-height: 3;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- slice (default) -->
+        <h3>slice — background only</h3>
+        <div class="container">
+            <span class="slice-bg">Inline text that wraps onto the next line so we can see slice behaviour</span>
+        </div>
+
+        <h3>slice — background + border</h3>
+        <div class="container">
+            <span class="slice-border">Inline text that wraps onto the next line so we can see slice behaviour</span>
+        </div>
+
+        <h3>slice — border-radius</h3>
+        <div class="container">
+            <span class="slice-radius">Inline text that wraps onto the next line so we can see slice behaviour</span>
+        </div>
+
+        <h3>slice — linear-gradient</h3>
+        <div class="container">
+            <span class="slice-gradient">Inline text wrapping to a new line to test slice with gradient</span>
+        </div>
+
+        <h3>slice — box-shadow</h3>
+        <div class="container">
+            <span class="slice-shadow">Inline text wrapping to a new line to test slice with box-shadow</span>
+        </div>
+
+        <!-- clone -->
+        <h3>clone — background only</h3>
+        <div class="container">
+            <span class="clone-bg">Inline text that wraps onto the next line so we can see clone behaviour</span>
+        </div>
+
+        <h3>clone — background + border</h3>
+        <div class="container">
+            <span class="clone-border">Inline text that wraps onto the next line so we can see clone behaviour</span>
+        </div>
+
+        <h3>clone — border-radius</h3>
+        <div class="container">
+            <span class="clone-radius">Inline text that wraps onto the next line so we can see clone behaviour</span>
+        </div>
+
+        <h3>clone — linear-gradient</h3>
+        <div class="container">
+            <span class="clone-gradient">Inline text wrapping to a new line to test clone with gradient</span>
+        </div>
+
+        <h3>clone — box-shadow</h3>
+        <div class="container">
+            <span class="clone-shadow">Inline text wrapping to a new line to test clone with box-shadow</span>
+        </div>
+    </body>
+</html>

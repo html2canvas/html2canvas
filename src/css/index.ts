@@ -36,6 +36,10 @@ import {
     borderRightWidth,
     borderTopWidth,
 } from './property-descriptors/border-width';
+import {
+    BOX_DECORATION_BREAK,
+    boxDecorationBreak as boxDecorationBreakDescriptor,
+} from './property-descriptors/box-decoration-break';
 import { boxShadow } from './property-descriptors/box-shadow';
 import { clip as clipDescriptor } from './property-descriptors/clip';
 import { clipPath as clipPathDescriptor } from './property-descriptors/clip-path';
@@ -148,6 +152,7 @@ export class CSSParsedDeclaration {
     borderRightWidth: ReturnType<typeof borderRightWidth.parse>;
     borderBottomWidth: ReturnType<typeof borderBottomWidth.parse>;
     borderLeftWidth: ReturnType<typeof borderLeftWidth.parse>;
+    boxDecorationBreak: BOX_DECORATION_BREAK;
     boxShadow: ReturnType<typeof boxShadow.parse>;
     clip: ReturnType<typeof clipDescriptor.parse>;
     clipPath: ReturnType<typeof clipPathDescriptor.parse>;
@@ -228,6 +233,11 @@ export class CSSParsedDeclaration {
         this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
         this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
         this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
+        this.boxDecorationBreak = parse(
+            context,
+            boxDecorationBreakDescriptor,
+            declaration.boxDecorationBreak ?? declaration.webkitBoxDecorationBreak,
+        );
         this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
         this.clip = parse(context, clipDescriptor, declaration.clip);
         this.clipPath = parse(context, clipPathDescriptor, declaration.clipPath);

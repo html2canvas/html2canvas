@@ -3,6 +3,8 @@ interface CSSStyleDeclaration {
     textDecorationLine: string;
     textDecorationInset: string;
     overflowWrap: string;
+    boxDecorationBreak: string;
+    webkitBoxDecorationBreak: string;
 }
 
 interface DocumentType extends Node, ChildNode {

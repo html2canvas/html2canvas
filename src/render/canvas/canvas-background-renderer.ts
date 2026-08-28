@@ -2,6 +2,7 @@ import { Bounds } from '../../css/layout/bounds';
 import { segmentGraphemes } from '../../css/layout/text';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
 import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { BOX_DECORATION_BREAK } from '../../css/property-descriptors/box-decoration-break';
 import { DIRECTION } from '../../css/property-descriptors/direction';
 import { DISPLAY } from '../../css/property-descriptors/display';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
@@ -17,7 +18,7 @@ import {
     isRepeatingLinearGradient,
     isRepeatingRadialGradient,
 } from '../../css/types/image';
-import { FIFTY_PERCENT, getAbsoluteValue } from '../../css/types/length-percentage';
+import { FIFTY_PERCENT, getAbsoluteValue, ZERO_LENGTH } from '../../css/types/length-percentage';
 import { ElementContainer } from '../../dom/element-container';
 import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
 import { BezierCurve, isBezierCurve } from '../bezier-curve';
@@ -38,14 +39,145 @@ import { Path } from '../path';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
 import {
-    CanvasRenderState,
     canvasMask,
     canvasPath,
+    CanvasRenderState,
     formatPath,
     renderRepeat,
     resizeImage,
 } from './canvas-render-state';
 import { createFontStyle } from './canvas-text-renderer';
+
+// ---------------------------------------------------------------------------
+// Inline fragment bounds (for box-decoration-break)
+// ---------------------------------------------------------------------------
+
+/**
+ * Describes one visual-line fragment of an inline element.
+ *
+ *   borderBox  – full border-box bounds of this fragment (text + padding + border)
+ *   isFirst    – true for the first fragment on the first line
+ *   isLast     – true for the last fragment on the last line
+ */
+export interface InlineFragment {
+    /** Full border-box bounds (text + padding + border on all sides).
+     *  Used by `clone` mode and for border rendering in `slice` mode. */
+    borderBox: Bounds;
+    /** Slice-specific border-box: padding/border left only on first fragment,
+     *  padding/border right only on last fragment.  Top/bottom always included. */
+    sliceBox: Bounds;
+    /** Raw text bounds without any padding or border expansion. */
+    textBox: Bounds;
+    isFirst: boolean;
+    isLast: boolean;
+}
+
+/**
+ * Groups all textBounds from every textNode of `container` by visual line and
+ * returns one InlineFragment per line with three sets of bounds:
+ *
+ *   borderBox – full expansion (padding + border on all sides)
+ *   sliceBox  – top/bottom expansion on every fragment, but left expansion only
+ *               on the first fragment and right expansion only on the last
+ *   textBox   – raw text extents without any expansion
+ *
+ * Returns `null` when there are no textBounds (e.g. replaced inline elements),
+ * so callers can fall back to the normal single-box path.
+ */
+export const getInlineFragmentBounds = (container: ElementContainer): InlineFragment[] | null => {
+    const styles = container.styles;
+
+    // Collect all textBounds across every child textNode.
+    const allTextBounds = container.textNodes.flatMap(tn => tn.textBounds);
+    if (allTextBounds.length === 0) {
+        return null;
+    }
+
+    const bt = styles.borderTopWidth;
+    const br = styles.borderRightWidth;
+    const bb = styles.borderBottomWidth;
+    const bl = styles.borderLeftWidth;
+
+    // Resolve padding to absolute pixel values.
+    const refWidth = container.bounds.width;
+    const pt = getAbsoluteValue(styles.paddingTop, refWidth);
+    const pr = getAbsoluteValue(styles.paddingRight, refWidth);
+    const pb = getAbsoluteValue(styles.paddingBottom, refWidth);
+    const pl = getAbsoluteValue(styles.paddingLeft, refWidth);
+
+    // Group textBounds by visual line (rounded bounds.top for horizontal text).
+    const lineMap = new Map<number, { minLeft: number; maxRight: number; minTop: number; maxBottom: number }>();
+    for (const tb of allTextBounds) {
+        const key = Math.round(tb.bounds.top);
+        const entry = lineMap.get(key);
+        const left = tb.bounds.left;
+        const right = tb.bounds.left + tb.bounds.width;
+        const top = tb.bounds.top;
+        const bottom = tb.bounds.top + tb.bounds.height;
+        if (!entry) {
+            lineMap.set(key, { minLeft: left, maxRight: right, minTop: top, maxBottom: bottom });
+        } else {
+            entry.minLeft = Math.min(entry.minLeft, left);
+            entry.maxRight = Math.max(entry.maxRight, right);
+            entry.minTop = Math.min(entry.minTop, top);
+            entry.maxBottom = Math.max(entry.maxBottom, bottom);
+        }
+    }
+
+    // Sort lines top-to-bottom.
+    const lines = Array.from(lineMap.values()).sort((a, b) => a.minTop - b.minTop);
+    const total = lines.length;
+
+    return lines.map((line, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === total - 1;
+
+        // textBox — raw text extents, no expansion.
+        const textBox = new Bounds(
+            line.minLeft,
+            line.minTop,
+            line.maxRight - line.minLeft,
+            line.maxBottom - line.minTop,
+        );
+
+        // borderBox — full expansion on all sides (for clone mode).
+        const borderBox = new Bounds(
+            line.minLeft - pl - bl,
+            line.minTop - pt - bt,
+            line.maxRight - line.minLeft + pl + pr + bl + br,
+            line.maxBottom - line.minTop + pt + pb + bt + bb,
+        );
+
+        // sliceBox — top/bottom always expanded; left only on first, right only on last.
+        const sliceLeft = isFirst ? pl + bl : 0;
+        const sliceRight = isLast ? pr + br : 0;
+        const sliceBox = new Bounds(
+            line.minLeft - sliceLeft,
+            line.minTop - pt - bt,
+            line.maxRight - line.minLeft + sliceLeft + sliceRight,
+            line.maxBottom - line.minTop + pt + pb + bt + bb,
+        );
+
+        return { borderBox, sliceBox, textBox, isFirst, isLast };
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Lightweight container proxy for per-fragment rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a minimal ElementContainer-like object (duck-typed) with overridden
+ * `bounds` so that BoundCurves and calculateBackgroundRendering work correctly
+ * on a single inline fragment instead of the full element bounding box.
+ */
+const makeFragmentContainer = (original: ElementContainer, fragmentBounds: Bounds): ElementContainer => {
+    // We cast — only `styles`, `bounds`, and `textNodes` are accessed by the
+    // rendering helpers we call, and all are present.
+    return Object.create(original, {
+        bounds: { value: fragmentBounds, writable: false },
+    }) as ElementContainer;
+};
 
 // ---------------------------------------------------------------------------
 // Background painting area
@@ -661,6 +793,280 @@ export async function renderDashedDottedBorder(
 
 export async function renderNodeBackgroundAndBorders(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
     const styles = paint.container.styles;
+    const isInline = styles.display === DISPLAY.INLINE;
+
+    // For inline elements with box-decoration-break: clone, delegate to the
+    // fragment-based renderer which repeats the full decoration on each line.
+    if (isInline && styles.boxDecorationBreak === BOX_DECORATION_BREAK.CLONE) {
+        const fragments = getInlineFragmentBounds(paint.container);
+        if (fragments && fragments.length > 0) {
+            for (const fragment of fragments) {
+                const fragContainer = makeFragmentContainer(paint.container, fragment.borderBox);
+                const fragCurves = new BoundCurves(fragContainer);
+                const fragPaint: ElementPaint = Object.create(paint, {
+                    container: { value: fragContainer },
+                    curves: { value: fragCurves },
+                });
+                await _renderSingleBoxBackgroundAndBorders(state, fragPaint);
+            }
+            return;
+        }
+    }
+
+    // Default path: single box (block elements) or inline slice (default).
+    // For inline slice we use fragment-based rendering only when the element
+    // actually contains text that can wrap across lines.  Replaced inline
+    // elements (img, input, etc.) have no textNodes and must go through the
+    // normal single-box path.
+    if (isInline && styles.boxDecorationBreak !== BOX_DECORATION_BREAK.CLONE && paint.container.textNodes.length > 0) {
+        await _renderInlineSlice(state, paint);
+        return;
+    }
+
+    await _renderSingleBoxBackgroundAndBorders(state, paint);
+}
+
+// ---------------------------------------------------------------------------
+// Inline slice renderer (box-decoration-break: slice — the default)
+// ---------------------------------------------------------------------------
+
+async function _renderInlineSlice(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
+    const styles = paint.container.styles;
+    const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
+    const hasBorders =
+        (styles.borderTopStyle !== BORDER_STYLE.NONE && styles.borderTopWidth > 0) ||
+        (styles.borderRightStyle !== BORDER_STYLE.NONE && styles.borderRightWidth > 0) ||
+        (styles.borderBottomStyle !== BORDER_STYLE.NONE && styles.borderBottomWidth > 0) ||
+        (styles.borderLeftStyle !== BORDER_STYLE.NONE && styles.borderLeftWidth > 0);
+
+    if (!hasBackground && !styles.boxShadow.length && !hasBorders) {
+        return;
+    }
+
+    const fragments = getInlineFragmentBounds(paint.container);
+
+    // No text-bounds available — fall back to single-box rendering.
+    if (!fragments || fragments.length === 0) {
+        await _renderSingleBoxBackgroundAndBorders(state, paint);
+        return;
+    }
+
+    // In slice mode the background/border is drawn as if the inline element
+    // were one continuous box that gets "sliced" at each line break:
+    //   • Background hugs the text on each line (textBox + top/bottom padding)
+    //     but only extends left/right padding on the first/last fragment.
+    //   • Borders top/bottom run across every fragment.
+    //   • Border left only on the first fragment, border right only on the last.
+    //   • Border-radius: TL/BL on first fragment only, TR/BR on last only.
+
+    if (hasBackground) {
+        const isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === BACKGROUND_CLIP.TEXT;
+
+        if (isBackgroundClipText) {
+            await renderBackgroundClipText(state, paint);
+        } else {
+            // In slice mode the gradient/background-image is computed as if the
+            // inline content were laid out in a single continuous strip (all
+            // fragments concatenated left-to-right).  Each fragment then clips
+            // its own portion of that strip.
+            //
+            // We achieve this by building, per fragment, a synthetic container
+            // whose width = totalWidth (the sum of all fragment widths) and
+            // whose left is shifted so that the visible area of that container
+            // (after the clip) shows the correct portion of the gradient.
+            const hasBackgroundImage = styles.backgroundImage.length > 0;
+
+            // Pre-compute per-fragment cumulative offsets in the virtual strip.
+            let totalWidth = 0;
+            const fragOffsets: number[] = [];
+            for (const f of fragments) {
+                fragOffsets.push(totalWidth);
+                totalWidth += f.sliceBox.width;
+            }
+
+            for (let i = 0; i < fragments.length; i++) {
+                const fragment = fragments[i];
+                const sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+                const fragCurves = new BoundCurves(sliceContainer);
+
+                const backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(
+                    getBackgroundValueForIndex(styles.backgroundClip, 0),
+                    fragCurves,
+                );
+
+                state.ctx.save();
+                canvasPath(state, backgroundPaintingArea);
+                state.ctx.clip();
+
+                if (!isTransparent(styles.backgroundColor)) {
+                    state.ctx.fillStyle = asString(styles.backgroundColor);
+                    state.ctx.fill();
+                }
+
+                // Gradient / background-image: create a virtual container that
+                // represents the full unbroken strip.  Its left is positioned so
+                // that the portion of the strip visible in this fragment's clip
+                // region corresponds to the correct offset.
+                //
+                //   virtualLeft = fragment.sliceBox.left - cumulativeOffset
+                //
+                // This way the gradient starts at virtualLeft, extends for
+                // totalWidth, and the clip only reveals [cumulativeOffset,
+                // cumulativeOffset + fragmentWidth] of the gradient.
+                if (hasBackgroundImage) {
+                    const virtualLeft = fragment.sliceBox.left - fragOffsets[i];
+                    const virtualBounds = new Bounds(
+                        virtualLeft,
+                        fragment.sliceBox.top,
+                        totalWidth,
+                        fragment.sliceBox.height,
+                    );
+                    const virtualContainer = makeFragmentContainer(paint.container, virtualBounds);
+                    await renderBackgroundImage(state, virtualContainer);
+                }
+
+                state.ctx.restore();
+            }
+        }
+    }
+
+    // box-shadow per fragment using sliceBox.
+    if (styles.boxShadow.length) {
+        for (const fragment of fragments) {
+            const sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+            const fragCurves = new BoundCurves(sliceContainer);
+            const fragPaint: ElementPaint = Object.create(paint, {
+                container: { value: sliceContainer },
+                curves: { value: fragCurves },
+            });
+            _renderBoxShadows(state, fragPaint);
+        }
+    }
+
+    // Borders: left only on first, right only on last, top/bottom on all.
+    if (hasBorders) {
+        const borders = [
+            { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
+            { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
+            { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
+            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
+        ];
+
+        for (const fragment of fragments) {
+            const sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+            const fragCurves = new BoundCurves(sliceContainer);
+
+            let side = 0;
+            for (const border of borders) {
+                // side 1 = right: skip on all but last fragment
+                // side 3 = left:  skip on all but first fragment
+                const skipRight = side === 1 && !fragment.isLast;
+                const skipLeft = side === 3 && !fragment.isFirst;
+                if (
+                    !skipRight &&
+                    !skipLeft &&
+                    border.style !== BORDER_STYLE.NONE &&
+                    !isTransparent(border.color) &&
+                    border.width > 0
+                ) {
+                    if (border.style === BORDER_STYLE.DASHED) {
+                        await renderDashedDottedBorder(
+                            state,
+                            border.color,
+                            border.width,
+                            side,
+                            fragCurves,
+                            BORDER_STYLE.DASHED,
+                        );
+                    } else if (border.style === BORDER_STYLE.DOTTED) {
+                        await renderDashedDottedBorder(
+                            state,
+                            border.color,
+                            border.width,
+                            side,
+                            fragCurves,
+                            BORDER_STYLE.DOTTED,
+                        );
+                    } else if (border.style === BORDER_STYLE.DOUBLE) {
+                        await renderDoubleBorder(state, border.color, border.width, side, fragCurves);
+                    } else {
+                        await renderSolidBorder(state, border.color, side, fragCurves);
+                    }
+                }
+                side++;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: builds a container with radii suppressed for slice middle fragments
+// ---------------------------------------------------------------------------
+
+/** A zero-value LengthPercentageTuple used to suppress border-radius on slice fragments. */
+const ZERO_RADIUS: import('../../css/types/length-percentage').LengthPercentageTuple = [ZERO_LENGTH, ZERO_LENGTH];
+
+function _makeSliceFragmentContainer(original: ElementContainer, fragment: InlineFragment): ElementContainer {
+    if (fragment.isFirst && fragment.isLast) {
+        // Single-line element — keep all radii, use sliceBox (= full border-box).
+        return makeFragmentContainer(original, fragment.sliceBox);
+    }
+
+    // Suppress radii on the sides that are in the "middle" of the slice.
+    // isFirst → keep TL + BL; isLast → keep TR + BR; middle → no radii.
+    const fragContainer = makeFragmentContainer(original, fragment.sliceBox);
+    const overrideStyles = Object.create(original.styles, {
+        borderTopLeftRadius: { value: fragment.isFirst ? original.styles.borderTopLeftRadius : ZERO_RADIUS },
+        borderBottomLeftRadius: { value: fragment.isFirst ? original.styles.borderBottomLeftRadius : ZERO_RADIUS },
+        borderTopRightRadius: { value: fragment.isLast ? original.styles.borderTopRightRadius : ZERO_RADIUS },
+        borderBottomRightRadius: { value: fragment.isLast ? original.styles.borderBottomRightRadius : ZERO_RADIUS },
+    });
+    return Object.create(fragContainer, {
+        styles: { value: overrideStyles },
+        bounds: { value: fragment.sliceBox },
+    }) as ElementContainer;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: render box-shadows for a single paint box
+// ---------------------------------------------------------------------------
+
+function _renderBoxShadows(state: CanvasRenderState, paint: ElementPaint): void {
+    const styles = paint.container.styles;
+    styles.boxShadow
+        .slice(0)
+        .reverse()
+        .forEach(shadow => {
+            state.ctx.save();
+            const borderBoxArea = calculateBorderBoxPath(paint.curves);
+            const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
+            const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
+                p.add(shadow.offsetX.number, shadow.offsetY.number),
+            );
+            if (shadow.inset) {
+                canvasPath(state, borderBoxArea);
+                state.ctx.clip();
+                canvasMask(state, shadowPaintingArea);
+            } else {
+                canvasMask(state, borderBoxArea);
+                state.ctx.clip();
+                canvasPath(state, shadowPaintingArea);
+            }
+            state.ctx.fillStyle = asString(shadow.color);
+            if (shadow.blur.number) {
+                state.ctx.filter = `blur(${shadow.blur.number / 2}px)`;
+            }
+            state.ctx.fill();
+            state.ctx.restore();
+        });
+}
+
+// ---------------------------------------------------------------------------
+// Single-box background + borders renderer (block elements & clone fragments)
+// ---------------------------------------------------------------------------
+
+async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
+    const styles = paint.container.styles;
     const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
 
     const borders = [
@@ -686,60 +1092,14 @@ export async function renderNodeBackgroundAndBorders(state: CanvasRenderState, p
 
             if (!isTransparent(styles.backgroundColor)) {
                 state.ctx.fillStyle = asString(styles.backgroundColor);
-
-                if (styles.display === DISPLAY.INLINE) {
-                    for (const textNode of paint.container.textNodes) {
-                        for (const textBound of textNode.textBounds) {
-                            state.ctx.fillRect(
-                                textBound.bounds.left,
-                                textBound.bounds.top,
-                                textBound.bounds.width,
-                                textBound.bounds.height,
-                            );
-                        }
-                    }
-                } else {
-                    state.ctx.fill();
-                }
+                state.ctx.fill();
             }
 
             await renderBackgroundImage(state, paint.container);
             state.ctx.restore();
         }
 
-        styles.boxShadow
-            .slice(0)
-            .reverse()
-            .forEach(shadow => {
-                state.ctx.save();
-                const borderBoxArea = calculateBorderBoxPath(paint.curves);
-                // Build the painting area by applying offset and spread.
-                // expandBorderBoxPath rebuilds the Bézier curves with adjusted radii
-                // (border-radius ± spread) per the CSS spec, unlike transformPath which
-                // only translates corners without updating the curve geometry.
-                // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur
-                // that occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
-                // See https://github.com/html2canvas/html2canvas/issues/21
-                const effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
-                const shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map((p: Path) =>
-                    p.add(shadow.offsetX.number, shadow.offsetY.number),
-                );
-                if (shadow.inset) {
-                    canvasPath(state, borderBoxArea);
-                    state.ctx.clip();
-                    canvasMask(state, shadowPaintingArea);
-                } else {
-                    canvasMask(state, borderBoxArea);
-                    state.ctx.clip();
-                    canvasPath(state, shadowPaintingArea);
-                }
-                state.ctx.fillStyle = asString(shadow.color);
-                if (shadow.blur.number) {
-                    state.ctx.filter = `blur(${shadow.blur.number / 2}px)`;
-                }
-                state.ctx.fill();
-                state.ctx.restore();
-            });
+        _renderBoxShadows(state, paint);
     }
 
     let side = 0;
