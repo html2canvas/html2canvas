@@ -160,6 +160,8 @@ jobs:
         runs-on: ubuntu-latest
         name: Visual Regression Tests
         needs: build
+        container:
+            image: mcr.microsoft.com/playwright:v1.62.1-noble
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
@@ -183,12 +185,11 @@ jobs:
               with:
                   name: dist
                   path: dist
-            - name: Install Playwright browsers
-              run: npx playwright install --with-deps chromium
             - name: Run visual regression tests
-              run: npm run test:visual
+              run: npx playwright test
               env:
                   CI: true
+                  HOME: /root
             - name: Upload Playwright report
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@v4
