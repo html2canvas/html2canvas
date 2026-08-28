@@ -5,7 +5,15 @@ var REFTEST = window.location.search.indexOf('reftest') !== -1;
 
 // In reftest mode the iframe is 800×600 — constrain the body width so that
 // line-wrapping and vw-based values are consistent across all environments.
+// Also inject embedded fonts so visual output is identical everywhere.
 if (REFTEST) {
+    // Inject embedded fonts stylesheet first so @font-face rules are available
+    // before any inline style computation.
+    var fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = '/tests/assets/fonts/fonts.css';
+    document.head.insertBefore(fontLink, document.head.firstChild);
+
     var style = document.createElement('style');
     style.textContent = 'html, body { width: 800px; max-width: 800px; box-sizing: border-box; margin: 0; }';
     document.head.appendChild(style);
@@ -64,7 +72,7 @@ if (REFTEST) {
                         .css({
                             position: 'absolute',
                             left: 0,
-                            top: 0
+                            top: 0,
                         })
                         .appendTo(document.body);
                     if (!CI) {
@@ -123,7 +131,7 @@ if (REFTEST) {
                             height: 'auto',
                             textAlign: 'center',
                             textDecoration: 'none',
-                            display: 'none'
+                            display: 'none',
                         })
                         .appendTo(document.body)
                         .fadeIn();
@@ -144,11 +152,11 @@ if (REFTEST) {
                         logging: true,
                         proxy: 'http://localhost:8081/proxy',
                         useCORS: false,
-                        removeContainer: true
+                        removeContainer: true,
                     },
                     h2cOptions,
-                    REFTEST ? {windowWidth: 800, windowHeight: 600} : {}
-                )
+                    REFTEST ? { windowWidth: 800, windowHeight: 600 } : {},
+                ),
             );
         };
 
