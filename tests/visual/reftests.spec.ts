@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import fs from 'fs';
 import { sync } from 'glob';
 import path from 'path';
-import fs from 'fs';
 
 // Scan all HTML fixtures under tests/reftests/
 const reftestsDir = path.resolve(__dirname, '../reftests');
@@ -46,6 +46,12 @@ for (const fixture of fixtures) {
             },
             { timeout: 10_000 },
         );
+
+        // Wait for embedded fonts to be fully loaded before capturing
+        await page.evaluate(async () => {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await document.fonts.ready;
+        });
 
         // Run html2canvas with the same options as the Karma test runner
         const pngBase64: string = await page.evaluate(async () => {
