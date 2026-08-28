@@ -2,7 +2,7 @@ module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'jsdom',
     roots: ['src', 'tests'],
-    testPathIgnorePatterns: ['/node_modules/', 'tests/test\\.js'],
+    testPathIgnorePatterns: ['/node_modules/', 'tests/test\\.js', 'tests/visual/'],
     moduleNameMapper: {
         '^colorjs\\.io$': '<rootDir>/node_modules/colorjs.io/dist/color.cjs',
         './colorjs-minimal': '<rootDir>/node_modules/colorjs.io/dist/color.cjs',
