@@ -1,39 +1,40 @@
 {
-    "name": "html2canvas-website",
-    "description": "https://html2canvas.hertzen.com",
-    "version": "2.0.0",
-    "private": true,
-    "author": "Niklas von Hertzen",
-    "type": "module",
-    "dependencies": {
-        "@astrojs/react": "^4.3.0",
-        "@astrojs/sitemap": "^3.3.0",
-        "astro": "^5.10.0",
-        "cpy-cli": "^5.0.0",
-        "gray-matter": "^4.0.3",
-        "gzip-size": "^7.0.0",
-        "marked": "^12.0.0",
-        "html2canvas": "file:../",
-        "mkdirp": "^3.0.1",
-        "prismjs": "^1.30.0",
-        "react": "^18.3.1",
-        "react-dom": "^18.3.1",
-        "shiki": "^1.0.0"
-    },
-    "devDependencies": {
-        "@types/react": "^18.3.1",
-        "@types/react-dom": "^18.3.1",
-        "rehype-prism-plus": "^2.0.0"
-    },
-    "license": "MIT",
-    "scripts": {
-        "copy:build": "mkdirp static/dist && cpy '../dist/*.js' static/dist",
-        "copy:src": "mkdirp static/src && cpy '../src/**/*.ts' static/src --parents",
-        "copy": "npm run copy:build && npm run copy:src",
-        "build": "npm run copy && astro build",
-        "start": "astro dev",
-        "dev": "astro dev",
-        "preview": "astro preview",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    }
+  "name": "html2canvas-website",
+  "description": "https://html2canvas.hertzen.com",
+  "version": "2.0.0",
+  "private": true,
+  "author": "Niklas von Hertzen",
+  "type": "module",
+  "dependencies": {
+    "@astrojs/react": "^4.3.0",
+    "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.10.0",
+    "cpy-cli": "^5.0.0",
+    "gray-matter": "^4.0.3",
+    "gzip-size": "^7.0.0",
+    "marked": "^12.0.0",
+    "html2canvas": "file:../",
+    "mkdirp": "^3.0.1",
+    "prismjs": "^1.30.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "shiki": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "rehype-prism-plus": "^2.0.0"
+  },
+  "license": "MIT",
+  "scripts": {
+    "copy:build": "mkdirp static/dist && cpy '../dist/*.js' static/dist",
+    "copy:src": "mkdirp static/src && cpy '../src/**/*.ts' static/src --parents",
+    "copy:examples": "mkdirp static/examples && cpy '../examples/**/*' static/examples",
+    "copy": "npm run copy:build && npm run copy:src && npm run copy:examples",
+    "build": "npm run copy && astro build",
+    "start": "astro dev",
+    "dev": "astro dev",
+    "preview": "astro preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
 }
