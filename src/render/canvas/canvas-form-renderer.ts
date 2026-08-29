@@ -58,6 +58,9 @@ export function renderReplacedElement(
                 container.intrinsicHeight,
                 box.width,
                 box.height,
+                getAbsoluteValue(container.styles.objectPosition[0], box.width) / box.width,
+                getAbsoluteValue(container.styles.objectPosition[1] ?? container.styles.objectPosition[0], box.height) /
+                    box.height,
             );
             state.ctx.save();
             state.ctx.clip();

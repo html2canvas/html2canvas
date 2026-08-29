@@ -85,6 +85,7 @@ Below is a list of all the supported CSS properties and values.
 - min-width
 - mix-blend-mode
 - object-fit
+- object-position
 - opacity
 - overflow
 - overflow-wrap
@@ -173,4 +174,3 @@ Below is a list of all the supported CSS properties and values.
 These CSS properties are **NOT** currently supported
 
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
-- object-position

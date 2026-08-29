@@ -71,6 +71,7 @@ import { listStyleType } from './property-descriptors/list-style-type';
 import { marginBottom, marginLeft, marginRight, marginTop } from './property-descriptors/margin';
 import { MIX_BLEND_MODE, mixBlendMode as mixBlendModeDescriptor } from './property-descriptors/mix-blend-mode';
 import { objectFit } from './property-descriptors/object-fit';
+import { objectPosition } from './property-descriptors/object-position';
 import { opacity } from './property-descriptors/opacity';
 import { OVERFLOW, overflow } from './property-descriptors/overflow';
 import { overflowWrap } from './property-descriptors/overflow-wrap';
@@ -187,6 +188,7 @@ export class CSSParsedDeclaration {
     marginBottom: CSSValue;
     marginLeft: CSSValue;
     objectFit: ReturnType<typeof objectFit.parse>;
+    objectPosition: ReturnType<typeof objectPosition.parse>;
     opacity: ReturnType<typeof opacity.parse>;
     mixBlendMode: MIX_BLEND_MODE;
     overflowX: OVERFLOW;
@@ -277,6 +279,7 @@ export class CSSParsedDeclaration {
         this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
         this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
         this.objectFit = parse(context, objectFit, declaration.objectFit);
+        this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
         this.opacity = parse(context, opacity, declaration.opacity);
         this.mixBlendMode = parse(context, mixBlendModeDescriptor, declaration.mixBlendMode);
         const overflowTuple = parse(context, overflow, declaration.overflow);
