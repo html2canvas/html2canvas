@@ -11,6 +11,5 @@ public/
 yarn-error.log
 src/results.json
 static/tests/preview.js
-src/preview.js
-.docusaurus
-build/
+src/preview.js 
+static/examples
