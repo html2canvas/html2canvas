@@ -28,6 +28,12 @@ Below is a list of all the supported CSS properties and values.
     - background-size
 - border
     - border-color
+    - border-image
+        - border-image-source (`url()` and all gradient types)
+        - border-image-slice (number, percentage, `fill`)
+        - border-image-width (length, number multiplier, percentage, `auto`)
+        - border-image-outset (length, number multiplier)
+        - border-image-repeat (`stretch`, `repeat`, `round`, `space`)
     - border-radius
     - border-style
     - border-width
@@ -166,6 +172,5 @@ Below is a list of all the supported CSS properties and values.
 
 These CSS properties are **NOT** currently supported
 
-- [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
 - object-position

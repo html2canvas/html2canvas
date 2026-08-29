@@ -1,6 +1,8 @@
 import { Bounds } from '../../css/layout/bounds';
 import { segmentGraphemes } from '../../css/layout/text';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { BORDER_IMAGE_REPEAT } from '../../css/property-descriptors/border-image-repeat';
+import { BorderImageWidthValue } from '../../css/property-descriptors/border-image-width';
 import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
 import { BOX_DECORATION_BREAK } from '../../css/property-descriptors/box-decoration-break';
 import { DIRECTION } from '../../css/property-descriptors/direction';
@@ -11,6 +13,7 @@ import { calculateGradientDirection, calculateRadius, processColorStops } from '
 import {
     CSSImageType,
     CSSURLImage,
+    ICSSImage,
     isConicGradient,
     isLinearGradient,
     isRadialGradient,
@@ -1062,6 +1065,496 @@ function _renderBoxShadows(state: CanvasRenderState, paint: ElementPaint): void 
 }
 
 // ---------------------------------------------------------------------------
+// Border-image 9-slice rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves a border-image source to an HTMLImageElement or HTMLCanvasElement.
+ * For URL images, fetches from the cache. For gradients, renders to an offscreen canvas.
+ */
+/**
+ * Applies color stops to a CanvasGradient for a repeating-linear-gradient,
+ * tiling the stops across [0,1] the same way `renderBackgroundImage` does.
+ */
+function _applyRepeatingLinearStops(
+    gradient: CanvasGradient,
+    rawStops: import('../../css/types/image').UnprocessedGradientColorStop[],
+    lineLength: number,
+): void {
+    const processedStops = processColorStops(rawStops, lineLength);
+    const tileStart = processedStops[0].stop;
+    const tileEnd = processedStops[processedStops.length - 1].stop;
+    const tileSize = tileEnd - tileStart;
+
+    if (tileSize <= 0) {
+        processedStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+        return;
+    }
+
+    const MAX_ITER = 512;
+    const allStops: { stop: number; color: import('../../css/types/color').Color }[] = [];
+
+    for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+        const offset = iter * tileSize;
+        processedStops.forEach(s => allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color }));
+        if (tileStart - offset <= 0) break;
+    }
+    processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+    for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+        const offset = iter * tileSize;
+        processedStops.forEach(s => allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color }));
+    }
+
+    if (allStops[0].stop > 0) allStops.unshift({ stop: 0, color: allStops[0].color });
+    if (allStops[allStops.length - 1].stop < 1) allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
+
+    allStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+}
+
+async function _resolveBorderImageSource(
+    state: CanvasRenderState,
+    source: ICSSImage,
+    width: number,
+    height: number,
+): Promise<HTMLImageElement | HTMLCanvasElement | null> {
+    if (source.type === CSSImageType.URL) {
+        const url = (source as CSSURLImage).url;
+        try {
+            return await state.context.cache.match(url);
+        } catch (e) {
+            state.context.logger.error(`Error loading border-image-source ${url}`);
+            return null;
+        }
+    }
+
+    // For gradients, render to an offscreen canvas at the border-image area size
+    if (width <= 0 || height <= 0) {
+        return null;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(width));
+    canvas.height = Math.max(1, Math.ceil(height));
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+
+    if (isLinearGradient(source) || isRepeatingLinearGradient(source)) {
+        const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(source.angle, width, height);
+        const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+
+        if (isRepeatingLinearGradient(source)) {
+            _applyRepeatingLinearStops(gradient, source.stops, lineLength || 1);
+        } else {
+            processColorStops(source.stops, lineLength || 1).forEach(cs =>
+                gradient.addColorStop(cs.stop, asString(cs.color)),
+            );
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+    } else if (isRadialGradient(source) || isRepeatingRadialGradient(source)) {
+        const position = source.position.length === 0 ? [FIFTY_PERCENT] : source.position;
+        const x = getAbsoluteValue(position[0], width);
+        const y = getAbsoluteValue(position[position.length - 1], height);
+        const [rx, ry] = calculateRadius(source, x, y, width, height);
+        if (rx > 0 && ry > 0) {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, rx);
+            processColorStops(source.stops, rx * 2).forEach(cs => gradient.addColorStop(cs.stop, asString(cs.color)));
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        }
+    } else if (isConicGradient(source) || isRepeatingConicGradient(source)) {
+        if (
+            typeof CanvasRenderingContext2D !== 'undefined' &&
+            typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
+        ) {
+            const position = source.position.length === 0 ? [FIFTY_PERCENT] : source.position;
+            const cx = getAbsoluteValue(position[0], width);
+            const cy = getAbsoluteValue(position[position.length - 1], height);
+            const conicGrad = ctx.createConicGradient(source.startAngle - Math.PI / 2, cx, cy);
+            processColorStops(source.stops, 360).forEach(cs => conicGrad.addColorStop(cs.stop, asString(cs.color)));
+            ctx.fillStyle = conicGrad;
+            ctx.fillRect(0, 0, width, height);
+        }
+    }
+
+    return canvas;
+}
+
+/**
+ * Resolves a border-image-width value to an absolute pixel size.
+ */
+function _resolveBorderImageWidth(
+    val: BorderImageWidthValue,
+    borderWidth: number,
+    borderImageAreaSize: number,
+    sliceValue: number,
+): number {
+    switch (val.type) {
+        case 'length':
+            return val.value;
+        case 'percentage':
+            return (val.value / 100) * borderImageAreaSize;
+        case 'number':
+            return val.value * borderWidth;
+        case 'auto':
+            // 'auto' uses the corresponding slice value
+            return sliceValue;
+    }
+}
+
+/**
+ * Renders the border-image for an element using the CSS 9-slice algorithm.
+ *
+ * Per the CSS spec, when border-image-source is set and loads successfully,
+ * it replaces the normal border drawing entirely.
+ *
+ * @returns true if border-image was rendered (callers should skip normal borders)
+ */
+async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint): Promise<boolean> {
+    const styles = paint.container.styles;
+    const source = styles.borderImageSource;
+
+    if (!source) {
+        return false;
+    }
+
+    const bounds = paint.container.bounds;
+
+    // Resolve outset to expand the border-image area beyond the border box
+    const outset = styles.borderImageOutset;
+    const outsetTop = outset[0].type === 'number' ? outset[0].value * styles.borderTopWidth : outset[0].value;
+    const outsetRight = outset[1].type === 'number' ? outset[1].value * styles.borderRightWidth : outset[1].value;
+    const outsetBottom = outset[2].type === 'number' ? outset[2].value * styles.borderBottomWidth : outset[2].value;
+    const outsetLeft = outset[3].type === 'number' ? outset[3].value * styles.borderLeftWidth : outset[3].value;
+
+    // Border-image area (border box expanded by outset)
+    const areaLeft = bounds.left - outsetLeft;
+    const areaTop = bounds.top - outsetTop;
+    const areaWidth = bounds.width + outsetLeft + outsetRight;
+    const areaHeight = bounds.height + outsetTop + outsetBottom;
+
+    // For URL images, load at actual size.
+    // For gradients, we need to know the widths first to pick the right render size,
+    // so we do a two-step: render at area size to resolve slices/widths, then re-render
+    // at tile size if needed for repeat modes.
+    // Actually simpler: render at area size, use it for corners + stretch edges,
+    // and for repeat/round/space edges render a separate small canvas at tile size.
+
+    // Step 1 — load/render source at full area size (used for corners & slice math)
+    const img = await _resolveBorderImageSource(state, source, areaWidth, areaHeight);
+    if (!img || img.width <= 0 || img.height <= 0) {
+        return false;
+    }
+
+    const imgW = img.width;
+    const imgH = img.height;
+
+    // Resolve slice values (top, right, bottom, left) into pixel offsets in the source image
+    const slice = styles.borderImageSlice;
+    const sliceTop = slice.percentages[0] ? (slice.values[0] / 100) * imgH : Math.min(slice.values[0], imgH);
+    const sliceRight = slice.percentages[1] ? (slice.values[1] / 100) * imgW : Math.min(slice.values[1], imgW);
+    const sliceBottom = slice.percentages[2] ? (slice.values[2] / 100) * imgH : Math.min(slice.values[2], imgH);
+    const sliceLeft = slice.percentages[3] ? (slice.values[3] / 100) * imgW : Math.min(slice.values[3], imgW);
+
+    // Resolve border-image-width (top, right, bottom, left)
+    const biw = styles.borderImageWidth;
+    const widthTop = _resolveBorderImageWidth(biw[0], styles.borderTopWidth, areaHeight, sliceTop);
+    const widthRight = _resolveBorderImageWidth(biw[1], styles.borderRightWidth, areaWidth, sliceRight);
+    const widthBottom = _resolveBorderImageWidth(biw[2], styles.borderBottomWidth, areaHeight, sliceBottom);
+    const widthLeft = _resolveBorderImageWidth(biw[3], styles.borderLeftWidth, areaWidth, sliceLeft);
+
+    // Repeat modes: [horizontal, vertical]
+    const [repeatH, repeatV] = styles.borderImageRepeat;
+
+    // Source middle dimensions
+    const srcMiddleW = imgW - sliceLeft - sliceRight;
+    const srcMiddleH = imgH - sliceTop - sliceBottom;
+
+    // Destination middle dimensions
+    const dstMiddleW = areaWidth - widthLeft - widthRight;
+    const dstMiddleH = areaHeight - widthTop - widthBottom;
+
+    // Step 2 — source image is rendered once at full area size.
+    // All 9 regions are extracted from this single image, preserving gradient continuity.
+    // For repeat/round/space, we use CanvasPattern on a per-tile canvas extracted
+    // from the source region, scaled to border-image-width.
+
+    const ctx = state.ctx;
+
+    // --- 4 Corners (always stretched with drawImage) ---
+
+    const _corner = (
+        sx: number,
+        sy: number,
+        sw: number,
+        sh: number,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number,
+    ) => {
+        if (sw > 0 && sh > 0 && dw > 0 && dh > 0) {
+            ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+        }
+    };
+
+    _corner(0, 0, sliceLeft, sliceTop, areaLeft, areaTop, widthLeft, widthTop);
+    _corner(
+        imgW - sliceRight,
+        0,
+        sliceRight,
+        sliceTop,
+        areaLeft + areaWidth - widthRight,
+        areaTop,
+        widthRight,
+        widthTop,
+    );
+    _corner(
+        imgW - sliceRight,
+        imgH - sliceBottom,
+        sliceRight,
+        sliceBottom,
+        areaLeft + areaWidth - widthRight,
+        areaTop + areaHeight - widthBottom,
+        widthRight,
+        widthBottom,
+    );
+    _corner(
+        0,
+        imgH - sliceBottom,
+        sliceLeft,
+        sliceBottom,
+        areaLeft,
+        areaTop + areaHeight - widthBottom,
+        widthLeft,
+        widthBottom,
+    );
+
+    // --- 4 Edges + Center ---
+    // For gradient sources, we render each tile directly at its final size to preserve
+    // gradient continuity and avoid period compression. For URL images, we extract from img.
+
+    const _makeTile = async (
+        sx: number,
+        sy: number,
+        sw: number,
+        sh: number,
+        tileW: number,
+        tileH: number,
+    ): Promise<HTMLCanvasElement> => {
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(tileW));
+        c.height = Math.max(1, Math.round(tileH));
+        const cCtx = c.getContext('2d') as CanvasRenderingContext2D;
+        // Always extract from the full source image (img) and scale to tile size.
+        // This preserves gradient continuity and angle between corners and edges —
+        // the same approach Chromium uses (uniform tile_scale from one source image).
+        cCtx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+        return c;
+    };
+
+    const _edge = async (
+        sx: number,
+        sy: number,
+        sw: number,
+        sh: number,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number,
+        repeat: BORDER_IMAGE_REPEAT,
+        tileW: number,
+        tileH: number,
+        isHorizontal: boolean, // true for top/bottom edges, false for left/right
+    ): Promise<void> => {
+        if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0 || tileW <= 0 || tileH <= 0) return;
+
+        if (repeat === BORDER_IMAGE_REPEAT.STRETCH) {
+            ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+            return;
+        }
+
+        // For ROUND, compute the final tile dimensions before rendering the tile so
+        // the gradient is rendered at the exact size it will be drawn (no resampling).
+        let finalTileW = tileW;
+        let finalTileH = tileH;
+        if (repeat === BORDER_IMAGE_REPEAT.ROUND) {
+            if (isHorizontal) {
+                // H-edge: free axis = W, fixed axis H = dh
+                const n = Math.max(1, Math.round(dw / tileW));
+                finalTileW = dw / n;
+                finalTileH = dh;
+            } else {
+                // V-edge: free axis = H, fixed axis W = dw
+                const m = Math.max(1, Math.round(dh / tileH));
+                finalTileH = dh / m;
+                finalTileW = dw;
+            }
+        }
+
+        const tileCanvas = await _makeTile(sx, sy, sw, sh, finalTileW, finalTileH);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx, dy, dw, dh);
+        ctx.clip();
+
+        if (repeat === BORDER_IMAGE_REPEAT.SPACE) {
+            const nx = Math.floor(dw / finalTileW);
+            const ny = Math.floor(dh / finalTileH);
+            if (nx <= 0 || ny <= 0) {
+                // Tile larger than destination — don't draw (per Chromium behavior)
+                ctx.restore();
+                return;
+            }
+            const gapX = nx > 1 ? (dw - nx * finalTileW) / (nx - 1) : 0;
+            const gapY = ny > 1 ? (dh - ny * finalTileH) / (ny - 1) : 0;
+            const startX = nx <= 1 ? (dw - finalTileW) / 2 : 0;
+            const startY = ny <= 1 ? (dh - finalTileH) / 2 : 0;
+            for (let row = 0; row < ny; row++) {
+                const y = startY + row * (finalTileH + gapY);
+                for (let col = 0; col < nx; col++) {
+                    const x = startX + col * (finalTileW + gapX);
+                    ctx.drawImage(tileCanvas, dx + x, dy + y, finalTileW, finalTileH);
+                }
+            }
+        } else if (repeat === BORDER_IMAGE_REPEAT.ROUND) {
+            for (let y = 0; y < dh - 0.5; y += finalTileH) {
+                for (let x = 0; x < dw - 0.5; x += finalTileW) {
+                    ctx.drawImage(tileCanvas, dx + x, dy + y, finalTileW, finalTileH);
+                }
+            }
+        } else {
+            // REPEAT: center on the free axis
+            let offsetX = 0;
+            let offsetY = 0;
+            if (isHorizontal) {
+                offsetX = (dw % finalTileW) / 2 - finalTileW;
+            } else {
+                offsetY = (dh % finalTileH) / 2 - finalTileH;
+            }
+            const pm = document.createElement('canvas');
+            pm.width = Math.max(1, Math.round(finalTileW));
+            pm.height = Math.max(1, Math.round(finalTileH));
+            (pm.getContext('2d') as CanvasRenderingContext2D).drawImage(tileCanvas, 0, 0, pm.width, pm.height);
+            const pat = ctx.createPattern(pm, 'repeat');
+            if (pat) {
+                const mat = new DOMMatrix();
+                mat.translateSelf(dx + offsetX, dy + offsetY);
+                pat.setTransform(mat);
+                ctx.fillStyle = pat;
+                ctx.fillRect(dx, dy, dw, dh);
+            }
+        }
+
+        ctx.restore();
+    };
+
+    // Tile size per CSS spec (same formula for gradients and URL images):
+    // H-edge: tile = (srcMiddleW × scale) × widthTop, where scale = widthTop / sliceTop
+    // V-edge: tile = widthLeft × (srcMiddleH × scale), where scale = widthLeft / sliceLeft
+    // For gradients, _makeTile renders the gradient fresh at this exact size.
+    // For URL images, _makeTile extracts and scales the source slice.
+    const tileWforH = sliceTop > 0 ? srcMiddleW * (widthTop / sliceTop) : srcMiddleW;
+    const tileHforH = widthTop;
+    const tileWforHB = sliceBottom > 0 ? srcMiddleW * (widthBottom / sliceBottom) : srcMiddleW;
+    const tileHforHB = widthBottom;
+    const tileWforV = widthLeft;
+    const tileHforV = sliceLeft > 0 ? srcMiddleH * (widthLeft / sliceLeft) : srcMiddleH;
+    const tileWforVR = widthRight;
+    const tileHforVR = sliceRight > 0 ? srcMiddleH * (widthRight / sliceRight) : srcMiddleH;
+
+    // Top edge
+    if (srcMiddleW > 0 && sliceTop > 0 && dstMiddleW > 0 && widthTop > 0) {
+        await _edge(
+            sliceLeft,
+            0,
+            srcMiddleW,
+            sliceTop,
+            areaLeft + widthLeft,
+            areaTop,
+            dstMiddleW,
+            widthTop,
+            repeatH,
+            tileWforH,
+            tileHforH,
+            true,
+        );
+    }
+    // Bottom edge
+    if (srcMiddleW > 0 && sliceBottom > 0 && dstMiddleW > 0 && widthBottom > 0) {
+        await _edge(
+            sliceLeft,
+            imgH - sliceBottom,
+            srcMiddleW,
+            sliceBottom,
+            areaLeft + widthLeft,
+            areaTop + areaHeight - widthBottom,
+            dstMiddleW,
+            widthBottom,
+            repeatH,
+            tileWforHB,
+            tileHforHB,
+            true,
+        );
+    }
+    // Right edge
+    if (sliceRight > 0 && srcMiddleH > 0 && widthRight > 0 && dstMiddleH > 0) {
+        await _edge(
+            imgW - sliceRight,
+            sliceTop,
+            sliceRight,
+            srcMiddleH,
+            areaLeft + areaWidth - widthRight,
+            areaTop + widthTop,
+            widthRight,
+            dstMiddleH,
+            repeatV,
+            tileWforVR,
+            tileHforVR,
+            false,
+        );
+    }
+    // Left edge
+    if (sliceLeft > 0 && srcMiddleH > 0 && widthLeft > 0 && dstMiddleH > 0) {
+        await _edge(
+            0,
+            sliceTop,
+            sliceLeft,
+            srcMiddleH,
+            areaLeft,
+            areaTop + widthTop,
+            widthLeft,
+            dstMiddleH,
+            repeatV,
+            tileWforV,
+            tileHforV,
+            false,
+        );
+    }
+    // Center (fill)
+    if (slice.fill && srcMiddleW > 0 && srcMiddleH > 0 && dstMiddleW > 0 && dstMiddleH > 0) {
+        const scaleW = sliceTop > 0 ? widthTop / sliceTop : 1;
+        await _edge(
+            sliceLeft,
+            sliceTop,
+            srcMiddleW,
+            srcMiddleH,
+            areaLeft + widthLeft,
+            areaTop + widthTop,
+            dstMiddleW,
+            dstMiddleH,
+            repeatH,
+            srcMiddleW * scaleW,
+            srcMiddleH * scaleW,
+            true,
+        );
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // Single-box background + borders renderer (block elements & clone fragments)
 // ---------------------------------------------------------------------------
 
@@ -1102,33 +1595,38 @@ async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, pa
         _renderBoxShadows(state, paint);
     }
 
-    let side = 0;
-    for (const border of borders) {
-        if (border.style !== BORDER_STYLE.NONE && !isTransparent(border.color) && border.width > 0) {
-            if (border.style === BORDER_STYLE.DASHED) {
-                await renderDashedDottedBorder(
-                    state,
-                    border.color,
-                    border.width,
-                    side,
-                    paint.curves,
-                    BORDER_STYLE.DASHED,
-                );
-            } else if (border.style === BORDER_STYLE.DOTTED) {
-                await renderDashedDottedBorder(
-                    state,
-                    border.color,
-                    border.width,
-                    side,
-                    paint.curves,
-                    BORDER_STYLE.DOTTED,
-                );
-            } else if (border.style === BORDER_STYLE.DOUBLE) {
-                await renderDoubleBorder(state, border.color, border.width, side, paint.curves);
-            } else {
-                await renderSolidBorder(state, border.color, side, paint.curves);
+    // When border-image-source is set, it replaces normal border rendering.
+    const borderImageRendered = await _renderBorderImage(state, paint);
+
+    if (!borderImageRendered) {
+        let side = 0;
+        for (const border of borders) {
+            if (border.style !== BORDER_STYLE.NONE && !isTransparent(border.color) && border.width > 0) {
+                if (border.style === BORDER_STYLE.DASHED) {
+                    await renderDashedDottedBorder(
+                        state,
+                        border.color,
+                        border.width,
+                        side,
+                        paint.curves,
+                        BORDER_STYLE.DASHED,
+                    );
+                } else if (border.style === BORDER_STYLE.DOTTED) {
+                    await renderDashedDottedBorder(
+                        state,
+                        border.color,
+                        border.width,
+                        side,
+                        paint.curves,
+                        BORDER_STYLE.DOTTED,
+                    );
+                } else if (border.style === BORDER_STYLE.DOUBLE) {
+                    await renderDoubleBorder(state, border.color, border.width, side, paint.curves);
+                } else {
+                    await renderSolidBorder(state, border.color, side, paint.curves);
+                }
             }
+            side++;
         }
-        side++;
     }
 }

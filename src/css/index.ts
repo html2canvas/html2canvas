@@ -18,6 +18,11 @@ import {
     borderRightColor,
     borderTopColor,
 } from './property-descriptors/border-color';
+import { borderImageOutset, BorderImageOutset } from './property-descriptors/border-image-outset';
+import { borderImageRepeat, BorderImageRepeatTuple } from './property-descriptors/border-image-repeat';
+import { borderImageSlice, BorderImageSlice } from './property-descriptors/border-image-slice';
+import { borderImageSource } from './property-descriptors/border-image-source';
+import { borderImageWidth, BorderImageWidth } from './property-descriptors/border-image-width';
 import {
     borderBottomLeftRadius,
     borderBottomRightRadius,
@@ -91,13 +96,13 @@ import { webkitTextStrokeWidth } from './property-descriptors/webkit-text-stroke
 import { wordBreak } from './property-descriptors/word-break';
 import { writingMode } from './property-descriptors/writing-mode';
 import { zIndex } from './property-descriptors/z-index';
-import { CSSValue, Parser, isIdentToken } from './syntax/parser';
-import { NumberValueToken, TokenType, Tokenizer } from './syntax/tokenizer';
+import { CSSValue, isIdentToken, Parser } from './syntax/parser';
+import { NumberValueToken, Tokenizer, TokenType } from './syntax/tokenizer';
 import { angle } from './types/angle';
 import { Color, color as colorType, isTransparent } from './types/color';
-import { image } from './types/image';
-import { Length, isLength } from './types/length';
-import { LengthPercentage, ZERO_LENGTH, isLengthPercentage } from './types/length-percentage';
+import { ICSSImage, image } from './types/image';
+import { isLength, Length } from './types/length';
+import { isLengthPercentage, LengthPercentage, ZERO_LENGTH } from './types/length-percentage';
 import { time } from './types/time';
 
 // ---------------------------------------------------------------------------
@@ -152,6 +157,11 @@ export class CSSParsedDeclaration {
     borderRightWidth: ReturnType<typeof borderRightWidth.parse>;
     borderBottomWidth: ReturnType<typeof borderBottomWidth.parse>;
     borderLeftWidth: ReturnType<typeof borderLeftWidth.parse>;
+    borderImageSource: ICSSImage | null;
+    borderImageSlice: BorderImageSlice;
+    borderImageWidth: BorderImageWidth;
+    borderImageOutset: BorderImageOutset;
+    borderImageRepeat: BorderImageRepeatTuple;
     boxDecorationBreak: BOX_DECORATION_BREAK;
     boxShadow: ReturnType<typeof boxShadow.parse>;
     clip: ReturnType<typeof clipDescriptor.parse>;
@@ -233,6 +243,11 @@ export class CSSParsedDeclaration {
         this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
         this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
         this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
+        this.borderImageSource = parse(context, borderImageSource, declaration.borderImageSource);
+        this.borderImageSlice = parse(context, borderImageSlice, declaration.borderImageSlice);
+        this.borderImageWidth = parse(context, borderImageWidth, declaration.borderImageWidth);
+        this.borderImageOutset = parse(context, borderImageOutset, declaration.borderImageOutset);
+        this.borderImageRepeat = parse(context, borderImageRepeat, declaration.borderImageRepeat);
         this.boxDecorationBreak = parse(
             context,
             boxDecorationBreakDescriptor,
@@ -317,6 +332,14 @@ export class CSSParsedDeclaration {
             this.borderRightWidth *= z;
             this.borderBottomWidth *= z;
             this.borderLeftWidth *= z;
+
+            // Border-image outset & width: scale absolute length values
+            this.borderImageOutset = this.borderImageOutset.map(v =>
+                v.type === 'length' ? { ...v, value: v.value * z } : v,
+            ) as BorderImageOutset;
+            this.borderImageWidth = this.borderImageWidth.map(v =>
+                v.type === 'length' ? { ...v, value: v.value * z } : v,
+            ) as BorderImageWidth;
 
             // Border radii (LengthPercentageTuple — scale each component)
             this.borderTopLeftRadius = this.borderTopLeftRadius.map(t =>

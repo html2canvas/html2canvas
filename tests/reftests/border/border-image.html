@@ -1,0 +1,672 @@
+<!doctype html>
+<html>
+  <head>
+    <title>border-image tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style type="text/css">
+      html {
+        background: #3a84c3;
+      }
+
+      body {
+        margin: 10px;
+        font-family: sans-serif;
+        font-size: 11px;
+        color: #fff;
+      }
+
+      .label {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .row {
+        margin-bottom: 6px;
+      }
+
+      .group {
+        display: inline-block;
+        vertical-align: top;
+        margin: 6px;
+      }
+
+      .box {
+        width: 160px;
+        height: 80px;
+        display: block;
+        background: #fff3d4;
+        color: #333;
+        font-size: 10px;
+        line-height: 1.2;
+        padding: 4px;
+        box-sizing: border-box;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 1 — gradient sources & shorthand forms
+      ---------------------------------------------------------------- */
+
+      /* 1a — stretch (default), linear-gradient source */
+      .box1a {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(45deg, #e66465, #9198e5);
+        border-image-slice: 1;
+        border-image-width: 20px;
+        border-image-repeat: stretch;
+      }
+
+      /* 1b — shorthand: source slice */
+      .box1b {
+        border: 20px solid transparent;
+        border-image: linear-gradient(to bottom, #fc5c7d, #6a3093) 1;
+      }
+
+      /* 1c — shorthand: source slice / width */
+      .box1c {
+        border: 20px solid transparent;
+        border-image: linear-gradient(red, blue) 27 / 20px;
+      }
+
+      /* 1d — shorthand: source slice / width / outset repeat (MDN full form) */
+      .box1d {
+        border: 20px solid transparent;
+        border-image: linear-gradient(#f6b73c, #4d9f0c) 30 / 20px / 5px stretch;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 2 — repeat modes
+      ---------------------------------------------------------------- */
+
+      /* 2a — repeat */
+      .box2a {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #f55 0px, #f55 10px, #fff 10px, #fff 20px);
+        border-image-slice: 20;
+        border-image-width: 20px;
+        border-image-repeat: repeat;
+      }
+
+      /* 2b — round */
+      .box2b {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #43e97b 0px, #43e97b 10px, #38f9d7 10px, #38f9d7 20px);
+        border-image-slice: 20;
+        border-image-width: 20px;
+        border-image-repeat: round;
+      }
+
+      /* 2c — space (slice == border-width: exactly 1 tile per side, no visible gap) */
+      .box2c {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(
+          90deg,
+          #00d2ff 0px,
+          #00d2ff 8px,
+          transparent 8px,
+          transparent 16px
+        );
+        border-image-slice: 20;
+        border-image-width: 20px;
+        border-image-repeat: space;
+      }
+
+      /* 2c2 — space with mismatched width: same slice but narrower border-image-width */
+      .box2c2 {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(
+          90deg,
+          #00d2ff 0px,
+          #00d2ff 8px,
+          transparent 8px,
+          transparent 16px
+        );
+        border-image-slice: 20;
+        border-image-width: 14px;
+        border-image-repeat: space;
+      }
+
+      /* 2d — mixed: round horizontal, stretch vertical */
+      .box2d {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #ff6b6b 0px, #ff6b6b 10px, #feca57 10px, #feca57 20px);
+        border-image-slice: 20;
+        border-image-width: 20px;
+        border-image-repeat: round stretch;
+      }
+
+      /* 2e — space with tile smaller than border (slice=8, border=20px)
+              2 tiles per side with a visible gap between them */
+      .box2e {
+        border: 20px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #00d2ff 0px, #00d2ff 6px, #ffffff 6px, #ffffff 8px);
+        border-image-slice: 8;
+        border-image-width: 20px;
+        border-image-repeat: space;
+      }
+
+      /* 2f — space with slice 10px, border 30px: 3 tiles with equal spacing */
+      .box2f {
+        border: 30px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #e74c3c 0px, #e74c3c 8px, #3498db 8px, #3498db 10px);
+        border-image-slice: 10;
+        border-image-width: 30px;
+        border-image-repeat: space;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 3 — striped patterns (corners vs edges clearly visible)
+         Each case uses a repeating-gradient with sharp bands so corners,
+         edges and repeat behaviour are immediately visible.
+      ---------------------------------------------------------------- */
+
+      /* 3a — diagonal stripes, stretch */
+      .box3a {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(
+          -45deg,
+          #e74c3c 0px,
+          #e74c3c 6px,
+          #f39c12 6px,
+          #f39c12 12px,
+          #2ecc71 12px,
+          #2ecc71 18px,
+          #3498db 18px,
+          #3498db 24px
+        );
+        border-image-slice: 24;
+        border-image-width: 24px;
+        border-image-repeat: stretch;
+      }
+
+      /* 3b — horizontal stripes, repeat */
+      .box3b {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(
+          0deg,
+          #8e44ad 0px,
+          #8e44ad 6px,
+          #fff 6px,
+          #fff 12px,
+          #8e44ad 12px,
+          #8e44ad 18px,
+          #fff 18px,
+          #fff 24px
+        );
+        border-image-slice: 24;
+        border-image-width: 24px;
+        border-image-repeat: repeat;
+      }
+
+      /* 3c — green stripes, round */
+      .box3c {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #16a085 0px, #16a085 12px, #1abc9c 12px, #1abc9c 24px);
+        border-image-slice: 24;
+        border-image-width: 24px;
+        border-image-repeat: round;
+      }
+
+      /* 3d — transparent stripes, space (slice == border: 1 tile per side, no gap) */
+      .box3d {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(
+          90deg,
+          #c0392b 0px,
+          #c0392b 10px,
+          transparent 10px,
+          transparent 24px
+        );
+        border-image-slice: 24;
+        border-image-width: 24px;
+        border-image-repeat: space;
+      }
+
+      /* 3e — repeat with misaligned slice (slice 14px, border 24px)
+              Tiles do not fit exactly: cut tiles appear on both edges */
+      .box3-repeat-mis {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #c0392b 0px, #c0392b 7px, #ffffff 7px, #ffffff 14px);
+        border-image-slice: 14;
+        border-image-width: 24px;
+        border-image-repeat: repeat;
+      }
+
+      /* 3f — space with misaligned slice (slice 14px, border 24px)
+              Only whole tiles are drawn; remaining space is distributed as equal gaps */
+      .box3-space-mis {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #c0392b 0px, #c0392b 7px, #ffffff 7px, #ffffff 14px);
+        border-image-slice: 14;
+        border-image-width: 24px;
+        border-image-repeat: space;
+      }
+
+      /* 3g — repeat with oversized slice (slice 34px > border 24px) */
+      .box3-repeat-splice {
+        border: 24px solid transparent;
+        border-image-source: repeating-linear-gradient(90deg, #c0392b 0px, #c0392b 7px, #ffffff 7px, #ffffff 14px);
+        border-image-slice: 34;
+        border-image-width: 24px;
+        border-image-repeat: repeat;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 3b — corner deformations (large slice)
+         slice=60 on a 30px gradient means the 4 corners overlap visually:
+         diagonal edges are clearly visible.
+      ---------------------------------------------------------------- */
+
+      /* MDN exact example: 45deg, slice 60, implicit stretch repeat */
+      .box3e {
+        width: 200px;
+        border: 30px solid;
+        border-image: repeating-linear-gradient(45deg, #ff3333, #33bbff, #ff3333 30px) 60;
+        padding: 20px;
+        box-sizing: content-box;
+      }
+
+      /* Same gradient, smaller slice (30): sharp corners, clean edges */
+      .box3f {
+        width: 200px;
+        border: 30px solid;
+        border-image: repeating-linear-gradient(45deg, #ff3333, #33bbff, #ff3333 30px) 30;
+        padding: 20px;
+        box-sizing: content-box;
+      }
+
+      /* slice 60, round: edges repeat with adjusted tile count */
+      .box3g {
+        width: 200px;
+        border: 30px solid;
+        border-image: repeating-linear-gradient(45deg, #ff3333, #33bbff, #ff3333 30px) 60 / 30px round;
+        padding: 20px;
+        box-sizing: content-box;
+      }
+
+      /* slice 60, asymmetric top/right/bottom/left (40/20/20/40px):
+         each corner has a different shape */
+      .box3h {
+        width: 200px;
+        border-style: solid;
+        border-width: 40px 20px 20px 40px;
+        border-image: repeating-linear-gradient(45deg, #ff3333, #33bbff, #ff3333 30px) 60;
+        padding: 20px;
+        box-sizing: content-box;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 4 — slice variants
+      ---------------------------------------------------------------- */
+
+      /* 4a — percentage slice */
+      .box4a {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(to right, #f7971e, #ffd200);
+        border-image-slice: 30%;
+        border-image-width: 20px;
+      }
+
+      /* 4b — asymmetric percentage slice: top right bottom left */
+      .box4b {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        border-image-slice: 40% 20% 40% 20%;
+        border-image-width: 20px;
+        border-image-repeat: stretch;
+      }
+
+      /* 4c — fill keyword */
+      .box4c {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(135deg, #667eea, #764ba2);
+        border-image-slice: 30 fill;
+        border-image-width: 20px;
+        background: transparent;
+      }
+
+      /* 4d — zero slice (border invisible, no crash) */
+      .box4d {
+        border: 20px solid red;
+        border-image-source: linear-gradient(to right, #f55, #55f);
+        border-image-slice: 0;
+        border-image-width: 20px;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 5 — width variants
+      ---------------------------------------------------------------- */
+
+      /* 5a — number multiplier (2× border-width) */
+      .box5a {
+        border: 10px solid transparent;
+        border-image-source: linear-gradient(to right, #ee0979, #ff6a00);
+        border-image-slice: 1;
+        border-image-width: 2;
+      }
+
+      /* 5b — auto width (uses slice value) */
+      .box5b {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(to right, #4facfe, #00f2fe);
+        border-image-slice: 20;
+        border-image-width: auto;
+      }
+
+      /* 5c — asymmetric widths: top right bottom left */
+      .box5c {
+        border-style: solid;
+        border-color: transparent;
+        border-width: 30px 10px 10px 30px;
+        border-image-source: linear-gradient(135deg, #f093fb, #f5576c);
+        border-image-slice: 1;
+        border-image-width: 30px 10px 10px 30px;
+      }
+
+      /* 5d — percentage width */
+      .box5d {
+        border: 20px solid transparent;
+        border-image-source: linear-gradient(to bottom, #a18cd1, #fbc2eb);
+        border-image-slice: 1;
+        border-image-width: 10%;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 6 — outset
+      ---------------------------------------------------------------- */
+
+      /* 6a — uniform outset (length) */
+      .box6a {
+        margin: 10px;
+        border: 15px solid transparent;
+        border-image-source: linear-gradient(to bottom right, #ee0979, #ff6a00);
+        border-image-slice: 1;
+        border-image-width: 15px;
+        border-image-outset: 8px;
+      }
+
+      /* 6b — outset as number multiplier */
+      .box6b {
+        margin: 10px;
+        border: 15px solid transparent;
+        border-image-source: linear-gradient(to right, #43e97b, #38f9d7);
+        border-image-slice: 1;
+        border-image-width: 15px;
+        border-image-outset: 1.5;
+      }
+
+      /* 6c — asymmetric outset */
+      .box6c {
+        margin: 12px;
+        border: 15px solid transparent;
+        border-image-source: linear-gradient(to right, #f7971e, #ffd200);
+        border-image-slice: 1;
+        border-image-width: 15px;
+        border-image-outset: 10px 4px 4px 10px;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 7 — interactions with other properties
+      ---------------------------------------------------------------- */
+
+      /* 7a — border-image + border-radius (image does NOT clip to radius) */
+      .box7a {
+        border: 20px solid transparent;
+        border-radius: 20px;
+        border-image: linear-gradient(to right, #f093fb, #f5576c) 1;
+      }
+
+      /* 7b — border-image + background-color (bg shows through center) */
+      .box7b {
+        border: 20px solid transparent;
+        background-color: #ffe0b2;
+        border-image: linear-gradient(135deg, #667eea, #764ba2) 1;
+      }
+
+      /* 7c — border-image overrides border-color */
+      .box7c {
+        border: 20px solid red;
+        border-image: linear-gradient(to right, #43e97b, #38f9d7) 1;
+      }
+
+      /* 7d — none source falls back to normal border */
+      .box7d {
+        border: 5px solid #e66465;
+        border-image-source: none;
+      }
+
+      /* ----------------------------------------------------------------
+         Section 8 — border-radius + background-clip gradient border trick
+         (simulates a rounded gradient border without border-image)
+      ---------------------------------------------------------------- */
+
+      /* 8a — MDN "rounded" pattern: two backgrounds, padding-box + border-box clip */
+      .box8a {
+        border: 10px solid transparent;
+        padding: 10px;
+        border-radius: 20px;
+        background-image: linear-gradient(white, white), linear-gradient(to right, cyan, lime);
+        background-origin: border-box;
+        background-clip: padding-box, border-box;
+      }
+
+      /* 8b — same trick with a diagonal gradient */
+      .box8b {
+        border: 10px solid transparent;
+        padding: 10px;
+        border-radius: 20px;
+        background-image: linear-gradient(white, white), linear-gradient(135deg, #fc5c7d, #6a3093);
+        background-origin: border-box;
+        background-clip: padding-box, border-box;
+      }
+
+      /* 8c — same trick with a thick border and rainbow gradient */
+      .box8c {
+        border: 16px solid transparent;
+        padding: 10px;
+        border-radius: 30px;
+        background-image:
+          linear-gradient(#f5f5f5, #f5f5f5), linear-gradient(to right, #f7971e, #ffd200, #43e97b, #4facfe);
+        background-origin: border-box;
+        background-clip: padding-box, border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <b>1 — Gradient sources &amp; shorthand forms</b><br />
+      <div class="group">
+        <span class="label">1a. stretch / long-hand</span>
+        <div class="box box1a">stretch</div>
+      </div>
+      <div class="group">
+        <span class="label">1b. shorthand: source slice</span>
+        <div class="box box1b">slice</div>
+      </div>
+      <div class="group">
+        <span class="label">1c. shorthand: slice / width</span>
+        <div class="box box1c">width</div>
+      </div>
+      <div class="group">
+        <span class="label">1d. shorthand: slice / width / outset repeat</span>
+        <div class="box box1d">full</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>2 — Repeat modes</b><br />
+      <div class="group">
+        <span class="label">2a. repeat</span>
+        <div class="box box2a">repeat</div>
+      </div>
+      <div class="group">
+        <span class="label">2b. round</span>
+        <div class="box box2b">round</div>
+      </div>
+      <div class="group">
+        <span class="label">2c. space (slice = border-width)</span>
+        <div class="box box2c">space</div>
+      </div>
+      <div class="group">
+        <span class="label">2c2. space (slice = border, width smaller)</span>
+        <div class="box box2c2">space</div>
+      </div>
+      <div class="group">
+        <span class="label">2d. round + stretch mix</span>
+        <div class="box box2d">mixed</div>
+      </div>
+      <div class="group">
+        <span class="label">2e. space (slice 8 &lt; border 20, visible gaps)</span>
+        <div class="box box2e">space</div>
+      </div>
+      <div class="group">
+        <span class="label">2f. space (slice 10, border 30)</span>
+        <div class="box box2f">space</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>3 — Striped patterns (corners vs edges clearly visible)</b><br />
+      <div class="group">
+        <span class="label">3a. diagonal stripes / stretch</span>
+        <div class="box box3a">stretch</div>
+      </div>
+      <div class="group">
+        <span class="label">3b. horizontal stripes / repeat</span>
+        <div class="box box3b">repeat</div>
+      </div>
+      <div class="group">
+        <span class="label">3c. green stripes / round</span>
+        <div class="box box3c">round</div>
+      </div>
+      <div class="group">
+        <span class="label">3d. transparent stripes / space (slice = border)</span>
+        <div class="box box3d">space</div>
+      </div>
+      <div class="group">
+        <span class="label">3e. repeat, misaligned slice (14 vs border 24)</span>
+        <div class="box box3-repeat-mis">repeat</div>
+      </div>
+      <div class="group">
+        <span class="label">3f. space, misaligned slice (14 vs border 24)</span>
+        <div class="box box3-space-mis">space</div>
+      </div>
+      <div class="group">
+        <span class="label">3g. repeat, oversized slice (34 vs border 24)</span>
+        <div class="box box3-repeat-splice">repeat</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>3b — Corner deformations (large slice)</b><br />
+      <div class="group">
+        <span class="label">3e. 45deg slice:60 stretch (MDN)</span>
+        <div class="box box3e">text</div>
+      </div>
+      <div class="group">
+        <span class="label">3f. 45deg slice:30 (sharp corners)</span>
+        <div class="box box3f">text</div>
+      </div>
+      <div class="group">
+        <span class="label">3g. 45deg slice:60 round</span>
+        <div class="box box3g">text</div>
+      </div>
+      <div class="group">
+        <span class="label">3h. 45deg slice:60 asym 40/20/20/40</span>
+        <div class="box box3h">text</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>4 — Slice variants</b><br />
+      <div class="group">
+        <span class="label">4a. 30% slice</span>
+        <div class="box box4a">% slice</div>
+      </div>
+      <div class="group">
+        <span class="label">4b. asymmetric % slice</span>
+        <div class="box box4b">asym %</div>
+      </div>
+      <div class="group">
+        <span class="label">4c. fill keyword</span>
+        <div class="box box4c">fill</div>
+      </div>
+      <div class="group">
+        <span class="label">4d. slice: 0 (no crash)</span>
+        <div class="box box4d">zero</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>5 — Width variants</b><br />
+      <div class="group">
+        <span class="label">5a. width: 2 (multiplier)</span>
+        <div class="box box5a">&times;2</div>
+      </div>
+      <div class="group">
+        <span class="label">5b. width: auto</span>
+        <div class="box box5b">auto</div>
+      </div>
+      <div class="group">
+        <span class="label">5c. asymmetric widths px</span>
+        <div class="box box5c">asym px</div>
+      </div>
+      <div class="group">
+        <span class="label">5d. width: 10%</span>
+        <div class="box box5d">10%</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>6 — Outset</b><br />
+      <div class="group">
+        <span class="label">6a. outset: 8px</span>
+        <div class="box box6a">8px</div>
+      </div>
+      <div class="group">
+        <span class="label">6b. outset: 1.5 (&times;border)</span>
+        <div class="box box6b">&times;1.5</div>
+      </div>
+      <div class="group">
+        <span class="label">6c. asymmetric outset</span>
+        <div class="box box6c">asym</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>7 — Interactions</b><br />
+      <div class="group">
+        <span class="label">7a. + border-radius (no clip)</span>
+        <div class="box box7a">radius</div>
+      </div>
+      <div class="group">
+        <span class="label">7b. + background-color</span>
+        <div class="box box7b">bg-color</div>
+      </div>
+      <div class="group">
+        <span class="label">7c. overrides border-color</span>
+        <div class="box box7c">override</div>
+      </div>
+      <div class="group">
+        <span class="label">7d. source: none &rarr; normal border</span>
+        <div class="box box7d">fallback</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <b>8 — Border-radius + background-clip (gradient border trick)</b><br />
+      <div class="group">
+        <span class="label">8a. cyan&rarr;lime / border-radius</span>
+        <div class="box box8a">rounded</div>
+      </div>
+      <div class="group">
+        <span class="label">8b. diagonal gradient</span>
+        <div class="box box8b">rounded</div>
+      </div>
+      <div class="group">
+        <span class="label">8c. rainbow thick border</span>
+        <div class="box box8c">rounded</div>
+      </div>
+    </div>
+  </body>
+</html>
