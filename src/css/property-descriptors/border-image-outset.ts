@@ -13,7 +13,12 @@ export interface BorderImageOutsetValue {
     type: 'length' | 'number';
 }
 
-export type BorderImageOutset = [BorderImageOutsetValue, BorderImageOutsetValue, BorderImageOutsetValue, BorderImageOutsetValue];
+export type BorderImageOutset = [
+    BorderImageOutsetValue,
+    BorderImageOutsetValue,
+    BorderImageOutsetValue,
+    BorderImageOutsetValue,
+];
 
 const DEFAULT_VALUE: BorderImageOutsetValue = { value: 0, type: 'length' };
 
