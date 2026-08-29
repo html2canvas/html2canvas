@@ -4,3 +4,4 @@
 /build
 /dist
 /node_modules
+/tests/reftests/acid2.html
