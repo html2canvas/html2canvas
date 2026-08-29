@@ -9,6 +9,7 @@ import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-eleme
 import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
 import { CHECKBOX, InputElementContainer, RADIO, RANGE } from '../../dom/replaced-elements/input-element-container';
 import { MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
+import { ObjectElementContainer } from '../../dom/replaced-elements/object-element-container';
 import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
 import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
 import {
@@ -395,6 +396,21 @@ export class CanvasRenderer extends Renderer {
                 renderReplacedElement(this.state, container, curves, image);
             } catch (e) {
                 this.context.logger.error(`Error loading svg ${container.svg.substring(0, 255)}`);
+            }
+        }
+
+        if (container instanceof ObjectElementContainer) {
+            try {
+                const image = await this.context.cache.match(container.src);
+                if (image) {
+                    container.intrinsicWidth = image.naturalWidth || image.width;
+                    container.intrinsicHeight = image.naturalHeight || image.height;
+                    if (container.hasLoadedImage()) {
+                        renderReplacedElement(this.state, container, curves, image);
+                    }
+                }
+            } catch (e) {
+                this.context.logger.error(`Error loading object data ${container.src}`);
             }
         }
 

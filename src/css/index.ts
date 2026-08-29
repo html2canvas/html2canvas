@@ -1,6 +1,7 @@
 import { contains } from '../core/bitwise';
 import { Context } from '../core/context';
 import { CSSPropertyDescriptor, PropertyDescriptorParsingType } from './IPropertyDescriptor';
+import { backgroundAttachment } from './property-descriptors/background-attachment';
 import {
     BACKGROUND_BLEND_MODE,
     backgroundBlendMode as backgroundBlendModeDescriptor,
@@ -134,6 +135,7 @@ const scaleLength = (token: Length, factor: number): Length => ({
 
 export class CSSParsedDeclaration {
     animationDuration: ReturnType<typeof duration.parse>;
+    backgroundAttachment: ReturnType<typeof backgroundAttachment.parse>;
     backgroundClip: ReturnType<typeof backgroundClip.parse>;
     backgroundBlendMode: BACKGROUND_BLEND_MODE[];
     backgroundColor: Color;
@@ -221,6 +223,7 @@ export class CSSParsedDeclaration {
 
     constructor(context: Context, declaration: CSSStyleDeclaration, zoomFactor = 1) {
         this.animationDuration = parse(context, duration, declaration.animationDuration);
+        this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
         this.backgroundBlendMode = parse(context, backgroundBlendModeDescriptor, declaration.backgroundBlendMode);
         this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);

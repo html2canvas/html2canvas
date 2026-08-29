@@ -12,6 +12,7 @@ Below is a list of all the supported CSS properties and values.
 ## Properties
 
 - background
+    - background-attachment (`scroll`, `fixed`, `local`)
     - background-blend-mode
     - background-clip
     - background-color

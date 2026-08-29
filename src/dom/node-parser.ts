@@ -11,6 +11,7 @@ import { IFrameElementContainer } from './replaced-elements/iframe-element-conta
 import { ImageElementContainer } from './replaced-elements/image-element-container';
 import { InputElementContainer } from './replaced-elements/input-element-container';
 import { MeterElementContainer } from './replaced-elements/meter-element-container';
+import { ObjectElementContainer } from './replaced-elements/object-element-container';
 import { ProgressElementContainer } from './replaced-elements/progress-element-container';
 import { SVGElementContainer } from './replaced-elements/svg-element-container';
 import { TextContainer } from './text-container';
@@ -66,7 +67,8 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                     } else if (
                         !isTextareaElement(childNode) &&
                         !isSVGElement(childNode) &&
-                        !isSelectElement(childNode)
+                        !isSelectElement(childNode) &&
+                        !isLoadedObjectElement(childNode)
                     ) {
                         parseNodeTree(context, childNode, container, root);
                     }
@@ -121,6 +123,10 @@ const createContainer = (context: Context, element: Element): ElementContainer =
         return new MeterElementContainer(context, element);
     }
 
+    if (isObjectElement(element)) {
+        return new ObjectElementContainer(context, element);
+    }
+
     return new ElementContainer(context, element);
 };
 
@@ -168,5 +174,36 @@ export const isSelectElement = (node: Element): node is HTMLSelectElement => nod
 export const isSlotElement = (node: Element): node is HTMLSlotElement => node.tagName === 'SLOT';
 export const isProgressElement = (node: Element): node is HTMLProgressElement => node.tagName === 'PROGRESS';
 export const isMeterElement = (node: Element): node is HTMLMeterElement => node.tagName === 'METER';
+export const isObjectElement = (node: Element): node is HTMLObjectElement => node.tagName === 'OBJECT';
 // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
 export const isCustomElement = (node: Element): node is HTMLElement => node.tagName.indexOf('-') > 0;
+
+/**
+ * Returns true when an `<object>` element has successfully loaded content that
+ * replaces its fallback children. In that case, we must NOT traverse the child
+ * nodes because they are hidden fallback content.
+ *
+ * The check works by looking at the object's `contentDocument`: when the browser
+ * successfully loads the data attribute, it creates a nested browsing context.
+ * For data-URI images the browser renders the image directly without a content
+ * document, but it also hides the fallback children — however those children
+ * still exist in the DOM. We detect this case by checking if the `data` attribute
+ * points to an image type.
+ */
+const isLoadedObjectElement = (node: Element): boolean => {
+    if (!isObjectElement(node)) {
+        return false;
+    }
+    // If the object has a contentDocument, it loaded a document (HTML, SVG, etc.).
+    // Its children are fallback content and should be skipped.
+    if (node.contentDocument) {
+        return true;
+    }
+    // For data-URI images and other successfully loaded resources, the browser
+    // hides fallback children. We detect this by checking the data attribute.
+    const data = node.data;
+    if (data && /^data:image\//i.test(data)) {
+        return true;
+    }
+    return false;
+};

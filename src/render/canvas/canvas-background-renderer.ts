@@ -224,11 +224,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             }
 
             if (image && image.width > 0 && image.height > 0) {
-                const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [
-                    image.width,
-                    image.height,
-                    image.width / image.height,
-                ]);
+                const [path, x, y, width, height] = calculateBackgroundRendering(
+                    container,
+                    index,
+                    [image.width, image.height, image.width / image.height],
+                    state.context.windowBounds,
+                );
                 const pattern = state.ctx.createPattern(
                     resizeImage(state, image, width, height),
                     'repeat',
@@ -236,7 +237,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 renderRepeat(state, path, pattern, x, y);
             }
         } else if (isLinearGradient(backgroundImage)) {
-            const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+            const [path, x, y, width, height] = calculateBackgroundRendering(
+                container,
+                index,
+                [null, null, null],
+                state.context.windowBounds,
+            );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
             const canvas = document.createElement('canvas');
@@ -256,7 +262,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 renderRepeat(state, path, pattern, x, y);
             }
         } else if (isRepeatingLinearGradient(backgroundImage)) {
-            const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+            const [path, x, y, width, height] = calculateBackgroundRendering(
+                container,
+                index,
+                [null, null, null],
+                state.context.windowBounds,
+            );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
             const canvas = document.createElement('canvas');
@@ -314,7 +325,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 renderRepeat(state, path, pattern, x, y);
             }
         } else if (isRadialGradient(backgroundImage)) {
-            const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+            const [path, left, top, width, height] = calculateBackgroundRendering(
+                container,
+                index,
+                [null, null, null],
+                state.context.windowBounds,
+            );
             const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
             const x = getAbsoluteValue(position[0], width);
             const y = getAbsoluteValue(position[position.length - 1], height);
@@ -348,7 +364,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 }
             }
         } else if (isRepeatingRadialGradient(backgroundImage)) {
-            const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+            const [path, left, top, width, height] = calculateBackgroundRendering(
+                container,
+                index,
+                [null, null, null],
+                state.context.windowBounds,
+            );
             const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
             const x = getAbsoluteValue(position[0], width);
             const y = getAbsoluteValue(position[position.length - 1], height);
@@ -423,11 +444,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 typeof CanvasRenderingContext2D !== 'undefined' &&
                 typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
             ) {
-                const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
-                    null,
-                    null,
-                    null,
-                ]);
+                const [path, left, top, width, height] = calculateBackgroundRendering(
+                    container,
+                    index,
+                    [null, null, null],
+                    state.context.windowBounds,
+                );
                 const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                 const cx = left + getAbsoluteValue(position[0], width);
                 const cy = top + getAbsoluteValue(position[position.length - 1], height);
@@ -449,11 +471,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 typeof CanvasRenderingContext2D !== 'undefined' &&
                 typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
             ) {
-                const [path, left, top, width, height] = calculateBackgroundRendering(container, index, [
-                    null,
-                    null,
-                    null,
-                ]);
+                const [path, left, top, width, height] = calculateBackgroundRendering(
+                    container,
+                    index,
+                    [null, null, null],
+                    state.context.windowBounds,
+                );
                 const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                 const cx = left + getAbsoluteValue(position[0], width);
                 const cy = top + getAbsoluteValue(position[position.length - 1], height);
@@ -553,11 +576,12 @@ async function renderBackgroundImagePerLayer(
             }
 
             if (image && image.width > 0 && image.height > 0) {
-                const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [
-                    image.width,
-                    image.height,
-                    image.width / image.height,
-                ]);
+                const [path, x, y, width, height] = calculateBackgroundRendering(
+                    container,
+                    index,
+                    [image.width, image.height, image.width / image.height],
+                    state.context.windowBounds,
+                );
                 const pattern = state.ctx.createPattern(
                     resizeImage(state, image, width, height),
                     'repeat',
@@ -565,7 +589,12 @@ async function renderBackgroundImagePerLayer(
                 renderRepeat(state, path, pattern, x, y);
             }
         } else if (isLinearGradient(backgroundImage)) {
-            const [path, x, y, width, height] = calculateBackgroundRendering(container, index, [null, null, null]);
+            const [path, x, y, width, height] = calculateBackgroundRendering(
+                container,
+                index,
+                [null, null, null],
+                state.context.windowBounds,
+            );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
             const canvas = document.createElement('canvas');

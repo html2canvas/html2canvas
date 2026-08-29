@@ -382,6 +382,22 @@ export class DocumentCloner {
             const styleBefore = window.getComputedStyle(node, ':before');
             const styleAfter = window.getComputedStyle(node, ':after');
 
+            // Chromium bug workaround: when the document is cloned via document.write()
+            // into an iframe, percentage-based height/min-height/max-height values may
+            // resolve differently than in the original document. This happens because
+            // Chromium sometimes resolves percentage heights against the iframe's
+            // scrollHeight instead of treating them as auto/0/none when the containing
+            // block has no explicit height (CSS2.1 §10.5/§10.7).
+            //
+            // Fix: inline the computed (pixel) values for these properties when the
+            // specified value is a percentage, so the clone preserves the original layout.
+            if (isHTMLElementNode(node)) {
+                const inlineS = (node as HTMLElement).style;
+                _inlinePercentageHeight(clone, style, inlineS, 'height');
+                _inlinePercentageHeight(clone, style, inlineS, 'min-height');
+                _inlinePercentageHeight(clone, style, inlineS, 'max-height');
+            }
+
             if (this.referenceElement === node && isHTMLElementNode(clone)) {
                 this.clonedReferenceElement = clone;
             }
@@ -686,6 +702,54 @@ const backgroundProperties = new Set([
     'background-clip',
     'background-attachment',
 ]);
+
+/**
+ * Inlines the computed value of a height-related property on the clone when the
+ * stylesheet-specified value is a percentage. This works around a Chromium bug where
+ * percentage heights resolve incorrectly in iframes populated via document.write().
+ *
+ * For `height` we inline the element's actual computed pixel height from the original
+ * document so the clone preserves the original layout regardless of how the browser
+ * resolves percentages in the iframe context.
+ *
+ * For `min-height` with a percentage containing block without explicit height, CSS2.1
+ * §10.7 says the percentage should be treated as 0. We inline `0px` when the computed
+ * value is still reported as a percentage (Chromium keeps it as-is rather than
+ * resolving to 0px).
+ *
+ * For `max-height` with a percentage containing block without explicit height, CSS2.1
+ * §10.7 says the percentage should be treated as `none`. We inline `none` in that case.
+ */
+const _inlinePercentageHeight = (
+    clone: HTMLElement | SVGElement,
+    computedStyle: CSSStyleDeclaration,
+    inlineStyle: CSSStyleDeclaration,
+    property: 'height' | 'min-height' | 'max-height',
+): void => {
+    // Only act when there is no inline style override (the value comes from a stylesheet)
+    if (inlineStyle.getPropertyValue(property)) {
+        return;
+    }
+    const computed = computedStyle.getPropertyValue(property);
+    if (!computed || computed === 'auto' || computed === 'none') {
+        return;
+    }
+
+    if (computed.includes('%')) {
+        // The browser returned a percentage — meaning it did NOT resolve it to pixels.
+        // Per CSS2.1, percentage min-height should resolve to 0 and percentage max-height
+        // should resolve to none when the containing block has no explicit height.
+        if (property === 'min-height') {
+            clone.style.setProperty(property, '0px');
+        } else if (property === 'max-height') {
+            clone.style.setProperty(property, 'none');
+        }
+        // For 'height', a percentage that wasn't resolved means 'auto' — don't set.
+    } else {
+        // The browser resolved it to a pixel value — inline it to preserve in the clone.
+        clone.style.setProperty(property, computed);
+    }
+};
 
 export const copyCSSStyles = <T extends HTMLElement | SVGElement>(
     style: CSSStyleDeclaration,
