@@ -11,6 +11,7 @@ import {
     isBodyElement,
     isCanvasElement,
     isCustomElement,
+    isDetailsElement,
     isElementNode,
     isHTMLElementNode,
     isIFrameElement,
@@ -19,6 +20,7 @@ import {
     isSelectElement,
     isSlotElement,
     isStyleElement,
+    isSummaryElement,
     isSVGElementNode,
     isTextareaElement,
     isTextNode,
@@ -379,11 +381,24 @@ export class DocumentCloner {
     }
 
     cloneChildNodes(node: Element, clone: HTMLElement | SVGElement, copyStyles: boolean): void {
+        // A closed <details> element hides all children except <summary> via browser-
+        // internal mechanisms (not purely CSS). Since outerHTML + document.write() may
+        // not fully reconstitute that behavior, skip non-<summary> children here so
+        // they are never serialized into the iframe.
+        const isClosedDetails = isDetailsElement(node) && !node.open;
+
         for (
             let child = node.shadowRoot ? node.shadowRoot.firstChild : node.firstChild;
             child;
             child = child.nextSibling
         ) {
+            if (isClosedDetails) {
+                // Only clone <summary> children and text nodes (whitespace) of a closed <details>
+                if (isElementNode(child) && !isSummaryElement(child)) {
+                    continue;
+                }
+            }
+
             if (isElementNode(child) && isSlotElement(child) && typeof child.assignedNodes === 'function') {
                 const assignedNodes = child.assignedNodes() as ChildNode[];
                 if (assignedNodes.length) {

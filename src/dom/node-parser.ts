@@ -177,6 +177,8 @@ export const isMeterElement = (node: Element): node is HTMLMeterElement => node.
 export const isObjectElement = (node: Element): node is HTMLObjectElement => node.tagName === 'OBJECT';
 // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
 export const isCustomElement = (node: Element): node is HTMLElement => node.tagName.indexOf('-') > 0;
+export const isDetailsElement = (node: Element): node is HTMLDetailsElement => node.tagName === 'DETAILS';
+export const isSummaryElement = (node: Element): node is HTMLElement => node.tagName === 'SUMMARY';
 
 /**
  * Returns true when an `<object>` element has successfully loaded content that

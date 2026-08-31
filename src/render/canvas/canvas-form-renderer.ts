@@ -593,7 +593,6 @@ function _renderHorizontalListMarker(
 ): void {
     const container = paint.container;
     state.ctx.textBaseline = 'alphabetic';
-    state.ctx.textAlign = 'right';
 
     const [, fontFamily, fontSize] = createFontStyle(styles);
     const { baseline } = state.fontMetrics.getRawMetrics(fontFamily, fontSize);
@@ -611,5 +610,14 @@ function _renderHorizontalListMarker(
                 baseline,
         ) - (state.isFirefox ? 1 : 0);
 
-    state.ctx.fillText(paint.listValue!, container.bounds.left, markerY);
+    if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        // Inside markers are drawn at the start of the content area, left-aligned
+        const paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        state.ctx.textAlign = 'left';
+        state.ctx.fillText(paint.listValue!, container.bounds.left + paddingLeft, markerY);
+    } else {
+        // Outside markers are drawn to the left of the content area, right-aligned
+        state.ctx.textAlign = 'right';
+        state.ctx.fillText(paint.listValue!, container.bounds.left, markerY);
+    }
 }
