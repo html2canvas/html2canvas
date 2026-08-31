@@ -160,6 +160,11 @@ export class DocumentCloner {
 
             const onclone = this.options.onclone;
 
+            // Restore canvas pixel data that was lost during outerHTML serialization.
+            // Each canvas with a data-html2canvas-canvas attribute contains a data URL
+            // captured from the original canvas before serialization.
+            await restoreCanvasData(documentClone);
+
             if (documentClone.fonts && documentClone.fonts.status === 'loading') {
                 await Promise.race([
                     documentClone.fonts.ready,
@@ -261,22 +266,51 @@ export class DocumentCloner {
         return node.cloneNode(false) as HTMLStyleElement;
     }
 
-    createCanvasClone(canvas: HTMLCanvasElement): HTMLImageElement | HTMLCanvasElement {
-        if (this.options.inlineImages && canvas.ownerDocument) {
-            const img = canvas.ownerDocument.createElement('img');
+    createCanvasClone(canvas: HTMLCanvasElement): HTMLCanvasElement {
+        // Capture the canvas pixel data as a data URL and store it in a data attribute
+        // so it survives the outerHTML + document.write() serialization round-trip in
+        // toIFrame(). After the iframe loads, restoreCanvasData() redraws each canvas
+        // from its stored data URL, keeping the original <canvas> tag (and therefore
+        // all CSS selectors, CanvasElementContainer parsing, etc.) intact.
+
+        const clonedCanvas = canvas.cloneNode(false) as HTMLCanvasElement;
+        clonedCanvas.width = canvas.width;
+        clonedCanvas.height = canvas.height;
+
+        // Try to capture pixel data as a data URL
+        try {
+            const dataUrl = canvas.toDataURL();
+            if (dataUrl && dataUrl !== 'data:,') {
+                clonedCanvas.setAttribute('data-html2canvas-canvas', dataUrl);
+                return clonedCanvas;
+            }
+        } catch (e) {
+            this.context.logger.info(`Unable to serialize canvas via toDataURL, canvas is tainted`, canvas);
+        }
+
+        // For tainted canvases with allowTaint, try drawImage to an intermediate canvas
+        if (this.options.allowTaint) {
             try {
-                img.src = canvas.toDataURL();
-                return img;
+                const tempCanvas = canvas.ownerDocument.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (tempCtx) {
+                    tempCtx.drawImage(canvas, 0, 0);
+                    const dataUrl = tempCanvas.toDataURL();
+                    if (dataUrl && dataUrl !== 'data:,') {
+                        clonedCanvas.setAttribute('data-html2canvas-canvas', dataUrl);
+                        return clonedCanvas;
+                    }
+                }
             } catch (e) {
-                this.context.logger.info(`Unable to inline canvas contents, canvas is tainted`, canvas);
+                this.context.logger.info(`Unable to clone tainted canvas via drawImage`, canvas);
             }
         }
 
-        const clonedCanvas = canvas.cloneNode(false) as HTMLCanvasElement;
-
+        // Fallback: try to copy pixels directly (will be lost after serialization,
+        // but covers the edge case where the canvas is rendered without toIFrame)
         try {
-            clonedCanvas.width = canvas.width;
-            clonedCanvas.height = canvas.height;
             const ctx = canvas.getContext('2d');
             const clonedCtx = clonedCanvas.getContext('2d', { willReadFrequently: true });
             if (clonedCtx) {
@@ -293,11 +327,9 @@ export class DocumentCloner {
                             );
                         }
                     }
-
                     clonedCtx.drawImage(canvas, 0, 0);
                 }
             }
-            return clonedCanvas;
         } catch (e) {
             this.context.logger.info(`Unable to clone canvas as it is tainted`, canvas);
         }
@@ -850,6 +882,40 @@ const createStyles = (body: HTMLElement, styles: string) => {
         style.textContent = styles;
         body.appendChild(style);
     }
+};
+
+const CANVAS_DATA_ATTR = 'data-html2canvas-canvas';
+
+/**
+ * After document.write() re-parses the cloned HTML, all <canvas> elements lose their
+ * bitmap data. This function finds canvases stamped with a data URL during cloning
+ * and redraws their content from that stored data URL.
+ */
+const restoreCanvasData = (document: Document): Promise<void[]> => {
+    const canvases = document.querySelectorAll<HTMLCanvasElement>(`canvas[${CANVAS_DATA_ATTR}]`);
+    const promises: Promise<void>[] = [];
+    canvases.forEach(canvas => {
+        const dataUrl = canvas.getAttribute(CANVAS_DATA_ATTR);
+        if (!dataUrl) {
+            return;
+        }
+        canvas.removeAttribute(CANVAS_DATA_ATTR);
+        promises.push(
+            new Promise<void>(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0);
+                    }
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = dataUrl;
+            }),
+        );
+    });
+    return Promise.all(promises);
 };
 
 const addBase = (targetELement: HTMLElement, referenceDocument: Document) => {
