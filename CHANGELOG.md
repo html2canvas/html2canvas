@@ -1,4 +1,29 @@
 # Changelog
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [1.11.0](https://github.com/html2canvas/html2canvas/compare/v1.10.0...v1.11.0) (2026-08-31)
+
+### Features
+
+* add ::first-letter and ::first-line pseudo-element support ([18905ea](https://github.com/html2canvas/html2canvas/commit/18905ea4fa70a2e001d62134895133b8a2715653))
+* add ::placeholder and ::marker pseudo-element support ([f708155](https://github.com/html2canvas/html2canvas/commit/f708155586c4db8b59e2cbb1c272c373684d2365))
+* add interactive playground and integrate examples into Astro site ([4b7b500](https://github.com/html2canvas/html2canvas/commit/4b7b50045cad46e1fb6049cd9d50b98215378d9e))
+* **canvas:** render canvas elements with their actual pixel content ([f519315](https://github.com/html2canvas/html2canvas/commit/f5193151f2b26019c6edb3f6970a6b26732dac3b))
+* **details:** support <details> and <summary> elements rendering ([6dfea02](https://github.com/html2canvas/html2canvas/commit/6dfea0246b3d3adc7a1ed4b3d013a21365111373))
+* implement background-attachment, object element support, and clone height fix ([44b706b](https://github.com/html2canvas/html2canvas/commit/44b706bfd8c60324bd840032a2c72c1fdee47e5d))
+* implement border-image CSS property support ([0b2e107](https://github.com/html2canvas/html2canvas/commit/0b2e1073a760914d436a51672698a5779a5ce24d))
+* implement object-position CSS property ([dc05844](https://github.com/html2canvas/html2canvas/commit/dc0584461016cced4e4b10764b38637b6bc94e80))
+
+### Bug Fixes
+
+* add eslint-disable for Intl.Segmenter any casts ([9f92b16](https://github.com/html2canvas/html2canvas/commit/9f92b16d7f9f894e16cb3d72ceba6967ff7c5536))
+* correct examples links to account for Astro base URL ([b441b95](https://github.com/html2canvas/html2canvas/commit/b441b950d2b2c6e5ae229a2b85d212ea3f2f0360))
+* CSS Astro home page ([11ff7f8](https://github.com/html2canvas/html2canvas/commit/11ff7f82fe7d35ac5d134a7fbd11c8d08806b329))
+* improve ::placeholder support and fix input text vertical centering ([a219e8a](https://github.com/html2canvas/html2canvas/commit/a219e8ad3b6047260f4c5325c468df987558ad65))
+* per-layer background-clip with border-radius ([937032c](https://github.com/html2canvas/html2canvas/commit/937032ceb652c73b6e71cb7595167d8538b9a18f))
+* support <q> element quotes (open-quote/close-quote with quotes:auto) ([27b8b72](https://github.com/html2canvas/html2canvas/commit/27b8b72e865cfbd2e073662cf4415f0ca32ebfa5))
+
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
