@@ -9,7 +9,7 @@ nextTitle: 'Examples'
 
 Below is a list of all the supported CSS properties and values.
 
-## Properties
+## Properties
 
 - background
     - background-attachment (`scroll`, `fixed`, `local`)
@@ -170,17 +170,71 @@ Below is a list of all the supported CSS properties and values.
     - color()
     - color-mix()
 
-## Pseudo-elements
+### Pseudo-elements
 
 - `::before`, `::after` — `content`, `attr()`, `counter()`, `counters()`, quotes, url images
 - `::first-letter` — first character wrapped in a synthetic element; supports `color`, `font-size`, `font-weight`, `font-style`, `font-family`, `text-transform`, `float`, `line-height`
 - `::first-line` — partial: `color`, `font-style` only (properties that do not affect text layout); layout-affecting properties like `font-size`, `font-weight`, `letter-spacing` cannot be supported because TextBounds are measured after the native pseudo is neutralised
-- `::placeholder` — `color` on `<input>` and `<textarea>` elements when the placeholder text is shown (empty value)
+- `::placeholder` — `color`, `opacity`, `font-weight`, `font-style`, `background-color` on `<input>` and `<textarea>` elements when the placeholder text is shown (empty value)
 - `::marker` — `color`, `font-family` on `<li>` elements; overrides the default list marker color/font
 
-## Unsupported CSS properties
+### Unsupported CSS properties
 
 These CSS properties are **NOT** currently supported
 
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085) : no canvas API
 - `::selection`
+
+## HTML elements
+
+### Replaced elements (custom rendering)
+
+- `<img>` — loaded via cache, supports `object-fit` and `object-position`, SVG images
+- `<canvas>` — pixels captured from the original canvas (2D and WebGL)
+- `<svg>` — serialised and rendered as an image
+- `<video>` — current frame captured as a canvas snapshot
+- `<iframe>` — content document parsed and rendered recursively
+- `<object>` — rendered as image when `data` points to an image; fallback children rendered otherwise
+
+### Form controls
+
+- `<input type="text|password|email|tel|url|search|number">` — text rendered with vertical centering; password masked with bullets
+- `<input type="checkbox">` — styled checkbox with checkmark when checked
+- `<input type="radio">` — styled radio with filled circle when checked
+- `<input type="range">` — track and thumb rendered based on min/max/value
+- `<textarea>` — multi-line text with word-wrap, scroll offset, and letter-spacing
+- `<select>` — selected option text rendered
+- `<progress>` — bar with grey track and blue fill
+- `<meter>` — bar with green/yellow/red fill based on low/high/optimum thresholds
+- `<button>`, `<input type="submit|reset|button">` — rendered via generic CSS (no native chrome)
+- `<fieldset>`, `<legend>` — rendered via generic CSS
+
+### List elements
+
+- `<ul>`, `<ol>`, `<menu>` — list owners for marker numbering
+- `<li>` — list markers rendered with `list-style-type`, `list-style-position`, `list-style-image`; supports `::marker` color/font override
+
+### Structural elements (generic CSS rendering)
+
+These elements have no special rendering logic — they are painted using their computed CSS styles (backgrounds, borders, text, layout):
+
+`<div>`, `<span>`, `<p>`, `<section>`, `<article>`, `<nav>`, `<aside>`, `<main>`, `<header>`, `<footer>`, `<h1>`–`<h6>`, `<figure>`, `<figcaption>`, `<blockquote>`, `<pre>`, `<code>`, `<address>`, `<a>`, `<em>`, `<strong>`, `<b>`, `<i>`, `<u>`, `<s>`, `<small>`, `<mark>`, `<del>`, `<ins>`, `<sub>`, `<sup>`, `<abbr>`, `<cite>`, `<kbd>`, `<samp>`, `<var>`, `<time>`, `<ruby>`, `<rt>`, `<bdi>`, `<bdo>`, `<wbr>`, `<br>`, `<hr>`
+
+### Table elements
+
+`<table>`, `<thead>`, `<tbody>`, `<tfoot>`, `<tr>`, `<td>`, `<th>`, `<caption>`
+
+### Special handling
+
+- `<q>` — quotation marks rendered via `::before`/`::after` with `open-quote`/`close-quote`; supports `quotes` CSS property and falls back to English-style typographic quotes (`"` `"`)
+- `<details>` / `<summary>` — closed details hides all children except summary
+- `<slot>` — assigned nodes are rendered instead of slot content (Shadow DOM)
+- Custom elements (tags with `-`) — replaced by a generic container with copied styles
+- `<style>` — CSS rules extracted and preserved in the clone
+- `<script>` — always ignored
+
+### Not supported
+
+- `<audio>` — no visual rendering (native controls not captured)
+- `<embed>` — content not accessible
+- `<dialog>` `::backdrop` — dialog element renders via CSS but backdrop pseudo is not captured
