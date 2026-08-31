@@ -7,6 +7,20 @@ nextUrl: './proxy'
 nextTitle: 'Proxy'
 ---
 
+## Playground
+
+Try html2canvas directly in your browser with the interactive playground. Edit HTML and CSS on the left, see the browser rendering and the html2canvas output side by side.
+
+- [Open the Playground](/html2canvas/examples/playground.html)
+
+## Live demos
+
+Static demo pages that you can open directly in your browser to see html2canvas in action.
+
+- [Display / Box / Float / Clear test](/html2canvas/examples/demo.html) — A complex CSS rendering test with floats, borders, background colors and form elements.
+- [Nested elements test](/html2canvas/examples/demo2.html) — Nested `<div>` elements with various background colors, borders, links and headings.
+- [Existing canvas](/html2canvas/examples/existing_canvas.html) — Demonstrates rendering HTML content onto an already existing canvas element.
+
 ## Basic usage
 
 Capture any element on the page and append the resulting canvas to the document.

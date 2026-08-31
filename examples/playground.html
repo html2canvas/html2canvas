@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>html2canvas Playground</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Header ──────────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #181825;
+            border-bottom: 1px solid #313244;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #a6e3a1;
+        }
+
+        .header select {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #45475a;
+            background: #313244;
+            color: #cdd6f4;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .header button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-render {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+        .btn-render:hover { background: #94e2d5; }
+
+        .btn-clear {
+            background: #45475a;
+            color: #cdd6f4;
+        }
+        .btn-clear:hover { background: #585b70; }
+
+        .spacer { flex: 1; }
+
+        /* ── Main layout ─────────────────────────────────────── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ── Left panel: editors ─────────────────────────────── */
+        .editors {
+            width: 40%;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #313244;
+        }
+
+        .editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .editor-section + .editor-section {
+            border-top: 1px solid #313244;
+        }
+
+        .editor-label {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #89b4fa;
+            background: #181825;
+            flex-shrink: 0;
+        }
+
+        .editor-section textarea {
+            flex: 1;
+            resize: none;
+            border: none;
+            outline: none;
+            padding: 10px 12px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            tab-size: 2;
+            background: #1e1e2e;
+            color: #cdd6f4;
+        }
+
+        .editor-section textarea::placeholder {
+            color: #585b70;
+        }
+
+        /* ── Right panel: preview + canvas ───────────────────── */
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .preview-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .preview-section + .preview-section {
+            border-top: 2px solid #313244;
+        }
+
+        .preview-label {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #181825;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-label.label-browser { color: #fab387; }
+        .preview-label.label-canvas { color: #cba6f7; }
+
+        .preview-label .badge {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .label-browser .badge { background: #fab387; color: #1e1e2e; }
+        .label-canvas .badge { background: #cba6f7; color: #1e1e2e; }
+
+        .preview-content {
+            flex: 1;
+            overflow: auto;
+            background: #fff;
+            position: relative;
+        }
+
+        .preview-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .canvas-container {
+            flex: 1;
+            overflow: auto;
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 10px;
+            position: relative;
+        }
+
+        .canvas-container canvas {
+            max-width: 100%;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+
+        .canvas-placeholder {
+            color: #888;
+            font-size: 14px;
+            align-self: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .canvas-placeholder kbd {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            border: 1px solid #ccc;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        /* ── Status bar ──────────────────────────────────────── */
+        .statusbar {
+            padding: 4px 16px;
+            font-size: 11px;
+            background: #181825;
+            border-top: 1px solid #313244;
+            color: #6c7086;
+            display: flex;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .status-time { color: #a6e3a1; }
+        .status-error { color: #f38ba8; }
+
+        /* ── Responsive ──────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .main { flex-direction: column; }
+            .editors {
+                width: 100%;
+                min-width: 0;
+                height: 40%;
+                border-right: none;
+                border-bottom: 1px solid #313244;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>html2canvas Playground</h1>
+    <select id="presets">
+        <option value="">-- Select an example --</option>
+        <option value="basic">Basic elements</option>
+        <option value="gradients">Gradients</option>
+        <option value="borders">Borders &amp; border-radius</option>
+        <option value="shadows">Box &amp; text shadows</option>
+        <option value="transforms">Transforms</option>
+        <option value="text">Text styling</option>
+        <option value="flexbox">Flexbox layout</option>
+        <option value="image">Image &amp; background-image</option>
+    </select>
+    <button class="btn-render" id="renderBtn">Render</button>
+    <button class="btn-clear" id="clearBtn">Clear canvas</button>
+    <span class="spacer"></span>
+</div>
+
+<div class="main">
+    <!-- Left: editors -->
+    <div class="editors">
+        <div class="editor-section">
+            <div class="editor-label">HTML</div>
+            <textarea id="htmlEditor" placeholder="Enter HTML here..." spellcheck="false"></textarea>
+        </div>
+        <div class="editor-section">
+            <div class="editor-label">CSS</div>
+            <textarea id="cssEditor" placeholder="Enter CSS here..." spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <!-- Right: preview + canvas -->
+    <div class="preview-panel">
+        <div class="preview-section">
+            <div class="preview-label label-browser">
+                <span class="badge">LIVE</span> Browser rendering
+            </div>
+            <div class="preview-content">
+                <iframe id="previewFrame" sandbox="allow-same-origin"></iframe>
+            </div>
+        </div>
+        <div class="preview-section">
+            <div class="preview-label label-canvas">
+                <span class="badge">CANVAS</span> html2canvas output
+            </div>
+            <div class="canvas-container" id="canvasContainer">
+                <div class="canvas-placeholder">
+                    Click <kbd>Render</kbd> or press <kbd>Ctrl+Enter</kbd> to capture
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="statusbar">
+    <span id="statusMsg">Ready</span>
+    <span class="spacer"></span>
+    <span id="statusTime"></span>
+</div>
+
+<script type="text/javascript" src="../dist/html2canvas.js"></script>
+<script>
+// ── Preset examples ─────────────────────────────────────────────────────────
+
+const presets = {
+    basic: {
+        html: `<div class="card">\n  <h2>Hello World</h2>\n  <p>This is a <strong>simple</strong> example with basic HTML elements.</p>\n  <ul>\n    <li>Item one</li>\n    <li>Item two</li>\n    <li>Item three</li>\n  </ul>\n  <a href="#" class="btn">Click me</a>\n</div>`,
+        css: `.card {\n  font-family: sans-serif;\n  max-width: 320px;\n  margin: 20px;\n  padding: 24px;\n  background: #fff;\n  border-radius: 12px;\n  box-shadow: 0 4px 24px rgba(0,0,0,0.12);\n}\n\nh2 { color: #2d3436; margin-bottom: 8px; }\np { color: #636e72; line-height: 1.6; }\n\nul {\n  padding-left: 20px;\n  color: #636e72;\n}\n\nli { margin: 4px 0; }\n\n.btn {\n  display: inline-block;\n  margin-top: 16px;\n  padding: 8px 20px;\n  background: #6c5ce7;\n  color: #fff;\n  text-decoration: none;\n  border-radius: 6px;\n  font-weight: 600;\n}`
+    },
+    gradients: {
+        html: `<div class="gradient-grid">\n  <div class="box linear">Linear</div>\n  <div class="box radial">Radial</div>\n  <div class="box conic">Conic</div>\n  <div class="box multi">Multi-stop</div>\n  <div class="box repeating">Repeating</div>\n  <div class="box angled">Angled</div>\n</div>`,
+        css: `.gradient-grid {\n  display: grid;\n  grid-template-columns: repeat(3, 120px);\n  gap: 12px;\n  padding: 20px;\n  font-family: sans-serif;\n}\n\n.box {\n  height: 120px;\n  border-radius: 12px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  color: #fff;\n  font-weight: 700;\n  font-size: 13px;\n  text-shadow: 0 1px 3px rgba(0,0,0,0.4);\n}\n\n.linear  { background: linear-gradient(135deg, #667eea, #764ba2); }\n.radial  { background: radial-gradient(circle, #f093fb, #f5576c); }\n.conic   { background: conic-gradient(from 45deg, #ff9a9e, #fad0c4, #fbc2eb, #ff9a9e); }\n.multi   { background: linear-gradient(to right, #00b4db, #0083b0, #00b4db); }\n.repeating { background: repeating-linear-gradient(45deg, #f6d365, #f6d365 10px, #fda085 10px, #fda085 20px); }\n.angled  { background: linear-gradient(60deg, #29323c, #485563); }`
+    },
+    borders: {
+        html: `<div class="border-demo">\n  <div class="box solid">Solid</div>\n  <div class="box dashed">Dashed</div>\n  <div class="box dotted">Dotted</div>\n  <div class="box double">Double</div>\n  <div class="box mixed">Mixed</div>\n  <div class="box circle">Circle</div>\n</div>`,
+        css: `.border-demo {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 16px;\n  padding: 20px;\n  font-family: sans-serif;\n}\n\n.box {\n  width: 100px;\n  height: 100px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 12px;\n  font-weight: 600;\n  color: #555;\n  background: #f8f9fa;\n}\n\n.solid  { border: 4px solid #e74c3c; border-radius: 8px; }\n.dashed { border: 4px dashed #3498db; border-radius: 12px; }\n.dotted { border: 4px dotted #2ecc71; border-radius: 16px; }\n.double { border: 6px double #9b59b6; border-radius: 4px; }\n.mixed  {\n  border-top: 4px solid #e74c3c;\n  border-right: 4px dashed #3498db;\n  border-bottom: 4px dotted #2ecc71;\n  border-left: 4px double #f39c12;\n  border-radius: 8px;\n}\n.circle { border: 4px solid #1abc9c; border-radius: 50%; }`
+    },
+    shadows: {
+        html: `<div class="shadow-demo">\n  <div class="box shadow-soft">Soft shadow</div>\n  <div class="box shadow-hard">Hard shadow</div>\n  <div class="box shadow-inset">Inset shadow</div>\n  <div class="box shadow-multi">Multiple</div>\n  <p class="text-shadow-demo">Text Shadow</p>\n</div>`,
+        css: `.shadow-demo {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 24px;\n  padding: 30px;\n  font-family: sans-serif;\n  align-items: center;\n}\n\n.box {\n  width: 120px;\n  height: 120px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 12px;\n  font-weight: 600;\n  color: #555;\n  background: #fff;\n  border-radius: 12px;\n}\n\n.shadow-soft  { box-shadow: 0 8px 32px rgba(0,0,0,0.12); }\n.shadow-hard  { box-shadow: 6px 6px 0 #2d3436; }\n.shadow-inset { box-shadow: inset 0 4px 12px rgba(0,0,0,0.2); }\n.shadow-multi {\n  box-shadow:\n    0 2px 4px rgba(0,0,0,0.1),\n    0 8px 16px rgba(0,0,0,0.1),\n    0 16px 32px rgba(0,0,0,0.15);\n}\n\n.text-shadow-demo {\n  font-size: 48px;\n  font-weight: 900;\n  color: #6c5ce7;\n  text-shadow: 3px 3px 0 #a29bfe, 6px 6px 0 #dfe6e9;\n  margin: 0;\n}`
+    },
+    transforms: {
+        html: `<div class="transform-demo">\n  <div class="box rotate">Rotate</div>\n  <div class="box scale">Scale</div>\n  <div class="box skew">Skew</div>\n  <div class="box translate">Translate</div>\n</div>`,
+        css: `.transform-demo {\n  display: flex;\n  gap: 40px;\n  padding: 60px;\n  font-family: sans-serif;\n}\n\n.box {\n  width: 80px;\n  height: 80px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 12px;\n  font-weight: 600;\n  color: #fff;\n  border-radius: 8px;\n}\n\n.rotate    { background: #e74c3c; transform: rotate(15deg); }\n.scale     { background: #3498db; transform: scale(1.3); }\n.skew      { background: #2ecc71; transform: skew(-10deg, 5deg); }\n.translate { background: #f39c12; transform: translate(10px, -10px); }`
+    },
+    text: {
+        html: `<div class="text-demo">\n  <h1 class="title">Typography</h1>\n  <p class="subtitle">Testing various text styles</p>\n  <p class="body">Regular paragraph with <strong>bold</strong>, <em>italic</em>, <u>underline</u>, and <s>strikethrough</s> text.</p>\n  <p class="small-caps">Small Caps Text</p>\n  <p class="spaced">L e t t e r - s p a c e d</p>\n  <p class="mono">const x = "monospace";</p>\n  <p class="colored">Colored <span class="c1">with</span> <span class="c2">multiple</span> <span class="c3">spans</span></p>\n</div>`,
+        css: `.text-demo {\n  max-width: 400px;\n  padding: 24px;\n  font-family: Georgia, serif;\n  line-height: 1.7;\n}\n\n.title {\n  font-size: 36px;\n  font-weight: 700;\n  color: #2d3436;\n  margin-bottom: 4px;\n}\n\n.subtitle {\n  font-size: 18px;\n  color: #b2bec3;\n  margin-bottom: 16px;\n  font-style: italic;\n}\n\n.body { color: #636e72; }\n.small-caps { font-variant: small-caps; color: #6c5ce7; font-size: 18px; }\n.spaced { letter-spacing: 4px; color: #00b894; font-size: 14px; }\n.mono { font-family: monospace; background: #2d3436; color: #dfe6e9; padding: 8px 12px; border-radius: 4px; }\n\n.colored { font-size: 20px; font-weight: 700; }\n.c1 { color: #e74c3c; }\n.c2 { color: #3498db; }\n.c3 { color: #2ecc71; }`
+    },
+    flexbox: {
+        html: `<div class="flex-demo">\n  <div class="row">\n    <div class="item a">1</div>\n    <div class="item b">2</div>\n    <div class="item c">3</div>\n  </div>\n  <div class="row center">\n    <div class="item d">Centered</div>\n  </div>\n  <div class="row between">\n    <div class="item e">Left</div>\n    <div class="item f">Middle</div>\n    <div class="item g">Right</div>\n  </div>\n</div>`,
+        css: `.flex-demo {\n  padding: 20px;\n  font-family: sans-serif;\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}\n\n.row {\n  display: flex;\n  gap: 8px;\n  padding: 12px;\n  background: #dfe6e9;\n  border-radius: 8px;\n}\n\n.center  { justify-content: center; }\n.between { justify-content: space-between; }\n\n.item {\n  padding: 16px 24px;\n  border-radius: 6px;\n  font-weight: 600;\n  font-size: 14px;\n  color: #fff;\n}\n\n.a { background: #e74c3c; }\n.b { background: #3498db; }\n.c { background: #2ecc71; }\n.d { background: #9b59b6; padding: 16px 48px; }\n.e { background: #e67e22; }\n.f { background: #1abc9c; }\n.g { background: #34495e; }`
+    },
+    image: {
+        html: `<div class="image-demo">\n  <div class="box bg-cover">\n    <span>background-size: cover</span>\n  </div>\n  <div class="box bg-contain">\n    <span>background-size: contain</span>\n  </div>\n  <div class="box bg-pattern">\n    <span>Repeating pattern</span>\n  </div>\n  <div class="box bg-multi">\n    <span>Multi background</span>\n  </div>\n</div>`,
+        css: `.image-demo {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 16px;\n  padding: 20px;\n  font-family: sans-serif;\n}\n\n.box {\n  height: 160px;\n  border-radius: 12px;\n  display: flex;\n  align-items: flex-end;\n  justify-content: center;\n  padding-bottom: 12px;\n  border: 1px solid #ddd;\n}\n\n.box span {\n  background: rgba(0,0,0,0.6);\n  color: #fff;\n  font-size: 11px;\n  padding: 4px 10px;\n  border-radius: 4px;\n}\n\n.bg-cover {\n  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%236c5ce7' width='200' height='200'/%3E%3Ccircle cx='100' cy='100' r='80' fill='%23a29bfe'/%3E%3C/svg%3E") center/cover no-repeat;\n}\n\n.bg-contain {\n  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%2300b894' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='58' text-anchor='middle' fill='white' font-size='40'%3E%E2%9C%93%3C/text%3E%3C/svg%3E") center/contain no-repeat #f5f5f5;\n}\n\n.bg-pattern {\n  background: repeating-linear-gradient(\n    45deg,\n    #ffeaa7 0px,\n    #ffeaa7 10px,\n    #fdcb6e 10px,\n    #fdcb6e 20px\n  );\n}\n\n.bg-multi {\n  background:\n    radial-gradient(circle at 30% 30%, rgba(108,92,231,0.6) 0%, transparent 50%),\n    radial-gradient(circle at 70% 70%, rgba(0,184,148,0.6) 0%, transparent 50%),\n    #dfe6e9;\n}`
+    }
+};
+
+// ── DOM refs ────────────────────────────────────────────────────────────────
+
+const htmlEditor = document.getElementById('htmlEditor');
+const cssEditor = document.getElementById('cssEditor');
+const previewFrame = document.getElementById('previewFrame');
+const canvasContainer = document.getElementById('canvasContainer');
+const presetSelect = document.getElementById('presets');
+const renderBtn = document.getElementById('renderBtn');
+const clearBtn = document.getElementById('clearBtn');
+const statusMsg = document.getElementById('statusMsg');
+const statusTime = document.getElementById('statusTime');
+
+// ── Preview update ──────────────────────────────────────────────────────────
+
+let previewTimer = null;
+
+function updatePreview() {
+    const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+    doc.open();
+    doc.write(`<!doctype html><html><head><style>${cssEditor.value}</style></head><body>${htmlEditor.value}</body></html>`);
+    doc.close();
+}
+
+function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(updatePreview, 250);
+}
+
+htmlEditor.addEventListener('input', schedulePreview);
+cssEditor.addEventListener('input', schedulePreview);
+
+// ── Render with html2canvas ─────────────────────────────────────────────────
+
+async function doRender() {
+    const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+    if (!doc.body || !doc.body.innerHTML.trim()) {
+        statusMsg.textContent = 'Nothing to render — add some HTML first';
+        statusMsg.className = 'status-error';
+        return;
+    }
+
+    statusMsg.textContent = 'Rendering...';
+    statusMsg.className = '';
+    statusTime.textContent = '';
+    renderBtn.disabled = true;
+
+    try {
+        const t0 = performance.now();
+        const canvas = await html2canvas(doc.body, {
+            allowTaint: true,
+            useCORS: true,
+            logging: false,
+            windowWidth: previewFrame.clientWidth,
+            windowHeight: previewFrame.clientHeight
+        });
+        const elapsed = (performance.now() - t0).toFixed(1);
+
+        // Clear previous canvas
+        canvasContainer.innerHTML = '';
+        canvasContainer.appendChild(canvas);
+
+        statusMsg.textContent = `Rendered ${canvas.width}\u00d7${canvas.height}`;
+        statusMsg.className = '';
+        statusTime.textContent = `${elapsed} ms`;
+        statusTime.className = 'status-time';
+    } catch (err) {
+        statusMsg.textContent = `Error: ${err.message}`;
+        statusMsg.className = 'status-error';
+        statusTime.textContent = '';
+        console.error(err);
+    } finally {
+        renderBtn.disabled = false;
+    }
+}
+
+renderBtn.addEventListener('click', doRender);
+
+clearBtn.addEventListener('click', () => {
+    canvasContainer.innerHTML = '<div class="canvas-placeholder">Click <kbd>Render</kbd> or press <kbd>Ctrl+Enter</kbd> to capture</div>';
+    statusMsg.textContent = 'Canvas cleared';
+    statusMsg.className = '';
+    statusTime.textContent = '';
+});
+
+// ── Keyboard shortcut ───────────────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        doRender();
+    }
+});
+
+// ── Preset loading ──────────────────────────────────────────────────────────
+
+presetSelect.addEventListener('change', () => {
+    const preset = presets[presetSelect.value];
+    if (preset) {
+        htmlEditor.value = preset.html;
+        cssEditor.value = preset.css;
+        updatePreview();
+    }
+});
+
+// ── Tab key support in textareas ────────────────────────────────────────────
+
+[htmlEditor, cssEditor].forEach(editor => {
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + 2;
+            schedulePreview();
+        }
+    });
+});
+
+// ── Load default example on start ───────────────────────────────────────────
+
+presetSelect.value = 'basic';
+presetSelect.dispatchEvent(new Event('change'));
+</script>
+
+</body>
+</html>

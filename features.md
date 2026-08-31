@@ -12,6 +12,7 @@ Below is a list of all the supported CSS properties and values.
 ## Properties
 
 - background
+    - background-attachment (`scroll`, `fixed`, `local`)
     - background-blend-mode
     - background-clip
     - background-color
@@ -28,10 +29,17 @@ Below is a list of all the supported CSS properties and values.
     - background-size
 - border
     - border-color
+    - border-image
+        - border-image-source (`url()` and all gradient types)
+        - border-image-slice (number, percentage, `fill`)
+        - border-image-width (length, number multiplier, percentage, `auto`)
+        - border-image-outset (length, number multiplier)
+        - border-image-repeat (`stretch`, `repeat`, `round`, `space`)
     - border-radius
     - border-style
     - border-width
 - bottom
+- box-decoration-break (`slice` and `clone`)
 - box-shadow
 - box-sizing
 - clip
@@ -78,6 +86,7 @@ Below is a list of all the supported CSS properties and values.
 - min-width
 - mix-blend-mode
 - object-fit
+- object-position
 - opacity
 - overflow
 - overflow-wrap
@@ -89,8 +98,11 @@ Below is a list of all the supported CSS properties and values.
 - text-decoration
     - text-decoration-color
     - text-decoration-line
-    - text-decoration-style (**Only `solid`, `double`, `dotted` and `dashed` are supported**)
+    - text-decoration-style
     - text-decoration-thickness
+    - text-decoration-inset
+- text-underline-offset
+- text-underline-position
 - text-shadow
 - text-transform
 - top
@@ -124,6 +136,7 @@ Below is a list of all the supported CSS properties and values.
 - word-spacing
 - word-wrap
 - z-index
+- zoom (**accumulated nested zoom supported**)
 - -webkit-text-stroke
 
 ## Values
@@ -157,12 +170,17 @@ Below is a list of all the supported CSS properties and values.
     - color()
     - color-mix()
 
+## Pseudo-elements
+
+- `::before`, `::after` — `content`, `attr()`, `counter()`, `counters()`, quotes, url images
+- `::first-letter` — first character wrapped in a synthetic element; supports `color`, `font-size`, `font-weight`, `font-style`, `font-family`, `text-transform`, `float`, `line-height`
+- `::first-line` — partial: `color`, `font-style` only (properties that do not affect text layout); layout-affecting properties like `font-size`, `font-weight`, `letter-spacing` cannot be supported because TextBounds are measured after the native pseudo is neutralised
+- `::placeholder` — `color` on `<input>` and `<textarea>` elements when the placeholder text is shown (empty value)
+- `::marker` — `color`, `font-family` on `<li>` elements; overrides the default list marker color/font
+
 ## Unsupported CSS properties
 
 These CSS properties are **NOT** currently supported
 
-- [border-image](https://github.com/niklasvh/html2canvas/issues/1287)
-- [box-decoration-break](https://github.com/niklasvh/html2canvas/issues/552)
-- [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085)
-- object-position
-- [zoom](https://github.com/niklasvh/html2canvas/issues/732)
+- [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085) : no canvas API
+- `::selection`

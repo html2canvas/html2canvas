@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+  <head>
+    <title>::first-letter pseudo-element tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        background: #fff;
+        margin: 20px;
+      }
+
+      .row {
+        margin: 12px 0;
+      }
+
+      .label {
+        width: 260px;
+        color: #666;
+        font-size: 13px;
+      }
+
+      /* color only */
+      .fl-color::first-letter {
+        color: red;
+      }
+
+      /* font-size */
+      .fl-size::first-letter {
+        font-size: 40px;
+      }
+
+      /* font-weight */
+      .fl-weight::first-letter {
+        font-weight: bold;
+      }
+
+      /* font-style */
+      .fl-style::first-letter {
+        font-style: italic;
+      }
+
+      /* color + size + weight combined */
+      .fl-combined::first-letter {
+        color: #1a6fba;
+        font-size: 2.5em;
+        font-weight: bold;
+        line-height: 1;
+      }
+
+      /* text-transform */
+      .fl-transform::first-letter {
+        text-transform: uppercase;
+      }
+
+      /* float drop-cap style */
+      .fl-dropcap::first-letter {
+        float: left;
+        font-size: 4em;
+        line-height: 0.8;
+        padding-right: 6px;
+        color: #c0392b;
+        font-weight: bold;
+      }
+
+      /* emoji as first character */
+      .fl-emoji::first-letter {
+        font-size: 2em;
+      }
+
+      /* nested element: ::first-letter on a <p> that starts with a <span> */
+      .fl-nested p::first-letter {
+        color: green;
+        font-size: 1.8em;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <div class="label">color: red</div>
+      <p class="fl-color">First letter in red, rest normal.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">font-size: 2em</div>
+      <p class="fl-size">Larger first letter, rest normal.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">font-weight: bold</div>
+      <p class="fl-weight">Bold first letter, rest normal.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">font-style: italic</div>
+      <p class="fl-style">Italic first letter, rest normal.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">color + size + weight</div>
+      <p class="fl-combined">Combined styles on the first letter.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">text-transform: uppercase</div>
+      <p class="fl-transform">uppercase first letter only.</p>
+    </div>
+
+    <div class="row" style="display: flow-root">
+      <div class="label">float drop-cap</div>
+      <p class="fl-dropcap" style="margin: 0">Drop-cap style with a large floated first letter on this paragraph.</p>
+    </div>
+
+    <div class="row">
+      <div class="label">emoji first character</div>
+      <p class="fl-emoji">🎉 Party starts here, rest normal size.</p>
+    </div>
+
+    <div class="fl-nested row">
+      <div class="label">nested — p::first-letter</div>
+      <p style="margin: 0">Green and larger first letter on a paragraph element.</p>
+    </div>
+  </body>
+</html>

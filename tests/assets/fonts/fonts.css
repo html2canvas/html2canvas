@@ -1,0 +1,78 @@
+/*
+ * Embedded fonts for visual regression tests.
+ *
+ * These @font-face rules provide fonts that are guaranteed to be available
+ * in every environment (local dev, CI runners, Docker containers).
+ *
+ * The woff2 files are checked into the repository alongside this stylesheet.
+ */
+
+/* --- Roboto (sans-serif replacement) --- */
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 400;
+    font-stretch: 100%;
+    src: url('./roboto-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 700;
+    font-stretch: 100%;
+    src: url('./roboto-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Roboto';
+    font-style: italic;
+    font-weight: 400;
+    font-stretch: 100%;
+    src: url('./roboto-latin-italic.woff2') format('woff2');
+}
+
+/* --- Roboto Mono (monospace replacement) --- */
+@font-face {
+    font-family: 'Roboto Mono';
+    font-style: normal;
+    font-weight: 400;
+    src: url('./roboto-mono-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Roboto Mono';
+    font-style: normal;
+    font-weight: 700;
+    src: url('./roboto-mono-latin.woff2') format('woff2');
+}
+
+/* --- Noto Sans Thai --- */
+@font-face {
+    font-family: 'Noto Sans Thai';
+    font-style: normal;
+    font-weight: 400;
+    src: url('./noto-sans-thai.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Noto Sans Thai';
+    font-style: normal;
+    font-weight: 700;
+    src: url('./noto-sans-thai.woff2') format('woff2');
+}
+
+/* --- Noto Sans SC (Simplified Chinese) --- */
+@font-face {
+    font-family: 'Noto Sans SC';
+    font-style: normal;
+    font-weight: 400;
+    src: url('./noto-sans-sc-latin.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Noto Sans SC';
+    font-style: normal;
+    font-weight: 700;
+    src: url('./noto-sans-sc-latin.woff2') format('woff2');
+}

@@ -1,7 +1,7 @@
-import { LIST_STYLE_TYPE } from '../../property-descriptors/list-style-type';
 import { fromCodePoint } from 'css-line-break';
 import { contains } from '../../../core/bitwise';
 import { CSSParsedCounterDeclaration } from '../../index';
+import { LIST_STYLE_TYPE } from '../../property-descriptors/list-style-type';
 
 export class CounterState {
     private readonly counters: { [key: string]: number[] } = {};
@@ -504,6 +504,10 @@ export const createCounterText = (value: number, type: LIST_STYLE_TYPE, appendSu
             return createCounterStyleFromRange(value, 0xe50, 0xe59, true, defaultSuffix);
         case LIST_STYLE_TYPE.TIBETAN:
             return createCounterStyleFromRange(value, 0xf20, 0xf29, true, defaultSuffix);
+        case LIST_STYLE_TYPE.DISCLOSURE_OPEN:
+            return '\u25BE'; // ▾ (down-pointing small triangle)
+        case LIST_STYLE_TYPE.DISCLOSURE_CLOSED:
+            return '\u25B8'; // ▸ (right-pointing small triangle)
         case LIST_STYLE_TYPE.DECIMAL:
         default:
             return createCounterStyleFromRange(value, 48, 57, true, defaultSuffix);

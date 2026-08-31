@@ -1,4 +1,5 @@
 import { Bounds } from '../css/layout/bounds';
+import { BACKGROUND_ATTACHMENT } from '../css/property-descriptors/background-attachment';
 import { BACKGROUND_CLIP } from '../css/property-descriptors/background-clip';
 import { BACKGROUND_ORIGIN } from '../css/property-descriptors/background-origin';
 import { BACKGROUND_REPEAT } from '../css/property-descriptors/background-repeat';
@@ -47,11 +48,21 @@ export const calculateBackgroundRendering = (
     container: ElementContainer,
     index: number,
     intrinsicSize: [number | null, number | null, number | null],
+    viewportBounds?: Bounds,
 ): [Path[], number, number, number, number] => {
-    const backgroundPositioningArea = calculateBackgroundPositioningArea(
-        getBackgroundValueForIndex(container.styles.backgroundOrigin, index),
-        container,
-    );
+    const attachment = getBackgroundValueForIndex(container.styles.backgroundAttachment, index);
+
+    // For background-attachment: fixed, the positioning area is the viewport.
+    // The background is positioned and sized relative to the viewport, but
+    // the painting area (clip) still follows the element's background-clip.
+    const isFixed = attachment === BACKGROUND_ATTACHMENT.FIXED && viewportBounds;
+
+    const backgroundPositioningArea = isFixed
+        ? viewportBounds
+        : calculateBackgroundPositioningArea(
+              getBackgroundValueForIndex(container.styles.backgroundOrigin, index),
+              container,
+          );
 
     const backgroundPaintingArea = calculateBackgroundPaintingArea(
         getBackgroundValueForIndex(container.styles.backgroundClip, index),

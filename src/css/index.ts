@@ -1,6 +1,7 @@
 import { contains } from '../core/bitwise';
 import { Context } from '../core/context';
 import { CSSPropertyDescriptor, PropertyDescriptorParsingType } from './IPropertyDescriptor';
+import { backgroundAttachment } from './property-descriptors/background-attachment';
 import {
     BACKGROUND_BLEND_MODE,
     backgroundBlendMode as backgroundBlendModeDescriptor,
@@ -18,6 +19,11 @@ import {
     borderRightColor,
     borderTopColor,
 } from './property-descriptors/border-color';
+import { borderImageOutset, BorderImageOutset } from './property-descriptors/border-image-outset';
+import { borderImageRepeat, BorderImageRepeatTuple } from './property-descriptors/border-image-repeat';
+import { borderImageSlice, BorderImageSlice } from './property-descriptors/border-image-slice';
+import { borderImageSource } from './property-descriptors/border-image-source';
+import { borderImageWidth, BorderImageWidth } from './property-descriptors/border-image-width';
 import {
     borderBottomLeftRadius,
     borderBottomRightRadius,
@@ -36,6 +42,10 @@ import {
     borderRightWidth,
     borderTopWidth,
 } from './property-descriptors/border-width';
+import {
+    BOX_DECORATION_BREAK,
+    boxDecorationBreak as boxDecorationBreakDescriptor,
+} from './property-descriptors/box-decoration-break';
 import { boxShadow } from './property-descriptors/box-shadow';
 import { clip as clipDescriptor } from './property-descriptors/clip';
 import { clipPath as clipPathDescriptor } from './property-descriptors/clip-path';
@@ -62,6 +72,7 @@ import { listStyleType } from './property-descriptors/list-style-type';
 import { marginBottom, marginLeft, marginRight, marginTop } from './property-descriptors/margin';
 import { MIX_BLEND_MODE, mixBlendMode as mixBlendModeDescriptor } from './property-descriptors/mix-blend-mode';
 import { objectFit } from './property-descriptors/object-fit';
+import { objectPosition } from './property-descriptors/object-position';
 import { opacity } from './property-descriptors/opacity';
 import { OVERFLOW, overflow } from './property-descriptors/overflow';
 import { overflowWrap } from './property-descriptors/overflow-wrap';
@@ -71,11 +82,14 @@ import { POSITION, position } from './property-descriptors/position';
 import { quotes } from './property-descriptors/quotes';
 import { textAlign } from './property-descriptors/text-align';
 import { textDecorationColor } from './property-descriptors/text-decoration-color';
+import { textDecorationInset } from './property-descriptors/text-decoration-inset';
 import { textDecorationLine } from './property-descriptors/text-decoration-line';
-import { TEXT_DECORATION_STYLE, textDecorationStyle } from './property-descriptors/text-decoration-style';
-import { TextDecorationThickness, textDecorationThickness } from './property-descriptors/text-decoration-thickness';
+import { textDecorationStyle } from './property-descriptors/text-decoration-style';
+import { textDecorationThickness } from './property-descriptors/text-decoration-thickness';
 import { textShadow } from './property-descriptors/text-shadow';
 import { textTransform } from './property-descriptors/text-transform';
+import { textUnderlineOffset } from './property-descriptors/text-underline-offset';
+import { textUnderlinePosition } from './property-descriptors/text-underline-position';
 import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
@@ -84,17 +98,44 @@ import { webkitTextStrokeWidth } from './property-descriptors/webkit-text-stroke
 import { wordBreak } from './property-descriptors/word-break';
 import { writingMode } from './property-descriptors/writing-mode';
 import { zIndex } from './property-descriptors/z-index';
-import { CSSValue, Parser, isIdentToken } from './syntax/parser';
-import { Tokenizer } from './syntax/tokenizer';
+import { CSSValue, isIdentToken, Parser } from './syntax/parser';
+import { NumberValueToken, Tokenizer, TokenType } from './syntax/tokenizer';
 import { angle } from './types/angle';
 import { Color, color as colorType, isTransparent } from './types/color';
-import { image } from './types/image';
-import { isLength } from './types/length';
-import { LengthPercentage, ZERO_LENGTH, isLengthPercentage } from './types/length-percentage';
+import { ICSSImage, image } from './types/image';
+import { isLength, Length } from './types/length';
+import { isLengthPercentage, LengthPercentage, ZERO_LENGTH } from './types/length-percentage';
 import { time } from './types/time';
+
+// ---------------------------------------------------------------------------
+// Zoom scaling helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Scale a LengthPercentage token by `factor`.
+ * - DIMENSION_TOKEN / NUMBER_TOKEN (absolute lengths): multiply .number
+ * - PERCENTAGE_TOKEN: leave unchanged — percentages resolve against bounds
+ *   which are already post-zoom, so no scaling is needed.
+ */
+const scaleLengthPercentage = (token: LengthPercentage, factor: number): LengthPercentage => {
+    // PERCENTAGE_TOKEN: leave unchanged — resolves against post-zoom bounds
+    // FUNCTION (calc()): leave unchanged — too complex to scale safely
+    if (token.type === TokenType.PERCENTAGE_TOKEN || token.type === TokenType.FUNCTION) {
+        return token;
+    }
+    // DimensionToken and NumberValueToken both have a .number property
+    return { ...token, number: (token as NumberValueToken).number * factor };
+};
+
+/** Scale an absolute Length token (DIMENSION or NUMBER) by `factor`. */
+const scaleLength = (token: Length, factor: number): Length => ({
+    ...token,
+    number: token.number * factor,
+});
 
 export class CSSParsedDeclaration {
     animationDuration: ReturnType<typeof duration.parse>;
+    backgroundAttachment: ReturnType<typeof backgroundAttachment.parse>;
     backgroundClip: ReturnType<typeof backgroundClip.parse>;
     backgroundBlendMode: BACKGROUND_BLEND_MODE[];
     backgroundColor: Color;
@@ -119,6 +160,12 @@ export class CSSParsedDeclaration {
     borderRightWidth: ReturnType<typeof borderRightWidth.parse>;
     borderBottomWidth: ReturnType<typeof borderBottomWidth.parse>;
     borderLeftWidth: ReturnType<typeof borderLeftWidth.parse>;
+    borderImageSource: ICSSImage | null;
+    borderImageSlice: BorderImageSlice;
+    borderImageWidth: BorderImageWidth;
+    borderImageOutset: BorderImageOutset;
+    borderImageRepeat: BorderImageRepeatTuple;
+    boxDecorationBreak: BOX_DECORATION_BREAK;
     boxShadow: ReturnType<typeof boxShadow.parse>;
     clip: ReturnType<typeof clipDescriptor.parse>;
     clipPath: ReturnType<typeof clipPathDescriptor.parse>;
@@ -143,6 +190,7 @@ export class CSSParsedDeclaration {
     marginBottom: CSSValue;
     marginLeft: CSSValue;
     objectFit: ReturnType<typeof objectFit.parse>;
+    objectPosition: ReturnType<typeof objectPosition.parse>;
     opacity: ReturnType<typeof opacity.parse>;
     mixBlendMode: MIX_BLEND_MODE;
     overflowX: OVERFLOW;
@@ -156,11 +204,14 @@ export class CSSParsedDeclaration {
     position: ReturnType<typeof position.parse>;
     textAlign: ReturnType<typeof textAlign.parse>;
     textDecorationColor: Color;
+    textDecorationInset: ReturnType<typeof textDecorationInset.parse>;
     textDecorationLine: ReturnType<typeof textDecorationLine.parse>;
-    textDecorationStyle: TEXT_DECORATION_STYLE;
-    textDecorationThickness: TextDecorationThickness;
+    textDecorationStyle: ReturnType<typeof textDecorationStyle.parse>;
+    textDecorationThickness: ReturnType<typeof textDecorationThickness.parse>;
     textShadow: ReturnType<typeof textShadow.parse>;
     textTransform: ReturnType<typeof textTransform.parse>;
+    textUnderlineOffset: ReturnType<typeof textUnderlineOffset.parse>;
+    textUnderlinePosition: ReturnType<typeof textUnderlinePosition.parse>;
     transform: ReturnType<typeof transform.parse>;
     transformOrigin: ReturnType<typeof transformOrigin.parse>;
     visibility: ReturnType<typeof visibility.parse>;
@@ -170,8 +221,9 @@ export class CSSParsedDeclaration {
     writingMode: ReturnType<typeof writingMode.parse>;
     zIndex: ReturnType<typeof zIndex.parse>;
 
-    constructor(context: Context, declaration: CSSStyleDeclaration) {
+    constructor(context: Context, declaration: CSSStyleDeclaration, zoomFactor = 1) {
         this.animationDuration = parse(context, duration, declaration.animationDuration);
+        this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
         this.backgroundBlendMode = parse(context, backgroundBlendModeDescriptor, declaration.backgroundBlendMode);
         this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
@@ -196,6 +248,16 @@ export class CSSParsedDeclaration {
         this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
         this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
         this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
+        this.borderImageSource = parse(context, borderImageSource, declaration.borderImageSource);
+        this.borderImageSlice = parse(context, borderImageSlice, declaration.borderImageSlice);
+        this.borderImageWidth = parse(context, borderImageWidth, declaration.borderImageWidth);
+        this.borderImageOutset = parse(context, borderImageOutset, declaration.borderImageOutset);
+        this.borderImageRepeat = parse(context, borderImageRepeat, declaration.borderImageRepeat);
+        this.boxDecorationBreak = parse(
+            context,
+            boxDecorationBreakDescriptor,
+            declaration.boxDecorationBreak ?? declaration.webkitBoxDecorationBreak,
+        );
         this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
         this.clip = parse(context, clipDescriptor, declaration.clip);
         this.clipPath = parse(context, clipPathDescriptor, declaration.clipPath);
@@ -220,6 +282,7 @@ export class CSSParsedDeclaration {
         this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
         this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
         this.objectFit = parse(context, objectFit, declaration.objectFit);
+        this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
         this.opacity = parse(context, opacity, declaration.opacity);
         this.mixBlendMode = parse(context, mixBlendModeDescriptor, declaration.mixBlendMode);
         const overflowTuple = parse(context, overflow, declaration.overflow);
@@ -238,6 +301,7 @@ export class CSSParsedDeclaration {
             textDecorationColor,
             declaration.textDecorationColor ?? declaration.color,
         );
+        this.textDecorationInset = parse(context, textDecorationInset, declaration.textDecorationInset);
         this.textDecorationLine = parse(
             context,
             textDecorationLine,
@@ -247,6 +311,8 @@ export class CSSParsedDeclaration {
         this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
+        this.textUnderlineOffset = parse(context, textUnderlineOffset, declaration.textUnderlineOffset);
+        this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
         this.transform = parse(context, transform, declaration.transform);
         this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
         this.visibility = parse(context, visibility, declaration.visibility);
@@ -255,6 +321,105 @@ export class CSSParsedDeclaration {
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
         this.writingMode = parse(context, writingMode, declaration.writingMode);
         this.zIndex = parse(context, zIndex, declaration.zIndex);
+
+        // -----------------------------------------------------------------------
+        // CSS zoom scaling
+        // When an element has zoom != 1, getComputedStyle returns pre-zoom values
+        // while getBoundingClientRect returns post-zoom dimensions. We scale all
+        // absolute dimensional values here so they are consistent with the bounds.
+        // Percentage-based values are left unchanged — they resolve against bounds
+        // which are already post-zoom.
+        // -----------------------------------------------------------------------
+        if (zoomFactor !== 1 && zoomFactor > 0) {
+            const z = zoomFactor;
+
+            // Border widths (plain numbers in px)
+            this.borderTopWidth *= z;
+            this.borderRightWidth *= z;
+            this.borderBottomWidth *= z;
+            this.borderLeftWidth *= z;
+
+            // Border-image outset & width: scale absolute length values
+            this.borderImageOutset = this.borderImageOutset.map(v =>
+                v.type === 'length' ? { ...v, value: v.value * z } : v,
+            ) as BorderImageOutset;
+            this.borderImageWidth = this.borderImageWidth.map(v =>
+                v.type === 'length' ? { ...v, value: v.value * z } : v,
+            ) as BorderImageWidth;
+
+            // Border radii (LengthPercentageTuple — scale each component)
+            this.borderTopLeftRadius = this.borderTopLeftRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderTopLeftRadius;
+            this.borderTopRightRadius = this.borderTopRightRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderTopRightRadius;
+            this.borderBottomRightRadius = this.borderBottomRightRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderBottomRightRadius;
+            this.borderBottomLeftRadius = this.borderBottomLeftRadius.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.borderBottomLeftRadius;
+
+            // Padding (LengthPercentage)
+            this.paddingTop = scaleLengthPercentage(this.paddingTop, z);
+            this.paddingRight = scaleLengthPercentage(this.paddingRight, z);
+            this.paddingBottom = scaleLengthPercentage(this.paddingBottom, z);
+            this.paddingLeft = scaleLengthPercentage(this.paddingLeft, z);
+
+            // Font size (LengthPercentage)
+            this.fontSize = scaleLengthPercentage(this.fontSize, z);
+
+            // Letter spacing (plain number in px)
+            this.letterSpacing *= z;
+
+            // webkit-text-stroke-width (plain number in px)
+            this.webkitTextStrokeWidth *= z;
+
+            // Text decoration thickness (number | null)
+            if (typeof this.textDecorationThickness === 'number') {
+                this.textDecorationThickness *= z;
+            }
+
+            // Text underline offset (number | null)
+            if (typeof this.textUnderlineOffset === 'number') {
+                this.textUnderlineOffset *= z;
+            }
+
+            // box-shadow: scale offsetX, offsetY, blur, spread
+            this.boxShadow = this.boxShadow.map(shadow => ({
+                ...shadow,
+                offsetX: scaleLength(shadow.offsetX, z),
+                offsetY: scaleLength(shadow.offsetY, z),
+                blur: scaleLength(shadow.blur, z),
+                spread: scaleLength(shadow.spread, z),
+            }));
+
+            // text-shadow: scale offsetX, offsetY, blur
+            this.textShadow = this.textShadow.map(shadow => ({
+                ...shadow,
+                offsetX: scaleLength(shadow.offsetX, z),
+                offsetY: scaleLength(shadow.offsetY, z),
+                blur: scaleLength(shadow.blur, z),
+            }));
+
+            // transform: scale the translation components (e=matrix[4], f=matrix[5])
+            if (this.transform !== null) {
+                this.transform = [
+                    this.transform[0],
+                    this.transform[1],
+                    this.transform[2],
+                    this.transform[3],
+                    this.transform[4] * z,
+                    this.transform[5] * z,
+                ];
+            }
+
+            // transform-origin: scale absolute (px) components, leave percentages alone
+            this.transformOrigin = this.transformOrigin.map(t =>
+                scaleLengthPercentage(t, z),
+            ) as typeof this.transformOrigin;
+        }
     }
 
     isVisible(): boolean {

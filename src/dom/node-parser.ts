@@ -1,6 +1,7 @@
 import { Context } from '../core/context';
 import { CSSParsedDeclaration } from '../css';
 import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
+import { DATA_ATTR_FIRST_LINE } from './clone-attributes';
 import { ElementContainer, FLAGS } from './element-container';
 import { LIElementContainer } from './elements/li-element-container';
 import { OLElementContainer } from './elements/ol-element-container';
@@ -11,6 +12,7 @@ import { IFrameElementContainer } from './replaced-elements/iframe-element-conta
 import { ImageElementContainer } from './replaced-elements/image-element-container';
 import { InputElementContainer } from './replaced-elements/input-element-container';
 import { MeterElementContainer } from './replaced-elements/meter-element-container';
+import { ObjectElementContainer } from './replaced-elements/object-element-container';
 import { ProgressElementContainer } from './replaced-elements/progress-element-container';
 import { SVGElementContainer } from './replaced-elements/svg-element-container';
 import { TextContainer } from './text-container';
@@ -60,13 +62,45 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                         container.flags |= FLAGS.IS_LIST_OWNER;
                     }
 
+                    // Capture ::first-line styles from the data attribute serialised by
+                    // DocumentCloner.resolveFirstLinePseudo(). We cannot read getComputedStyle
+                    // with '::first-line' here because createPseudoHideStyles already injected
+                    // CSS that resets all ::first-line properties to inherit in the iframe.
+                    const firstLineSerialized = childNode.getAttribute(DATA_ATTR_FIRST_LINE);
+                    if (firstLineSerialized) {
+                        childNode.removeAttribute(DATA_ATTR_FIRST_LINE);
+                        try {
+                            const delta = JSON.parse(firstLineSerialized) as Record<string, string>;
+                            // Build a minimal CSSStyleDeclaration-like object by blending
+                            // the delta over the element's own computed style.
+                            const win = childNode.ownerDocument?.defaultView;
+                            if (win) {
+                                const elemStyle = win.getComputedStyle(childNode);
+                                // Create a synthetic style by applying delta values onto a
+                                // temporary element so CSSParsedDeclaration can parse it.
+                                const tmp = childNode.ownerDocument.createElement('span');
+                                tmp.style.cssText = elemStyle.cssText;
+                                for (const [prop, val] of Object.entries(delta)) {
+                                    tmp.style.setProperty(prop, val);
+                                }
+                                childNode.parentElement?.appendChild(tmp);
+                                const syntheticStyle = win.getComputedStyle(tmp);
+                                container.firstLineStyles = new CSSParsedDeclaration(context, syntheticStyle);
+                                childNode.parentElement?.removeChild(tmp);
+                            }
+                        } catch (_e) {
+                            // Ignore parse errors — first-line simply won't be applied.
+                        }
+                    }
+
                     parent.elements.push(container);
                     if (childNode.shadowRoot) {
                         parseNodeTree(context, childNode.shadowRoot, container, root);
                     } else if (
                         !isTextareaElement(childNode) &&
                         !isSVGElement(childNode) &&
-                        !isSelectElement(childNode)
+                        !isSelectElement(childNode) &&
+                        !isLoadedObjectElement(childNode)
                     ) {
                         parseNodeTree(context, childNode, container, root);
                     }
@@ -121,6 +155,10 @@ const createContainer = (context: Context, element: Element): ElementContainer =
         return new MeterElementContainer(context, element);
     }
 
+    if (isObjectElement(element)) {
+        return new ObjectElementContainer(context, element);
+    }
+
     return new ElementContainer(context, element);
 };
 
@@ -168,5 +206,38 @@ export const isSelectElement = (node: Element): node is HTMLSelectElement => nod
 export const isSlotElement = (node: Element): node is HTMLSlotElement => node.tagName === 'SLOT';
 export const isProgressElement = (node: Element): node is HTMLProgressElement => node.tagName === 'PROGRESS';
 export const isMeterElement = (node: Element): node is HTMLMeterElement => node.tagName === 'METER';
+export const isObjectElement = (node: Element): node is HTMLObjectElement => node.tagName === 'OBJECT';
 // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
 export const isCustomElement = (node: Element): node is HTMLElement => node.tagName.indexOf('-') > 0;
+export const isDetailsElement = (node: Element): node is HTMLDetailsElement => node.tagName === 'DETAILS';
+export const isSummaryElement = (node: Element): node is HTMLElement => node.tagName === 'SUMMARY';
+
+/**
+ * Returns true when an `<object>` element has successfully loaded content that
+ * replaces its fallback children. In that case, we must NOT traverse the child
+ * nodes because they are hidden fallback content.
+ *
+ * The check works by looking at the object's `contentDocument`: when the browser
+ * successfully loads the data attribute, it creates a nested browsing context.
+ * For data-URI images the browser renders the image directly without a content
+ * document, but it also hides the fallback children — however those children
+ * still exist in the DOM. We detect this case by checking if the `data` attribute
+ * points to an image type.
+ */
+const isLoadedObjectElement = (node: Element): boolean => {
+    if (!isObjectElement(node)) {
+        return false;
+    }
+    // If the object has a contentDocument, it loaded a document (HTML, SVG, etc.).
+    // Its children are fallback content and should be skipped.
+    if (node.contentDocument) {
+        return true;
+    }
+    // For data-URI images and other successfully loaded resources, the browser
+    // hides fallback children. We detect this by checking the data attribute.
+    const data = node.data;
+    if (data && /^data:image\//i.test(data)) {
+        return true;
+    }
+    return false;
+};

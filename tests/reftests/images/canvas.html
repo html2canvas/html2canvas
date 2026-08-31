@@ -1,30 +1,150 @@
 <!doctype html>
 <html>
-    <head>
-        <title>Image tests</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <head>
+    <title>Canvas rendering tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        margin: 10px;
+        font-family: sans-serif;
+        font-size: 12px;
+      }
+      .label {
+        margin: 4px 0 2px;
+        color: #333;
+      }
+      canvas {
+        display: block;
+        border: 1px solid #ccc;
+        margin-bottom: 8px;
+      }
+      .fit-contain {
+        object-fit: contain;
+      }
+      .fit-cover {
+        object-fit: cover;
+      }
+    </style>
+    <script type="text/javascript">
+      function setUp() {
+        // --- Test 1: Basic 2D canvas with shapes ---
+        var ctx1 = document.getElementById('canvas-2d').getContext('2d');
+        ctx1.fillStyle = 'rgb(200, 0, 0)';
+        ctx1.fillRect(10, 10, 55, 50);
+        ctx1.fillStyle = 'rgba(0, 0, 200, 0.5)';
+        ctx1.fillRect(30, 30, 55, 50);
 
-        <script type="text/javascript" src="../../test.js"></script>
-        <script type="text/javascript">
-            function setUp() {
-                var ctx = document.querySelector('#testcanvas').getContext('2d');
+        // --- Test 2: Canvas with gradients ---
+        var ctx2 = document.getElementById('canvas-gradient').getContext('2d');
+        var grad = ctx2.createLinearGradient(0, 0, 150, 0);
+        grad.addColorStop(0, 'red');
+        grad.addColorStop(0.5, 'green');
+        grad.addColorStop(1, 'blue');
+        ctx2.fillStyle = grad;
+        ctx2.fillRect(0, 0, 150, 75);
 
-                ctx.fillStyle = 'rgb(200,0,0)';
-                ctx.fillRect(10, 10, 55, 50);
+        // --- Test 3: Canvas with text ---
+        var ctx3 = document.getElementById('canvas-text').getContext('2d');
+        ctx3.fillStyle = '#000';
+        ctx3.font = '20px sans-serif';
+        ctx3.fillText('Hello Canvas', 10, 30);
+        ctx3.strokeStyle = 'red';
+        ctx3.strokeRect(5, 5, 140, 40);
 
-                ctx.fillStyle = 'rgba(0, 0, 200, 0.5)';
-                ctx.fillRect(30, 30, 55, 50);
+        // --- Test 4: Canvas with explicit width/height attributes ---
+        var ctx4 = document.getElementById('canvas-sized').getContext('2d');
+        ctx4.fillStyle = '#4CAF50';
+        ctx4.fillRect(0, 0, 200, 100);
+        ctx4.fillStyle = '#FFF';
+        ctx4.font = '14px sans-serif';
+        ctx4.fillText('200x100', 70, 55);
 
-                var gl = document.querySelector('#webglcanvas').getContext('webgl', {preserveDrawingBuffer: true});
-                if (gl) {
-                    gl.clearColor(0.0, 1.0, 0.0, 1.0);
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-                }
-            }
-        </script>
-    </head>
-    <body>
-        <canvas id="testcanvas" style="width: 700px; height: 300px"></canvas>
-        <canvas id="webglcanvas" style="width: 300px; height: 300px"></canvas>
-    </body>
+        // --- Test 5: Small canvas ---
+        var ctx5 = document.getElementById('canvas-small').getContext('2d');
+        ctx5.fillStyle = '#FF5722';
+        ctx5.fillRect(0, 0, 20, 20);
+        ctx5.fillStyle = '#FFF';
+        ctx5.fillRect(5, 5, 10, 10);
+
+        // --- Test 6: Canvas with CSS object-fit: contain ---
+        var ctx6 = document.getElementById('canvas-fit-contain').getContext('2d');
+        ctx6.fillStyle = '#2196F3';
+        ctx6.fillRect(0, 0, 100, 100);
+        ctx6.fillStyle = '#FFF';
+        ctx6.beginPath();
+        ctx6.arc(50, 50, 30, 0, Math.PI * 2);
+        ctx6.fill();
+
+        // --- Test 7: Canvas with CSS object-fit: cover ---
+        var ctx7 = document.getElementById('canvas-fit-cover').getContext('2d');
+        ctx7.fillStyle = '#9C27B0';
+        ctx7.fillRect(0, 0, 100, 100);
+        ctx7.fillStyle = '#FFEB3B';
+        ctx7.fillRect(10, 10, 80, 80);
+
+        // --- Test 8: WebGL canvas with preserveDrawingBuffer: true ---
+        var gl = document.getElementById('canvas-webgl').getContext('webgl', {
+          preserveDrawingBuffer: true,
+        });
+        if (gl) {
+          gl.clearColor(0.0, 0.8, 0.0, 1.0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+
+        // --- Test 9: Canvas with paths and arcs ---
+        var ctx9 = document.getElementById('canvas-paths').getContext('2d');
+        ctx9.beginPath();
+        ctx9.moveTo(10, 10);
+        ctx9.lineTo(140, 10);
+        ctx9.lineTo(75, 70);
+        ctx9.closePath();
+        ctx9.fillStyle = '#E91E63';
+        ctx9.fill();
+        ctx9.strokeStyle = '#000';
+        ctx9.lineWidth = 2;
+        ctx9.stroke();
+      }
+    </script>
+  </head>
+  <body>
+    <div class="label">1. 2D shapes (fillRect, alpha blending)</div>
+    <canvas id="canvas-2d" width="150" height="100"></canvas>
+
+    <div class="label">2. Linear gradient</div>
+    <canvas id="canvas-gradient" width="150" height="75"></canvas>
+
+    <div class="label">3. Text and strokeRect</div>
+    <canvas id="canvas-text" width="150" height="50"></canvas>
+
+    <div class="label">4. Explicit 200x100 buffer, CSS 200x100</div>
+    <canvas id="canvas-sized" width="200" height="100" style="width: 200px; height: 100px"></canvas>
+
+    <div class="label">5. Small 20x20 canvas</div>
+    <canvas id="canvas-small" width="20" height="20"></canvas>
+
+    <div class="label">6. object-fit: contain (100x100 buffer in 200x100 CSS box)</div>
+    <canvas
+      id="canvas-fit-contain"
+      class="fit-contain"
+      width="100"
+      height="100"
+      style="width: 200px; height: 100px"
+    ></canvas>
+
+    <div class="label">7. object-fit: cover (100x100 buffer in 200x100 CSS box)</div>
+    <canvas
+      id="canvas-fit-cover"
+      class="fit-cover"
+      width="100"
+      height="100"
+      style="width: 200px; height: 100px"
+    ></canvas>
+
+    <div class="label">8. WebGL (preserveDrawingBuffer: true)</div>
+    <canvas id="canvas-webgl" width="150" height="75"></canvas>
+
+    <div class="label">9. Paths and triangles</div>
+    <canvas id="canvas-paths" width="150" height="80"></canvas>
+  </body>
 </html>

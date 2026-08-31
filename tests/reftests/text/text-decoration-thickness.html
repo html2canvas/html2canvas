@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+    <head>
+        <title>text-decoration-thickness tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Roboto, sans-serif;
+                font-size: 20px;
+                line-height: 2;
+            }
+            .auto {
+                text-decoration: underline;
+                text-decoration-thickness: auto;
+            }
+            .thin {
+                text-decoration: underline;
+                text-decoration-thickness: 1px;
+            }
+            .medium {
+                text-decoration: underline;
+                text-decoration-thickness: 3px;
+            }
+            .thick {
+                text-decoration: underline;
+                text-decoration-thickness: 5px;
+            }
+            .extra-thick {
+                text-decoration: underline;
+                text-decoration-thickness: 8px;
+            }
+            .linethrough-thick {
+                text-decoration: line-through;
+                text-decoration-thickness: 4px;
+            }
+            .wavy-thick {
+                text-decoration: underline;
+                text-decoration-style: wavy;
+                text-decoration-thickness: 2px;
+                text-decoration-color: blue;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="auto">Thickness: auto (default)</div>
+        <div class="thin">Thickness: 1px</div>
+        <div class="medium">Thickness: 3px</div>
+        <div class="thick">Thickness: 5px</div>
+        <div class="extra-thick">Thickness: 8px</div>
+        <div class="linethrough-thick">Line-through thickness: 4px</div>
+        <div class="wavy-thick">Wavy + thickness: 2px (blue)</div>
+    </body>
+</html>
