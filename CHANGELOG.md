@@ -2,23 +2,45 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.11.0](https://github.com/html2canvas/html2canvas/compare/v1.10.0...v1.11.0) (2026-08-31)
+
+### Features
+
+- add `::first-letter` and `::first-line `pseudo-element support ([18905ea](https://github.com/html2canvas/html2canvas/commit/18905ea4fa70a2e001d62134895133b8a2715653))
+- add `::placeholder` and `::marker` pseudo-element support ([f708155](https://github.com/html2canvas/html2canvas/commit/f708155586c4db8b59e2cbb1c272c373684d2365))
+- add interactive playground and integrate examples into Astro site ([4b7b500](https://github.com/html2canvas/html2canvas/commit/4b7b50045cad46e1fb6049cd9d50b98215378d9e))
+- **canvas:** render canvas elements with their actual pixel content ([f519315](https://github.com/html2canvas/html2canvas/commit/f5193151f2b26019c6edb3f6970a6b26732dac3b))
+- **details:** support `<details>` and `<summary>` elements rendering ([6dfea02](https://github.com/html2canvas/html2canvas/commit/6dfea0246b3d3adc7a1ed4b3d013a21365111373))
+- implement `background-attachment`, object element support, and clone height fix ([44b706b](https://github.com/html2canvas/html2canvas/commit/44b706bfd8c60324bd840032a2c72c1fdee47e5d))
+- implement `border-image` CSS property support ([0b2e107](https://github.com/html2canvas/html2canvas/commit/0b2e1073a760914d436a51672698a5779a5ce24d))
+- implement `object-position` CSS property ([dc05844](https://github.com/html2canvas/html2canvas/commit/dc0584461016cced4e4b10764b38637b6bc94e80))
+
+### Bug Fixes
+
+- add eslint-disable for `Intl.Segmenter` any casts ([9f92b16](https://github.com/html2canvas/html2canvas/commit/9f92b16d7f9f894e16cb3d72ceba6967ff7c5536))
+- correct examples links to account for Astro base URL ([b441b95](https://github.com/html2canvas/html2canvas/commit/b441b950d2b2c6e5ae229a2b85d212ea3f2f0360))
+- CSS Astro home page ([11ff7f8](https://github.com/html2canvas/html2canvas/commit/11ff7f82fe7d35ac5d134a7fbd11c8d08806b329))
+- improve `::placeholder` support and fix input text vertical centering ([a219e8a](https://github.com/html2canvas/html2canvas/commit/a219e8ad3b6047260f4c5325c468df987558ad65))
+- per-layer `background-clip` with `border-radius` ([937032c](https://github.com/html2canvas/html2canvas/commit/937032ceb652c73b6e71cb7595167d8538b9a18f))
+- support `<q>` element quotes (open-quote/close-quote with `quotes:auto`) ([27b8b72](https://github.com/html2canvas/html2canvas/commit/27b8b72e865cfbd2e073662cf4415f0ca32ebfa5))
+
 ## [1.10.0](https://github.com/html2canvas/html2canvas/compare/v1.9.0...v1.10.0) (2026-08-28)
 
 ### Features
 
 - add Playwright visual regression tests for all reftest ([3e7a959](https://github.com/html2canvas/html2canvas/commit/3e7a95942aaeaf6009c5cd8141afc0494a05a1f1))
-- add text-decoration-style wavy, text-decoration-inset, text-underline-offset & text-underline-position support ([64f0f77](https://github.com/html2canvas/html2canvas/commit/64f0f775403e73c74b52a12f893de7d398bfdc21))
+- add `text-decoration-style: wavy`, `text-decoration-inset`, `text-underline-offset` & `text-underline-position` support ([64f0f77](https://github.com/html2canvas/html2canvas/commit/64f0f775403e73c74b52a12f893de7d398bfdc21))
 - **css:** add CSS zoom property support ([1fb273e](https://github.com/html2canvas/html2canvas/commit/1fb273ec4dd608bd23f20116268b1646c3733fbc))
-- implement box-decoration-break (slice & clone) for inline elements ([3879e24](https://github.com/html2canvas/html2canvas/commit/3879e244fdc18d13db3311bab3460047c58f42b4))
+- implement `box-decoration-break` (`slice` & `clone`) for inline elements ([3879e24](https://github.com/html2canvas/html2canvas/commit/3879e244fdc18d13db3311bab3460047c58f42b4))
 
 ### Bug Fixes
 
-- **background:** restore missing canvas.height for linear-gradient offscreen canvas ([c783f00](https://github.com/html2canvas/html2canvas/commit/c783f008114bca7cac9bc98390b8bae4175715b3))
-- exclude tests/visual/ from Jest to avoid Playwright import conflict ([06f8e15](https://github.com/html2canvas/html2canvas/commit/06f8e154f266dff886810fd3dd6e0633b488506c), [089cc7a](https://github.com/html2canvas/html2canvas/commit/089cc7a9c064d1b8e2bbe12f8ec31ca49ca59167))
-- include src/global.d.ts in tests tsconfig to resolve textDecorationInset TS2551 error ([30799f3](https://github.com/html2canvas/html2canvas/commit/30799f3b1e35b8fdde9ae3ca8061aa325e49a3c6))
+- **background:** restore missing `canvas.height` for `linear-gradient` offscreen canvas ([c783f00](https://github.com/html2canvas/html2canvas/commit/c783f008114bca7cac9bc98390b8bae4175715b3))
+- exclude `tests/visual/` from Jest to avoid Playwright import conflict ([06f8e15](https://github.com/html2canvas/html2canvas/commit/06f8e154f266dff886810fd3dd6e0633b488506c), [089cc7a](https://github.com/html2canvas/html2canvas/commit/089cc7a9c064d1b8e2bbe12f8ec31ca49ca59167))
+- include `src/global.d.ts` in tests tsconfig to resolve textDecorationInset TS2551 error ([30799f3](https://github.com/html2canvas/html2canvas/commit/30799f3b1e35b8fdde9ae3ca8061aa325e49a3c6))
 - regenerate snapshots with Docker Playwright and add docker test scripts ([542cfda](https://github.com/html2canvas/html2canvas/commit/542cfda8f98c2a5b391f5adb07209428f01b828d))
 - run visual tests in Playwright Docker container for consistent snapshots ([3a98121](https://github.com/html2canvas/html2canvas/commit/3a98121cfaa499adca71be7e4ba43f8891731452))
-- set explicit font-size on overflow-wrap test to prevent dimension drift across environments ([68e079d](https://github.com/html2canvas/html2canvas/commit/68e079dcab2977ad4bf499ef835aa6529985754f))
+- set explicit `font-size` on overflow-wrap test to prevent dimension drift across environments ([68e079d](https://github.com/html2canvas/html2canvas/commit/68e079dcab2977ad4bf499ef835aa6529985754f))
 - **text-decoration:** continuous WAVY and line-level inset ([4c398db](https://github.com/html2canvas/html2canvas/commit/4c398db3fb3634512905ac6ca60c580dd1a46ed8))
 - wait for embedded fonts to load before Playwright capture ([ea4c7d7](https://github.com/html2canvas/html2canvas/commit/ea4c7d7b1c9f5280836b827670c3c16e9fede0a4))
 
@@ -30,26 +52,26 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
-- add CSS clip-path and clip:rect() support ([1472db0](https://github.com/html2canvas/html2canvas/commit/1472db063d465a3e7ef330549d51a89c346793a3))
+- add CSS `clip-path` and `clip:rect()` support ([1472db0](https://github.com/html2canvas/html2canvas/commit/1472db063d465a3e7ef330549d51a89c346793a3))
 - add full CSS transform function support ([406573a](https://github.com/html2canvas/html2canvas/commit/406573a2d13935ae25a36d4e61a61163f55eb2ea))
-- add support for repeating-linear-gradient, repeating-radial-gradient, conic-gradient and repeating-conic-gradient ([27bc1c6](https://github.com/html2canvas/html2canvas/commit/27bc1c60364ad8fe36215bcf3f0c83a56e5f9c5d))
+- add support for `repeating-linear-gradient`, `repeating-radial-gradient`, `conic-gradient` and `repeating-conic-gradient` ([27bc1c6](https://github.com/html2canvas/html2canvas/commit/27bc1c60364ad8fe36215bcf3f0c83a56e5f9c5d))
 - **www:** refactor styles, remove Carbon, add Examples page ([44581a6](https://github.com/html2canvas/html2canvas/commit/44581a68288d8318f2c1829be7644d781a1decc0))
 
 ### Bug Fixes
 
 - apply stylesheet rules correctly in Chromium iframe clone ([6822053](https://github.com/html2canvas/html2canvas/commit/68220538987d61d17a067e9a4610c1eae0a5701b))
-- CI — dist artifact before www/npm install, Safari continue-on-error ([3533d21](https://github.com/html2canvas/html2canvas/commit/3533d21ac48576a523e86c4525e454b64fbe5ec3))
+- CI — dist artifact before `www/npm` install, Safari continue-on-error ([3533d21](https://github.com/html2canvas/html2canvas/commit/3533d21ac48576a523e86c4525e454b64fbe5ec3))
 - CI fixes — prettier, webpack tsconfig, puppeteer executablePath, Node versions ([f9e67f9](https://github.com/html2canvas/html2canvas/commit/f9e67f9a5796cf532b3bf33fd014075cb38384c2))
 - remove Safari macOS from CI — Karma v6 crashes on arm64, is deprecated ([d789faf](https://github.com/html2canvas/html2canvas/commit/d789fafcbc0b4603b70da72a4c6df8fc26990f97))
-- resolve iframeLoader race condition in Firefox ([5d59f5c](https://github.com/html2canvas/html2canvas/commit/5d59f5cd67b48dd7f62238e80db479329a4eebca))
-- use element's own window for getComputedStyle in ElementContainer ([b89847c](https://github.com/html2canvas/html2canvas/commit/b89847c69c6c0b977687b6d43cef2dacffabb4e8))
+- resolve `iframeLoader` race condition in Firefox ([5d59f5c](https://github.com/html2canvas/html2canvas/commit/5d59f5cd67b48dd7f62238e80db479329a4eebca))
+- use element's own window for `getComputedStyle` in `ElementContainer` ([b89847c](https://github.com/html2canvas/html2canvas/commit/b89847c69c6c0b977687b6d43cef2dacffabb4e8))
 
 ## [1.8.0](https://github.com/html2canvas/html2canvas/compare/v1.7.1...v1.8.0) (2026-08-22)
 
 ### Features
 
-- add background-blend-mode support ([32ef597](https://github.com/html2canvas/html2canvas/commit/32ef59741670294f32b1142dfb1685b558f6dd7e))
-- add background-clip: text support ([6ffc3a2](https://github.com/html2canvas/html2canvas/commit/6ffc3a223ec51bb3b5c7355cda15d80974e6fd79))
+- add `background-blend-mode` support ([32ef597](https://github.com/html2canvas/html2canvas/commit/32ef59741670294f32b1142dfb1685b558f6dd7e))
+- add `background-clip: text` support ([6ffc3a2](https://github.com/html2canvas/html2canvas/commit/6ffc3a223ec51bb3b5c7355cda15d80974e6fd79))
 - add full CSS filter property support (drop-shadow, blur, brightness, contrast, grayscale, hue-rotate, invert, opacity, saturate, sepia) ([012b161](https://github.com/html2canvas/html2canvas/commit/012b161a0c8460dc0d3097be5839bd1a12b766ef))
 - add mix-blend-mode support ([c8ba021](https://github.com/html2canvas/html2canvas/commit/c8ba02194023eecfa49bbd20820ad7f239efa0c3))
 - add text-decoration-style and text-decoration-thickness support ([c6ba375](https://github.com/html2canvas/html2canvas/commit/c6ba3759801ee5d28684fac105294e93d9e36b1c))
@@ -57,12 +79,12 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Bug Fixes
 
-- add site and base to astro config for github.io/html2canvas subpath ([68f563e](https://github.com/html2canvas/html2canvas/commit/68f563e08016a9eb8add6a96864f8f6ec5b7fc23))
+- add site and base to astro config for `github.io/html2canvas` subpath ([68f563e](https://github.com/html2canvas/html2canvas/commit/68f563e08016a9eb8add6a96864f8f6ec5b7fc23))
 - **filter:** render all CSS filters via offscreen canvas ([739f0f8](https://github.com/html2canvas/html2canvas/commit/739f0f8f44902e8a590a35b247278e53f397ae8b))
-- improve text-shadow and text-decoration-color rendering ([b5f9aa2](https://github.com/html2canvas/html2canvas/commit/b5f9aa25131b4e9d4d0508c902db2901dc3e44c1))
+- improve `text-shadow` and `text-decoration-color` rendering ([b5f9aa2](https://github.com/html2canvas/html2canvas/commit/b5f9aa25131b4e9d4d0508c902db2901dc3e44c1))
 - prefix all links and assets with /html2canvas base path ([84101e0](https://github.com/html2canvas/html2canvas/commit/84101e04e014be518872fbbf5dbb36b7c4378a60))
-- rename webpack.config to .cjs, lazy-load iOS deps in karma, remove Safari iOS CI job ([0103dae](https://github.com/html2canvas/html2canvas/commit/0103dae1bcc01d09309d80f6d4715317705f194e))
-- update jest matchers to use toHaveBeenCalled() with jest.Mock cast ([7f63ed5](https://github.com/html2canvas/html2canvas/commit/7f63ed567eb97837e58d10b866c466f4edf340ec))
+- rename `webpack.config` to `.cjs`, lazy-load iOS deps in karma, remove Safari iOS CI job ([0103dae](https://github.com/html2canvas/html2canvas/commit/0103dae1bcc01d09309d80f6d4715317705f194e))
+- update jest matchers to use `toHaveBeenCalled()` with `jest.Mock` cast ([7f63ed5](https://github.com/html2canvas/html2canvas/commit/7f63ed567eb97837e58d10b866c466f4edf340ec))
 
 # Changelog
 
@@ -73,12 +95,12 @@ All notable changes to this project will be documented in this file. See [standa
 ### build
 
 - add proper TypeScript type declarations to build output ([f677a13](https://github.com/html2canvas/html2canvas/commit/f677a131344a1facf43b0c26a6b878deb90266a2))
-- add unbundled ESM build to deduplicate colorjs.io in TS projects ([613608c](https://github.com/html2canvas/html2canvas/commit/613608c6d319315297721f0936233cba044a6e2e))
+- add unbundled ESM build to deduplicate **colorjs.io** in TS projects ([613608c](https://github.com/html2canvas/html2canvas/commit/613608c6d319315297721f0936233cba044a6e2e))
 
 ### perf
 
 - optimize hot paths in CSS parsing, DOM cloning, and rendering ([6b1a9ba](https://github.com/html2canvas/html2canvas/commit/6b1a9ba6b6763c11414c594cb81f2d67ee0e3e6d))
-- reduce bundle size by using minimal colorjs.io import ([b2b9f82](https://github.com/html2canvas/html2canvas/commit/b2b9f82a689b5945b1b6f42cdae1234b7d8ff1bc))
+- reduce bundle size by using minimal **colorjs.io** import ([b2b9f82](https://github.com/html2canvas/html2canvas/commit/b2b9f82a689b5945b1b6f42cdae1234b7d8ff1bc))
 
 ## [1.7.0](https://github.com/html2canvas/html2canvas/compare/v1.6.3...v1.7.0) (2026-08-20)
 
