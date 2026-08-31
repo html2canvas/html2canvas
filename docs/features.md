@@ -172,14 +172,15 @@ Below is a list of all the supported CSS properties and values.
 
 ## Pseudo-elements
 
-- ::before, ::after : `content`, `attr()`, `counter()`, `counters()`, quotes, url images
-- ::first-letter : First character wrapped in a synthetic element; supports `color`, `font-size`, `font-weight`, `font-style`, `font-family`, `text-transform`, `float`, `line-height`
-- `::first-line` — partial: `color`, `font-style`, `text-decoration` only (properties that do not affect text layout); layout-affecting properties like `font-size`, `font-weight`, `letter-spacing` cannot be supported because TextBounds are measured after the native pseudo is neutralised
+- `::before`, `::after` — `content`, `attr()`, `counter()`, `counters()`, quotes, url images
+- `::first-letter` — first character wrapped in a synthetic element; supports `color`, `font-size`, `font-weight`, `font-style`, `font-family`, `text-transform`, `float`, `line-height`
+- `::first-line` — partial: `color`, `font-style` only (properties that do not affect text layout); layout-affecting properties like `font-size`, `font-weight`, `letter-spacing` cannot be supported because TextBounds are measured after the native pseudo is neutralised
+- `::placeholder` — `color` on `<input>` and `<textarea>` elements when the placeholder text is shown (empty value)
+- `::marker` — `color`, `font-family` on `<li>` elements; overrides the default list marker color/font
 
 ## Unsupported CSS properties
 
 These CSS properties are **NOT** currently supported
 
 - [font-variant-ligatures](https://github.com/niklasvh/html2canvas/pull/1085) : no canvas API
-- `::placeholder`
-- `::marker`
+- `::selection`

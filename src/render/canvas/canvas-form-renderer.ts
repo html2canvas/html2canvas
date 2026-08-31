@@ -12,6 +12,7 @@ import { asString } from '../../css/types/color';
 import { CSSImageType, CSSURLImage } from '../../css/types/image';
 import { getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
 import { ElementContainer } from '../../dom/element-container';
+import { LIElementContainer } from '../../dom/elements/li-element-container';
 import { SelectElementContainer } from '../../dom/elements/select-element-container';
 import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
 import { ReplacedElementContainer } from '../../dom/replaced-elements';
@@ -276,7 +277,13 @@ export async function renderTextInputElement(
     const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
 
     state.ctx.font = font;
-    state.ctx.fillStyle = asString(styles.color);
+
+    // Use ::placeholder color when the displayed text is the placeholder.
+    const isPlaceholder =
+        (container instanceof InputElementContainer || container instanceof TextareaElementContainer) &&
+        container.isPlaceholder &&
+        container.placeholderColor;
+    state.ctx.fillStyle = isPlaceholder ? container.placeholderColor! : asString(styles.color);
     state.ctx.textBaseline = 'alphabetic';
     state.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
 
@@ -481,8 +488,12 @@ export async function renderListMarker(
         wm === WRITING_MODE.SIDEWAYS_RL ||
         wm === WRITING_MODE.SIDEWAYS_LR;
 
-    state.ctx.font = fontFamily;
-    state.ctx.fillStyle = asString(styles.color);
+    // Use ::marker styles (color, font) when available on the LI element.
+    const markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
+    state.ctx.font = markerStyles?.['font-family']
+        ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
+        : fontFamily;
+    state.ctx.fillStyle = markerStyles?.['color'] ?? asString(styles.color);
 
     if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.OUTSIDE) {
         _renderVerticalListMarkerOutside(state, paint, styles, wm);

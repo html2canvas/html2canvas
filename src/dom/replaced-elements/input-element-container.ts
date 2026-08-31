@@ -5,6 +5,7 @@ import { BACKGROUND_ORIGIN } from '../../css/property-descriptors/background-ori
 import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
 import { TokenType } from '../../css/syntax/tokenizer';
 import { LengthPercentageTuple } from '../../css/types/length-percentage';
+import { DATA_ATTR_PLACEHOLDER_COLOR } from '../clone-attributes';
 import { ElementContainer } from '../element-container';
 
 const CHECKBOX_BORDER_RADIUS: LengthPercentageTuple = [
@@ -52,12 +53,18 @@ export class InputElementContainer extends ElementContainer {
     readonly min: number;
     readonly max: number;
     readonly valueAsNumber: number;
+    /** True when the displayed text is the placeholder, not user input. */
+    readonly isPlaceholder: boolean;
+    /** Serialised ::placeholder color (CSS string), or null if same as text color. */
+    readonly placeholderColor: string | null;
 
     constructor(context: Context, input: HTMLInputElement) {
         super(context, input);
         this.type = input.type.toLowerCase();
         this.checked = input.checked;
         this.value = getInputValue(input);
+        this.isPlaceholder = input.value.length === 0 && (input.placeholder || '').length > 0;
+        this.placeholderColor = input.getAttribute(DATA_ATTR_PLACEHOLDER_COLOR) || null;
         this.min = parseFloat(input.min) || 0;
         this.max = parseFloat(input.max) || 100;
         this.valueAsNumber = isNaN(input.valueAsNumber) ? (this.min + this.max) / 2 : input.valueAsNumber;

@@ -7,6 +7,7 @@ import { getQuote } from '../css/property-descriptors/quotes';
 import { isIdentToken, nonFunctionArgSeparator } from '../css/syntax/parser';
 import { TokenType } from '../css/syntax/tokenizer';
 import { CounterState, createCounterText } from '../css/types/functions/counter';
+import { DATA_ATTR_FIRST_LINE, DATA_ATTR_MARKER, DATA_ATTR_PLACEHOLDER_COLOR } from './clone-attributes';
 import {
     isBodyElement,
     isCanvasElement,
@@ -484,6 +485,36 @@ export class DocumentCloner {
                 const styleFirstLine = window.getComputedStyle(node, '::first-line');
                 this.resolveFirstLetterPseudo(node, clone, styleFirstLetter);
                 this.resolveFirstLinePseudo(node, clone, styleFirstLine);
+
+                // Serialize ::placeholder color for input/textarea elements.
+                // The renderer uses this to draw placeholder text in the correct color.
+                const tagName = (node as HTMLElement).tagName;
+                if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+                    const placeholderStyle = window.getComputedStyle(node, '::placeholder');
+                    const placeholderColor = placeholderStyle.color;
+                    if (placeholderColor && placeholderColor !== style.color) {
+                        (clone as HTMLElement).setAttribute(DATA_ATTR_PLACEHOLDER_COLOR, placeholderColor);
+                    }
+                }
+
+                // Serialize ::marker styles for list items.
+                // The renderer uses these to draw list markers with the correct color/font.
+                if (tagName === 'LI') {
+                    const markerStyle = window.getComputedStyle(node, '::marker');
+                    const delta: Record<string, string> = {};
+                    if (markerStyle.color && markerStyle.color !== style.color) {
+                        delta['color'] = markerStyle.color;
+                    }
+                    if (markerStyle.fontSize && markerStyle.fontSize !== style.fontSize) {
+                        delta['font-size'] = markerStyle.fontSize;
+                    }
+                    if (markerStyle.fontFamily && markerStyle.fontFamily !== style.fontFamily) {
+                        delta['font-family'] = markerStyle.fontFamily;
+                    }
+                    if (Object.keys(delta).length > 0) {
+                        (clone as HTMLElement).setAttribute(DATA_ATTR_MARKER, JSON.stringify(delta));
+                    }
+                }
             }
 
             if (
@@ -826,7 +857,7 @@ export class DocumentCloner {
             return;
         }
         // Serialise the delta into a data attribute so it survives document.write() re-parsing.
-        (clone as HTMLElement).setAttribute('data-h2c-first-line', JSON.stringify(delta));
+        (clone as HTMLElement).setAttribute(DATA_ATTR_FIRST_LINE, JSON.stringify(delta));
         // Mark the clone so createPseudoHideStyles neutralises the native ::first-line.
         if (isSVGElementNode(clone as Element)) {
             (clone as SVGElement).className.baseValue += ` ${PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LINE}`;

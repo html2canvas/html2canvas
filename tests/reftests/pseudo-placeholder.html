@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+  <head>
+    <title>::placeholder pseudo-element tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        background: #fff;
+        margin: 20px;
+      }
+
+      .row {
+        margin: 12px 0;
+      }
+
+      .label {
+        display: block;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      input, textarea {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        padding: 4px 6px;
+        border: 1px solid #999;
+        width: 280px;
+        color: #000;
+        background: #fff;
+      }
+
+      textarea {
+        height: 60px;
+        resize: none;
+      }
+
+      /* default placeholder color (browser default) */
+
+      /* red placeholder */
+      .red::placeholder {
+        color: red;
+      }
+
+      /* blue placeholder with italic */
+      .blue-italic::placeholder {
+        color: blue;
+        font-style: italic;
+      }
+
+      /* green placeholder */
+      .green::placeholder {
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Input with default placeholder color -->
+    <div class="row">
+      <span class="label">input — default placeholder color</span>
+      <input type="text" placeholder="Default placeholder text" />
+    </div>
+
+    <!-- Input with red placeholder -->
+    <div class="row">
+      <span class="label">input — red placeholder</span>
+      <input type="text" class="red" placeholder="Red placeholder text" />
+    </div>
+
+    <!-- Input with blue italic placeholder -->
+    <div class="row">
+      <span class="label">input — blue italic placeholder</span>
+      <input type="text" class="blue-italic" placeholder="Blue italic placeholder" />
+    </div>
+
+    <!-- Input with value (no placeholder visible) -->
+    <div class="row">
+      <span class="label">input — has value (placeholder hidden)</span>
+      <input type="text" class="red" placeholder="Should NOT appear" value="Actual value" />
+    </div>
+
+    <!-- Textarea with default placeholder -->
+    <div class="row">
+      <span class="label">textarea — default placeholder color</span>
+      <textarea placeholder="Default textarea placeholder"></textarea>
+    </div>
+
+    <!-- Textarea with green placeholder -->
+    <div class="row">
+      <span class="label">textarea — green placeholder</span>
+      <textarea class="green" placeholder="Green textarea placeholder"></textarea>
+    </div>
+
+    <!-- Textarea with value (no placeholder visible) -->
+    <div class="row">
+      <span class="label">textarea — has value (placeholder hidden)</span>
+      <textarea class="green" placeholder="Should NOT appear">Actual textarea content</textarea>
+    </div>
+
+    <!-- Search input with placeholder -->
+    <div class="row">
+      <span class="label">search input — red placeholder</span>
+      <input type="search" class="red" placeholder="Search..." />
+    </div>
+
+    <!-- Password input with placeholder -->
+    <div class="row">
+      <span class="label">password input — default placeholder</span>
+      <input type="password" placeholder="Enter password" />
+    </div>
+  </body>
+</html>

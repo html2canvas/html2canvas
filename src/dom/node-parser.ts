@@ -1,6 +1,7 @@
 import { Context } from '../core/context';
 import { CSSParsedDeclaration } from '../css';
 import { MIX_BLEND_MODE } from '../css/property-descriptors/mix-blend-mode';
+import { DATA_ATTR_FIRST_LINE } from './clone-attributes';
 import { ElementContainer, FLAGS } from './element-container';
 import { LIElementContainer } from './elements/li-element-container';
 import { OLElementContainer } from './elements/ol-element-container';
@@ -65,9 +66,9 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                     // DocumentCloner.resolveFirstLinePseudo(). We cannot read getComputedStyle
                     // with '::first-line' here because createPseudoHideStyles already injected
                     // CSS that resets all ::first-line properties to inherit in the iframe.
-                    const firstLineSerialized = childNode.getAttribute('data-h2c-first-line');
+                    const firstLineSerialized = childNode.getAttribute(DATA_ATTR_FIRST_LINE);
                     if (firstLineSerialized) {
-                        childNode.removeAttribute('data-h2c-first-line');
+                        childNode.removeAttribute(DATA_ATTR_FIRST_LINE);
                         try {
                             const delta = JSON.parse(firstLineSerialized) as Record<string, string>;
                             // Build a minimal CSSStyleDeclaration-like object by blending
