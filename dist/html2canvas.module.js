@@ -5405,20 +5405,16 @@ var createRange = function (node, offset, length) {
 var _reusableRange = null;
 var segmentGraphemes = function (value) {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        var segmenter = new Intl.Segmenter(void 0, { granularity: 'grapheme' });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        var segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
         return Array.from(segmenter.segment(value)).map(function (segment) { return segment.segment; });
     }
     return splitGraphemes(value);
 };
 var segmentWords = function (value, styles) {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        var segmenter = new Intl.Segmenter(void 0, {
+        var segmenter = new Intl.Segmenter(undefined, {
             granularity: 'word',
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return Array.from(segmenter.segment(value)).map(function (segment) { return segment.segment; });
     }
     return breakWords(value, styles);
@@ -6004,7 +6000,6 @@ var FEATURES = {
         return value;
     },
     get SUPPORT_NATIVE_TEXT_SEGMENTATION() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         var value = !!(typeof Intl !== 'undefined' && Intl.Segmenter);
         Object.defineProperty(FEATURES, 'SUPPORT_NATIVE_TEXT_SEGMENTATION', { value: value });
         return value;
