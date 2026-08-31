@@ -28,7 +28,7 @@ import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/
 import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
 import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
 import { BoundCurves, calculatePaddingBoxPath } from '../bound-curves';
-import { contentBox } from '../box-sizing';
+import { contentBox, paddingBox } from '../box-sizing';
 import { calculateObjectFitBounds } from '../object-fit';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
@@ -278,16 +278,47 @@ export async function renderTextInputElement(
 
     state.ctx.font = font;
 
-    // Use ::placeholder color when the displayed text is the placeholder.
+    // Apply ::placeholder styles when the displayed text is the placeholder.
     const isPlaceholder =
         (container instanceof InputElementContainer || container instanceof TextareaElementContainer) &&
-        container.isPlaceholder &&
-        container.placeholderColor;
-    state.ctx.fillStyle = isPlaceholder ? container.placeholderColor! : asString(styles.color);
+        container.isPlaceholder;
+    const phStyles: Record<string, string> | null = isPlaceholder
+        ? (container as InputElementContainer | TextareaElementContainer).placeholderStyles
+        : null;
+
+    if (phStyles) {
+        // Color
+        state.ctx.fillStyle = phStyles['color'] ?? asString(styles.color);
+        // Opacity
+        if (phStyles['opacity']) {
+            state.ctx.globalAlpha = parseFloat(phStyles['opacity']);
+        }
+        // Font-weight / font-style: rebuild font string with overrides
+        if (phStyles['font-weight'] || phStyles['font-style']) {
+            const parts = font.split(' ');
+            // font string format: "style variant weight size family"
+            if (phStyles['font-style']) parts[0] = phStyles['font-style'];
+            if (phStyles['font-weight']) parts[2] = phStyles['font-weight'];
+            state.ctx.font = parts.join(' ');
+        }
+    } else {
+        state.ctx.fillStyle = asString(styles.color);
+    }
+
     state.ctx.textBaseline = 'alphabetic';
     state.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
 
     const bounds = contentBox(container);
+
+    // Draw placeholder background-color behind the text area if specified.
+    if (phStyles?.['background-color'] && phStyles['background-color'] !== 'rgba(0, 0, 0, 0)') {
+        state.ctx.save();
+        state.ctx.fillStyle = phStyles['background-color'];
+        state.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+        state.ctx.restore();
+        // Restore text fillStyle after drawing background.
+        state.ctx.fillStyle = phStyles['color'] ?? asString(styles.color);
+    }
 
     state.ctx.save();
     canvasPath(state, [
@@ -307,6 +338,11 @@ export async function renderTextInputElement(
     state.ctx.restore();
     state.ctx.textBaseline = 'alphabetic';
     state.ctx.textAlign = 'left';
+
+    // Restore globalAlpha if it was changed for ::placeholder opacity.
+    if (phStyles?.['opacity']) {
+        state.ctx.globalAlpha = 1;
+    }
 }
 
 async function _renderTextarea(
@@ -442,7 +478,7 @@ function _renderSingleLineInput(
     container: InputElementContainer | SelectElementContainer,
     styles: CSSParsedDeclaration,
     bounds: Bounds,
-    baseline: number,
+    _baseline: number,
 ): void {
     let x = 0;
     switch (container.styles.textAlign) {
@@ -453,8 +489,26 @@ function _renderSingleLineInput(
             x += bounds.width;
             break;
     }
-    const textBounds = bounds.add(x, 0, 0, -bounds.height / 2 + 1);
-    renderTextWithLetterSpacing(state, new TextBounds(container.value, textBounds), styles.letterSpacing, baseline);
+    // Draw text using textBaseline='middle' centred in the padding-box.
+    // We bypass renderTextWithLetterSpacing because its 'ideographic' baseline
+    // mode (Chromium) positions the text too high in small input elements,
+    // causing the ascenders to be clipped by the overflow:hidden clip that
+    // Chromium applies to <input> elements by default.
+    const pBounds = paddingBox(container);
+    state.ctx.textBaseline = 'middle';
+    const midY = pBounds.top + pBounds.height / 2 + 1;
+    const startX = bounds.left + x;
+
+    if (styles.letterSpacing === 0) {
+        state.ctx.fillText(container.value, startX, midY);
+    } else {
+        const letters = segmentGraphemes(container.value);
+        letters.reduce((left, letter, index) => {
+            state.ctx.fillText(letter, left, midY);
+            const isLast = index === letters.length - 1;
+            return left + state.ctx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
+        }, startX);
+    }
 }
 
 // ---------------------------------------------------------------------------

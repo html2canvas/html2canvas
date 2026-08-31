@@ -11,7 +11,7 @@
 export const DATA_ATTR_FIRST_LINE = 'data-h2c-first-line';
 
 /** Computed ::placeholder color (CSS color string). */
-export const DATA_ATTR_PLACEHOLDER_COLOR = 'data-h2c-placeholder-color';
+export const DATA_ATTR_PLACEHOLDER = 'data-h2c-placeholder';
 
 /** Serialised ::marker style delta (JSON object of CSS property → value). */
 export const DATA_ATTR_MARKER = 'data-h2c-marker';

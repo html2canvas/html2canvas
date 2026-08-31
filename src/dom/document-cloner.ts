@@ -7,7 +7,7 @@ import { getQuote } from '../css/property-descriptors/quotes';
 import { isIdentToken, nonFunctionArgSeparator } from '../css/syntax/parser';
 import { TokenType } from '../css/syntax/tokenizer';
 import { CounterState, createCounterText } from '../css/types/functions/counter';
-import { DATA_ATTR_FIRST_LINE, DATA_ATTR_MARKER, DATA_ATTR_PLACEHOLDER_COLOR } from './clone-attributes';
+import { DATA_ATTR_FIRST_LINE, DATA_ATTR_MARKER, DATA_ATTR_PLACEHOLDER } from './clone-attributes';
 import {
     isBodyElement,
     isCanvasElement,
@@ -486,14 +486,22 @@ export class DocumentCloner {
                 this.resolveFirstLetterPseudo(node, clone, styleFirstLetter);
                 this.resolveFirstLinePseudo(node, clone, styleFirstLine);
 
-                // Serialize ::placeholder color for input/textarea elements.
-                // The renderer uses this to draw placeholder text in the correct color.
+                // Serialize ::placeholder styles for input/textarea elements.
+                // The renderer uses these to draw placeholder text with correct appearance.
                 const tagName = (node as HTMLElement).tagName;
                 if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
                     const placeholderStyle = window.getComputedStyle(node, '::placeholder');
-                    const placeholderColor = placeholderStyle.color;
-                    if (placeholderColor && placeholderColor !== style.color) {
-                        (clone as HTMLElement).setAttribute(DATA_ATTR_PLACEHOLDER_COLOR, placeholderColor);
+                    const delta: Record<string, string> = {};
+                    const phProps = ['color', 'opacity', 'font-weight', 'font-style', 'background-color'] as const;
+                    for (const p of phProps) {
+                        const pseudoVal = placeholderStyle.getPropertyValue(p);
+                        const elemVal = style.getPropertyValue(p);
+                        if (pseudoVal && pseudoVal !== elemVal) {
+                            delta[p] = pseudoVal;
+                        }
+                    }
+                    if (Object.keys(delta).length > 0) {
+                        (clone as HTMLElement).setAttribute(DATA_ATTR_PLACEHOLDER, JSON.stringify(delta));
                     }
                 }
 
