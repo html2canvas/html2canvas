@@ -742,9 +742,9 @@ export class DocumentCloner {
         // via Intl.Segmenter when available, otherwise fall back to Array.from).
         let firstChar: string;
         let restAfterFirstChar: string;
-        if (typeof Intl !== 'undefined' && typeof (Intl as any).Segmenter !== 'undefined') {
-            const segmenter = new (Intl as any).Segmenter();
-            const segments = Array.from(segmenter.segment(textWithoutLeading)) as Array<{ segment: string }>;
+        if (typeof Intl !== 'undefined' && typeof Intl.Segmenter !== 'undefined') {
+            const segmenter = new Intl.Segmenter();
+            const segments = Array.from(segmenter.segment(textWithoutLeading));
             if (segments.length === 0) {
                 return;
             }

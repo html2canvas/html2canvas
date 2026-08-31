@@ -239,8 +239,7 @@ export const FEATURES = {
     },
     get SUPPORT_NATIVE_TEXT_SEGMENTATION(): boolean {
         'use strict';
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const value = !!(typeof Intl !== 'undefined' && (Intl as any).Segmenter);
+        const value = !!(typeof Intl !== 'undefined' && Intl.Segmenter);
         Object.defineProperty(FEATURES, 'SUPPORT_NATIVE_TEXT_SEGMENTATION', { value });
         return value;
     },
