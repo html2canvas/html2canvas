@@ -364,7 +364,7 @@ export class CanvasRenderer extends Renderer {
 
         // Text nodes
         for (const child of container.textNodes) {
-            await renderTextNode(this.state, child, styles);
+            await renderTextNode(this.state, child, styles, container.firstLineStyles ?? undefined);
         }
 
         // Replaced elements

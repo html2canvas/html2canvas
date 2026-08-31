@@ -18,6 +18,8 @@ export class ElementContainer {
     readonly elements: ElementContainer[] = [];
     bounds: Bounds;
     flags = 0;
+    /** Computed styles for ::first-line, populated by parseNodeTree when the pseudo-element has effective styling. */
+    firstLineStyles: CSSParsedDeclaration | null = null;
 
     constructor(
         protected readonly context: Context,

@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+  <head>
+    <title>HTML elements — unstyled rendering</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../test.js"></script>
+  </head>
+  <body>
+    <!-- ── Headings ─────────────────────────────────────────────────────── -->
+    <h1>Heading level 1</h1>
+    <h2>Heading level 2</h2>
+    <h3>Heading level 3</h3>
+    <h4>Heading level 4</h4>
+    <h5>Heading level 5</h5>
+    <h6>Heading level 6</h6>
+
+    <!-- ── Paragraphs & inline text ─────────────────────────────────────── -->
+    <p>
+      A plain paragraph with <strong>strong</strong>, <em>emphasis</em>, <b>bold</b>, <i>italic</i>, <u>underline</u>,
+      <s>strikethrough</s>, <small>small</small>, <mark>mark</mark>, <code>inline code</code>, <kbd>Ctrl+C</kbd>,
+      <samp>sample output</samp>, <var>variable</var>, <cite>citation</cite>,
+      <abbr title="HyperText Markup Language">HTML</abbr>, <time datetime="2026-08-30">30 August 2026</time>, a
+      <a href="#">hyperlink</a>, and plain text.
+    </p>
+
+    <p>Sub<sub>script</sub> and super<sup>script</sup> together on one line.</p>
+
+    <p><del>Deleted text</del> and <ins>inserted text</ins> in the same paragraph.</p>
+
+    <div>
+      <div>Div Text 1</div>
+      <p>P Text. 1</p>
+    </div>
+
+    <div>
+      <div>Div Text 2</div>
+      <p>P Text. 2</p>
+    </div>
+
+    <!-- ── Blockquote / address / pre ───────────────────────────────────── -->
+    <blockquote>A blockquote with <cite>a nested citation</cite> inside it.</blockquote>
+
+    <address>
+      Written by <a href="#">Someone</a>.<br />
+      Visit us at example.com.
+    </address>
+
+    <pre>
+Preformatted text:
+  indented line
+    doubly indented
+back to column 0</pre>
+
+    <!-- ── Horizontal rule ──────────────────────────────────────────────── -->
+    <hr />
+
+    <!-- ── Lists ────────────────────────────────────────────────────────── -->
+    <ul>
+      <li>Unordered item one</li>
+      <li>
+        Unordered item two
+        <ul>
+          <li>Nested item A</li>
+          <li>Nested item B</li>
+        </ul>
+      </li>
+      <li>Unordered item three</li>
+    </ul>
+
+    <ol>
+      <li>Ordered item one</li>
+      <li>
+        Ordered item two
+        <ol>
+          <li>Nested item i</li>
+          <li>Nested item ii</li>
+        </ol>
+      </li>
+      <li>Ordered item three</li>
+    </ol>
+
+    <dl>
+      <dt>Term one</dt>
+      <dd>Definition one</dd>
+      <dt>Term two</dt>
+      <dd>Definition two</dd>
+    </dl>
+
+    <!-- ── Table ────────────────────────────────────────────────────────── -->
+    <table>
+      <caption>
+        A simple table
+      </caption>
+      <thead>
+        <tr>
+          <th>Header A</th>
+          <th>Header B</th>
+          <th>Header C</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cell 1-A</td>
+          <td>Cell 1-B</td>
+          <td>Cell 1-C</td>
+        </tr>
+        <tr>
+          <td>Cell 2-A</td>
+          <td colspan="2">Cell 2-B spans two columns</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">Footer row</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <!-- ── Details / summary ────────────────────────────────────────────── -->
+    <details open>
+      <summary>Summary (details open)</summary>
+      <p>Revealed content inside the details element.</p>
+    </details>
+
+    <details>
+      <summary>Summary (details closed)</summary>
+      <p>This content should not be visible.</p>
+    </details>
+
+    <!-- ── Figure / figcaption ──────────────────────────────────────────── -->
+    <figure>
+      <figcaption>A figure with only a caption and no image.</figcaption>
+    </figure>
+
+    <!-- ── Forms ────────────────────────────────────────────────────────── -->
+    <form>
+      <fieldset>
+        <legend>Fieldset legend</legend>
+
+        <p>
+          <label for="text-input">Text input:</label>
+          <input id="text-input" type="text" value="Hello World" />
+        </p>
+
+        <p>
+          <label for="password-input">Password:</label>
+          <input id="password-input" type="password" value="secret" />
+        </p>
+
+        <p>
+          <label for="number-input">Number:</label>
+          <input id="number-input" type="number" value="42" />
+        </p>
+
+        <p>
+          <label for="search-input">Search:</label>
+          <input id="search-input" type="search" value="query" />
+        </p>
+
+        <p>
+          <label for="checkbox-checked">Checkbox (checked):</label>
+          <input id="checkbox-checked" type="checkbox" checked />
+        </p>
+
+        <p>
+          <label for="checkbox-unchecked">Checkbox (unchecked):</label>
+          <input id="checkbox-unchecked" type="checkbox" />
+        </p>
+
+        <p>
+          <label><input type="radio" name="radio-group" checked /> Radio A (selected)</label>
+          <label><input type="radio" name="radio-group" /> Radio B</label>
+          <label><input type="radio" name="radio-group" /> Radio C</label>
+        </p>
+
+        <p>
+          <label for="select-single">Select (single):</label>
+          <select id="select-single">
+            <option>Option one</option>
+            <option selected>Option two</option>
+            <option>Option three</option>
+          </select>
+        </p>
+
+        <p>
+          <label for="select-multiple">Select (multiple):</label>
+          <select id="select-multiple" multiple size="3">
+            <option selected>Option A</option>
+            <option>Option B</option>
+            <option selected>Option C</option>
+          </select>
+        </p>
+
+        <p>
+          <label for="textarea">Textarea:</label><br />
+          <textarea id="textarea" rows="3" cols="30">
+Multi-line
+text area
+content here</textarea>
+        </p>
+
+        <p>
+          <label for="range-input">Range:</label>
+          <input id="range-input" type="range" min="0" max="100" value="60" />
+        </p>
+
+        <p>
+          <label for="progress-bar">Progress:</label>
+          <progress id="progress-bar" value="70" max="100"></progress>
+        </p>
+
+        <p>
+          <label for="meter-bar">Meter:</label>
+          <meter id="meter-bar" value="0.6"></meter>
+        </p>
+
+        <p>
+          <button type="button">Button</button>
+          <input type="submit" value="Submit" />
+          <input type="reset" value="Reset" />
+        </p>
+      </fieldset>
+    </form>
+
+    <!-- ── Inline semantic elements ─────────────────────────────────────── -->
+    <p>
+      <span>Generic span</span> · <bdi>בידוד</bdi> (bdi) · <bdo dir="rtl">reversed</bdo> (bdo rtl) ·
+      <wbr />word-break-opportunity after this· <ruby>漢 <rt>Kan</rt>字 <rt>ji</rt></ruby> (ruby)
+    </p>
+
+    <!-- ── Quotations ────────────────────────────────────────────────────── -->
+    <p>Inline quote: <q>To be or not to be</q>, that is the question.</p>
+
+    <!-- ── Division & span baseline ────────────────────────────────────── -->
+    <div>A plain <span>div</span> with a nested span.</div>
+  </body>
+</html>

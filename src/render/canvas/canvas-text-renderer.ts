@@ -312,10 +312,20 @@ export async function renderTextNode(
     state: CanvasRenderState,
     text: TextContainer,
     styles: CSSParsedDeclaration,
+    firstLineStyles?: CSSParsedDeclaration,
 ): Promise<void> {
     const [font, fontFamily, fontSize] = createFontStyle(styles);
     // Numeric font-size in px, used for WAVY decoration sizing.
     const fontSizePx = getNumber(styles.fontSize);
+
+    // Identify the top coordinate of the first visual line so we can apply
+    // ::first-line styles selectively. We use a 1px tolerance to absorb
+    // sub-pixel differences between adjacent segments on the same line.
+    const FIRST_LINE_TOLERANCE = 1;
+    let firstLineTop: number | null = null;
+    if (firstLineStyles && text.textBounds.length > 0) {
+        firstLineTop = text.textBounds.reduce((min, tb) => Math.min(min, tb.bounds.top), Infinity);
+    }
 
     state.ctx.font = font;
     state.ctx.direction = styles.direction === DIRECTION.RTL ? 'rtl' : 'ltr';
@@ -380,6 +390,18 @@ export async function renderTextNode(
     }
 
     text.textBounds.forEach(textBound => {
+        // Determine whether this segment is on the first visual line.
+        // If so, use firstLineStyles (overriding color, font, etc.) for rendering.
+        const isOnFirstLine =
+            firstLineTop !== null &&
+            firstLineStyles !== undefined &&
+            Math.abs(textBound.bounds.top - firstLineTop) <= FIRST_LINE_TOLERANCE;
+        const activeStyles = isOnFirstLine ? firstLineStyles! : styles;
+        const activeFont = isOnFirstLine ? createFontStyle(activeStyles)[0] : font;
+        const activeBaseline = isOnFirstLine
+            ? state.fontMetrics.getMetrics(createFontStyle(activeStyles)[1], createFontStyle(activeStyles)[2]).baseline
+            : baseline;
+
         paintOrder.forEach(paintOrderLayer => {
             switch (paintOrderLayer) {
                 case PAINT_ORDER_LAYER.FILL:
@@ -388,12 +410,13 @@ export async function renderTextNode(
                     if (getBackgroundValueForIndex(styles.backgroundClip, 0) === BACKGROUND_CLIP.TEXT) {
                         break;
                     }
-                    state.ctx.fillStyle = asString(styles.color);
+                    state.ctx.font = activeFont;
+                    state.ctx.fillStyle = asString(activeStyles.color);
                     _renderTextFill(
                         state,
                         textBound,
-                        styles,
-                        baseline,
+                        activeStyles,
+                        activeBaseline,
                         wm,
                         fontSizePx,
                         isVertical,
@@ -401,6 +424,8 @@ export async function renderTextNode(
                         lineEndMap,
                         isFirstInLine,
                     );
+                    // Restore the base font for subsequent segments.
+                    state.ctx.font = font;
                     break;
 
                 case PAINT_ORDER_LAYER.STROKE:

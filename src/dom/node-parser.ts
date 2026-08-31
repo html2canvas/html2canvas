@@ -61,6 +61,37 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                         container.flags |= FLAGS.IS_LIST_OWNER;
                     }
 
+                    // Capture ::first-line styles from the data attribute serialised by
+                    // DocumentCloner.resolveFirstLinePseudo(). We cannot read getComputedStyle
+                    // with '::first-line' here because createPseudoHideStyles already injected
+                    // CSS that resets all ::first-line properties to inherit in the iframe.
+                    const firstLineSerialized = childNode.getAttribute('data-h2c-first-line');
+                    if (firstLineSerialized) {
+                        childNode.removeAttribute('data-h2c-first-line');
+                        try {
+                            const delta = JSON.parse(firstLineSerialized) as Record<string, string>;
+                            // Build a minimal CSSStyleDeclaration-like object by blending
+                            // the delta over the element's own computed style.
+                            const win = childNode.ownerDocument?.defaultView;
+                            if (win) {
+                                const elemStyle = win.getComputedStyle(childNode);
+                                // Create a synthetic style by applying delta values onto a
+                                // temporary element so CSSParsedDeclaration can parse it.
+                                const tmp = childNode.ownerDocument.createElement('span');
+                                tmp.style.cssText = elemStyle.cssText;
+                                for (const [prop, val] of Object.entries(delta)) {
+                                    tmp.style.setProperty(prop, val);
+                                }
+                                childNode.parentElement?.appendChild(tmp);
+                                const syntheticStyle = win.getComputedStyle(tmp);
+                                container.firstLineStyles = new CSSParsedDeclaration(context, syntheticStyle);
+                                childNode.parentElement?.removeChild(tmp);
+                            }
+                        } catch (_e) {
+                            // Ignore parse errors — first-line simply won't be applied.
+                        }
+                    }
+
                     parent.elements.push(container);
                     if (childNode.shadowRoot) {
                         parseNodeTree(context, childNode.shadowRoot, container, root);
