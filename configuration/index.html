@@ -38,6 +38,11 @@
 <td>Predicate function which removes the matching elements from the render.</td>
 </tr>
 <tr>
+<td>isResourceSameOrigin</td>
+<td align="center"><code>undefined</code></td>
+<td>Callback <code>(src) =&gt; boolean | undefined</code> overriding the same-origin check for resource URLs. Return <code>true</code>/<code>false</code> to force the decision (e.g. treat a CDN as same-origin), or <code>undefined</code> to fall back to the default origin comparison.</td>
+</tr>
+<tr>
 <td>logging</td>
 <td align="center"><code>true</code></td>
 <td>Enable logging for debug purposes</td>
@@ -51,6 +56,11 @@
 <td>onCopyProperty</td>
 <td align="center"><code>undefined</code></td>
 <td>Callback invoked for each CSS property during style cloning. Receives <code>(property, style, element)</code>. Return <code>true</code> to mark the property as handled and skip the default copy. Useful to filter out CSS custom properties or override specific styles in the clone.</td>
+</tr>
+<tr>
+<td>onError</td>
+<td align="center"><code>undefined</code></td>
+<td>Callback <code>(error) =&gt; void</code> invoked when a resource (image, svg, background-image, etc.) fails to load or render. Rendering continues; this is a notification hook. Errors are also written to the logger.</td>
 </tr>
 <tr>
 <td>proxy</td>
@@ -130,6 +140,22 @@ For example, to strip all CSS custom properties from the clone:</p>
 <span class="line"><span style="color:#859900">            return</span><span style="color:#B58900"> true</span><span style="color:#657B83">; </span><span style="color:#93A1A1;font-style:italic">// mark as handled</span></span>
 <span class="line"><span style="color:#657B83">        }</span></span>
 <span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h2>isResourceSameOrigin example</h2>
+<p>Treat assets served from a CDN as same-origin so they load directly without CORS
+or a proxy. Returning <code>undefined</code> for other URLs keeps the default behaviour:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    isResourceSameOrigin</span><span style="color:#657B83">: src </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">src</span><span style="color:#657B83">.</span><span style="color:#268BD2">includes</span><span style="color:#657B83">(</span><span style="color:#2AA198">'cdn.example.com'</span><span style="color:#657B83">)) {</span></span>
+<span class="line"><span style="color:#859900">            return</span><span style="color:#B58900"> true</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#859900">        return</span><span style="color:#B58900"> undefined</span><span style="color:#657B83">; </span><span style="color:#93A1A1;font-style:italic">// fall back to the default origin check</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h2>onError example</h2>
+<p>Surface resource loading failures without stopping the render:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onError</span><span style="color:#657B83">: error </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#268BD2">        console</span><span style="color:#657B83">.</span><span style="color:#268BD2">warn</span><span style="color:#657B83">(</span><span style="color:#2AA198">'html2canvas resource failed:'</span><span style="color:#657B83">, </span><span style="color:#268BD2">error</span><span style="color:#657B83">.</span><span style="color:#268BD2">message</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
 <span class="line"><span style="color:#657B83">});</span></span></code></pre>  </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/getting-started" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 0h24v24H0z" fill="none"/>
     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
@@ -138,4 +164,4 @@ For example, to strip all CSS custom properties from the clone:</p>
     <path d="M0 0h24v24H0z" fill="none"/>
     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
 </svg>
-</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.B4CRhLRv.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>
+</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.PEVqo9zX.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>

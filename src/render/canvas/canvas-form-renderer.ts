@@ -573,7 +573,7 @@ async function _renderListStyleImage(
             const image = await state.context.cache.match(url);
             state.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
         } catch (e) {
-            state.context.logger.error(`Error loading list-style-image ${url}`);
+            state.context.error(`Error loading list-style-image ${url}`, e);
         }
     }
 }

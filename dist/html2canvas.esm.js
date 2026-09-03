@@ -13821,6 +13821,18 @@ var Cache = /** @class */ (function () {
     Cache.prototype.match = function (src) {
         return cache[src];
     };
+    Cache.prototype.isSameOrigin = function (src) {
+        // Allow callers to override the same-origin decision per URL. When the
+        // custom function returns undefined, fall back to the default check.
+        var override = this._options.isResourceSameOrigin;
+        if (override) {
+            var result = override(src);
+            if (typeof result === 'boolean') {
+                return result;
+            }
+        }
+        return CacheStorage.isSameOrigin(src);
+    };
     Cache.prototype.loadImage = function (key) {
         return __awaiter(this, void 0, void 0, function () {
             var isExtensionImage, isSameOrigin, useCORS, useProxy, src;
@@ -13829,7 +13841,7 @@ var Cache = /** @class */ (function () {
                 switch (_a.label) {
                     case 0:
                         isExtensionImage = key.startsWith('chrome-extension://');
-                        isSameOrigin = CacheStorage.isSameOrigin(key) || isExtensionImage;
+                        isSameOrigin = this.isSameOrigin(key) || isExtensionImage;
                         useCORS = !isInlineImage(key) && this._options.useCORS === true && FEATURES.SUPPORT_CORS_IMAGES && !isSameOrigin;
                         useProxy = !isInlineImage(key) &&
                             !isSameOrigin &&
@@ -14013,7 +14025,21 @@ var Context = /** @class */ (function () {
         this.instanceName = "#".concat(Context.instanceCount++);
         this.logger = new Logger({ id: this.instanceName, enabled: options.logging });
         this.cache = (_a = options.cache) !== null && _a !== void 0 ? _a : new Cache(this, options);
+        this._onError = options.onError;
     }
+    /**
+     * Logs an error and notifies the `onError` callback (if provided).
+     * Use this instead of `logger.error` for recoverable resource failures that
+     * callers may want to observe.
+     */
+    Context.prototype.error = function (message, error) {
+        var _a;
+        (_a = this.logger).error.apply(_a, __spreadArray([message], (error !== undefined ? [error] : []), false));
+        if (this._onError) {
+            var err = error instanceof Error ? error : new Error(message);
+            this._onError(err);
+        }
+    };
     Context.instanceCount = 1;
     return Context;
 }());
@@ -17254,7 +17280,7 @@ function renderBackgroundImage(state, container) {
                 case 0:
                     index = container.styles.backgroundImage.length - 1;
                     _loop_1 = function (backgroundImage) {
-                        var blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, x, y, width, height, _g, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_2, processedStops, tileStart, tileEnd, tileSize, MAX_ITER, allStops_1, _loop_2, iter, state_1, _loop_3, iter, pattern, _h, path, left, top_2, width, height, position, x, y, _j, rx, ry, radialGradient_1, midX, midY, f, invF, _k, path, left, top_3, width, height, position, x, y, _l, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_1, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_4, iter, state_2, _loop_5, iter, radialGradient_2, _m, path, left, top_4, width, height, position, cx, cy, conicGrad_1, _o, path, left, top_5, width, height, position, cx, cy, processedStops, tileStart, tileEnd, tileSize, conicGrad_2, MAX_ITER, allStops_3, _loop_6, iter, state_3, _loop_7, iter;
+                        var blendMode, image, url, e_1, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, x, y, width, height, _g, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_2, processedStops, tileStart, tileEnd, tileSize, MAX_ITER, allStops_1, _loop_2, iter, state_1, _loop_3, iter, pattern, _h, path, left, top_2, width, height, position, x, y, _j, rx, ry, radialGradient_1, midX, midY, f, invF, _k, path, left, top_3, width, height, position, x, y, _l, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_1, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_4, iter, state_2, _loop_5, iter, radialGradient_2, _m, path, left, top_4, width, height, position, cx, cy, conicGrad_1, _o, path, left, top_5, width, height, position, cx, cy, processedStops, tileStart, tileEnd, tileSize, conicGrad_2, MAX_ITER, allStops_3, _loop_6, iter, state_3, _loop_7, iter;
                         return __generator(this, function (_p) {
                             switch (_p.label) {
                                 case 0:
@@ -17273,8 +17299,8 @@ function renderBackgroundImage(state, container) {
                                     image = _p.sent();
                                     return [3 /*break*/, 4];
                                 case 3:
-                                    _p.sent();
-                                    state.context.logger.error("Error loading background-image ".concat(url));
+                                    e_1 = _p.sent();
+                                    state.context.error("Error loading background-image ".concat(url), e_1);
                                     return [3 /*break*/, 4];
                                 case 4:
                                     if (image && image.width > 0 && image.height > 0) {
@@ -17586,7 +17612,7 @@ function renderBackgroundImagePerLayer(state, paint, container) {
                 case 0:
                     index = container.styles.backgroundImage.length - 1;
                     _loop_8 = function (backgroundImage) {
-                        var clip, clipPath, blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_3, pattern;
+                        var clip, clipPath, blendMode, image, url, e_2, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_3, pattern;
                         return __generator(this, function (_f) {
                             switch (_f.label) {
                                 case 0:
@@ -17610,8 +17636,8 @@ function renderBackgroundImagePerLayer(state, paint, container) {
                                     image = _f.sent();
                                     return [3 /*break*/, 4];
                                 case 3:
-                                    _f.sent();
-                                    state.context.logger.error("Error loading background-image ".concat(url));
+                                    e_2 = _f.sent();
+                                    state.context.error("Error loading background-image ".concat(url), e_2);
                                     return [3 /*break*/, 4];
                                 case 4:
                                     if (image && image.width > 0 && image.height > 0) {
@@ -18387,7 +18413,7 @@ function _applyRepeatingLinearStops(gradient, rawStops, lineLength) {
 }
 function _resolveBorderImageSource(state, source, width, height) {
     return __awaiter(this, void 0, void 0, function () {
-        var url, canvas, ctx, _a, lineLength, x0, x1, y0, y1, gradient_4, position, x, y, _b, rx, ry, gradient_5, position, cx, cy, conicGrad_3;
+        var url, e_3, canvas, ctx, _a, lineLength, x0, x1, y0, y1, gradient_4, position, x, y, _b, rx, ry, gradient_5, position, cx, cy, conicGrad_3;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
@@ -18399,8 +18425,8 @@ function _resolveBorderImageSource(state, source, width, height) {
                     return [4 /*yield*/, state.context.cache.match(url)];
                 case 2: return [2 /*return*/, _c.sent()];
                 case 3:
-                    _c.sent();
-                    state.context.logger.error("Error loading border-image-source ".concat(url));
+                    e_3 = _c.sent();
+                    state.context.error("Error loading border-image-source ".concat(url), e_3);
                     return [2 /*return*/, null];
                 case 4:
                     // For gradients, render to an offscreen canvas at the border-image area size
@@ -19400,7 +19426,7 @@ function renderListMarker(state, paint, styles) {
 }
 function _renderListStyleImage(state, container, _styles) {
     return __awaiter(this, void 0, void 0, function () {
-        var img, url, image;
+        var img, url, image, e_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -19416,8 +19442,8 @@ function _renderListStyleImage(state, container, _styles) {
                     state.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
                     return [3 /*break*/, 4];
                 case 3:
-                    _a.sent();
-                    state.context.logger.error("Error loading list-style-image ".concat(url));
+                    e_1 = _a.sent();
+                    state.context.error("Error loading list-style-image ".concat(url), e_1);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -19877,7 +19903,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
     };
     CanvasRenderer.prototype.renderNodeContent = function (paint) {
         return __awaiter(this, void 0, void 0, function () {
-            var container, curves, styles, _i, _a, child, image, e_1, image, image, image, iframeRenderer, canvas;
+            var container, curves, styles, _i, _a, child, image, e_1, image, _e_1, image, e_2, image, e_3, iframeRenderer, canvas;
             var _b;
             return __generator(this, function (_c) {
                 switch (_c.label) {
@@ -19925,8 +19951,8 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         _c.label = 11;
                     case 11: return [3 /*break*/, 13];
                     case 12:
-                        _c.sent();
-                        this.context.logger.error("Error loading image ".concat(container.src));
+                        _e_1 = _c.sent();
+                        this.context.error("Error loading image ".concat(container.src), _e_1);
                         return [3 /*break*/, 13];
                     case 13: return [3 /*break*/, 14];
                     case 14:
@@ -19943,8 +19969,8 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         renderReplacedElement(this.state, container, curves, image);
                         return [3 /*break*/, 18];
                     case 17:
-                        _c.sent();
-                        this.context.logger.error("Error loading svg ".concat(container.svg.substring(0, 255)));
+                        e_2 = _c.sent();
+                        this.context.error("Error loading svg ".concat(container.svg.substring(0, 255)), e_2);
                         return [3 /*break*/, 18];
                     case 18:
                         if (!(container instanceof ObjectElementContainer)) return [3 /*break*/, 22];
@@ -19963,8 +19989,8 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         }
                         return [3 /*break*/, 22];
                     case 21:
-                        _c.sent();
-                        this.context.logger.error("Error loading object data ".concat(container.src));
+                        e_3 = _c.sent();
+                        this.context.error("Error loading object data ".concat(container.src), e_3);
                         return [3 /*break*/, 22];
                     case 22:
                         if (!(container instanceof IFrameElementContainer && container.tree)) return [3 /*break*/, 24];
@@ -20124,8 +20150,9 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     imageTimeout: (_c = opts.imageTimeout) !== null && _c !== void 0 ? _c : 15000,
                     proxy: opts.proxy,
                     useCORS: (_d = opts.useCORS) !== null && _d !== void 0 ? _d : false,
+                    isResourceSameOrigin: opts.isResourceSameOrigin,
                 };
-                contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache }, resourceOptions);
+                contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache, onError: opts.onError }, resourceOptions);
                 windowOptions = {
                     windowWidth: (_f = opts.windowWidth) !== null && _f !== void 0 ? _f : defaultView.innerWidth,
                     windowHeight: (_g = opts.windowHeight) !== null && _g !== void 0 ? _g : defaultView.innerHeight,

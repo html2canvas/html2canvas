@@ -381,7 +381,7 @@ export class CanvasRenderer extends Renderer {
                         renderReplacedElement(this.state, container, curves, image);
                     }
                 } catch (_e) {
-                    this.context.logger.error(`Error loading image ${container.src}`);
+                    this.context.error(`Error loading image ${container.src}`, _e);
                 }
             }
         }
@@ -395,7 +395,7 @@ export class CanvasRenderer extends Renderer {
                 const image = await this.context.cache.match(container.svg);
                 renderReplacedElement(this.state, container, curves, image);
             } catch (e) {
-                this.context.logger.error(`Error loading svg ${container.svg.substring(0, 255)}`);
+                this.context.error(`Error loading svg ${container.svg.substring(0, 255)}`, e);
             }
         }
 
@@ -410,7 +410,7 @@ export class CanvasRenderer extends Renderer {
                     }
                 }
             } catch (e) {
-                this.context.logger.error(`Error loading object data ${container.src}`);
+                this.context.error(`Error loading object data ${container.src}`, e);
             }
         }
 

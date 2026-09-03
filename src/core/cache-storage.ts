@@ -1,5 +1,5 @@
-import { FEATURES } from './features';
 import { Context } from './context';
+import { FEATURES } from './features';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const cache: { [key: string]: Promise<any> } = {};
@@ -34,6 +34,13 @@ export interface ResourceOptions {
     useCORS: boolean;
     allowTaint: boolean;
     proxy?: string;
+    /**
+     * Overrides the same-origin check for resource URLs. Return `true`/`false` to
+     * force the decision for a given URL, or `undefined` to fall back to the
+     * default origin comparison. Useful when assets are served from a CDN that
+     * should be treated as same-origin.
+     */
+    isResourceSameOrigin?: (src: string) => boolean | undefined;
 }
 
 export class Cache {
@@ -67,9 +74,22 @@ export class Cache {
         return cache[src];
     }
 
+    private isSameOrigin(src: string): boolean {
+        // Allow callers to override the same-origin decision per URL. When the
+        // custom function returns undefined, fall back to the default check.
+        const override = this._options.isResourceSameOrigin;
+        if (override) {
+            const result = override(src);
+            if (typeof result === 'boolean') {
+                return result;
+            }
+        }
+        return CacheStorage.isSameOrigin(src);
+    }
+
     private async loadImage(key: string) {
         const isExtensionImage = key.startsWith('chrome-extension://');
-        const isSameOrigin = CacheStorage.isSameOrigin(key) || isExtensionImage;
+        const isSameOrigin = this.isSameOrigin(key) || isExtensionImage;
         const useCORS =
             !isInlineImage(key) && this._options.useCORS === true && FEATURES.SUPPORT_CORS_IMAGES && !isSameOrigin;
         const useProxy =
