@@ -109,6 +109,7 @@ export class CanvasRenderer extends Renderer {
             isChrome,
             canvasPool: new CanvasPool(canvas.ownerDocument ?? document),
             resizeCache: new Map<string, HTMLCanvasElement>(),
+            gradientCanvasCache: new Map<string, HTMLCanvasElement>(),
         };
 
         ctx.scale(options.scale, options.scale);
@@ -546,10 +547,11 @@ export class CanvasRenderer extends Renderer {
         const stack = parseStackingContexts(element);
         await this.renderStack(stack);
         this.applyEffects([]);
-        // Release pooled offscreen canvases and the resize cache so their
+        // Release pooled offscreen canvases and the per-render caches so their
         // backing memory is reclaimed.
         this.state.canvasPool.clear();
         this.state.resizeCache.clear();
+        this.state.gradientCanvasCache.clear();
         return this.state.canvas;
     }
 }

@@ -45,10 +45,19 @@ import {
     canvasPath,
     CanvasRenderState,
     formatPath,
+    getLinearGradientCanvas,
     renderRepeat,
     resizeImage,
 } from './canvas-render-state';
 import { createFontStyle, drawTextWithLetterSpacing } from './canvas-text-renderer';
+
+/**
+ * Builds a stable cache key fragment from processed gradient stops.
+ * Colours are packed numbers and stops are normalised numbers, so a simple
+ * join uniquely identifies the gradient's appearance.
+ */
+const gradientStopsKey = (stops: ReadonlyArray<{ color: number; stop: number }>): string =>
+    stops.map(s => `${s.color}@${s.stop}`).join(',');
 
 // ---------------------------------------------------------------------------
 // Inline fragment bounds (for box-decoration-break)
@@ -243,24 +252,21 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 state.context.windowBounds,
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+            const stops = processColorStops(backgroundImage.stops, lineLength || 1);
 
-            const canvas = state.canvasPool.acquire(width, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-
-            processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
-                gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
-            );
-
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
-                // createPattern reads the canvas synchronously; renderRepeat fills
-                // immediately, so the source canvas can be recycled right after.
+                const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
+                // A pattern is bound to the context that creates it, so build a
+                // fresh one from the cached canvas on the current state.ctx.
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
-            state.canvasPool.release(canvas);
         } else if (isRepeatingLinearGradient(backgroundImage)) {
             const [path, x, y, width, height] = calculateBackgroundRendering(
                 container,
@@ -270,16 +276,14 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
-            const canvas = state.canvasPool.acquire(width, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-
             // processColorStops normalises stops to [0,1] relative to lineLength
             const processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
             const tileStart = processedStops[0].stop;
             const tileEnd = processedStops[processedStops.length - 1].stop;
             const tileSize = tileEnd - tileStart;
 
+            // Resolve the final stop list once (tiled for repeating gradients).
+            let finalStops = processedStops;
             if (tileSize > 0) {
                 // Build all tiled stops in [0,1] by repeating the tile backward and forward.
                 // Use a max-iterations guard to prevent runaway loops on degenerate inputs.
@@ -311,18 +315,20 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
                 }
 
-                allStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
-            } else {
-                processedStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                finalStops = allStops;
             }
 
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                const key = `rlin|${x0},${y0},${x1},${y1}|${gradientStopsKey(finalStops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    finalStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
-            state.canvasPool.release(canvas);
         } else if (isRadialGradient(backgroundImage)) {
             const [path, left, top, width, height] = calculateBackgroundRendering(
                 container,
@@ -595,20 +601,19 @@ async function renderBackgroundImagePerLayer(
                 state.context.windowBounds,
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+            const stops = processColorStops(backgroundImage.stops, lineLength || 1);
 
-            const canvas = state.canvasPool.acquire(width, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-            processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
-                gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
-            );
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
-            state.canvasPool.release(canvas);
         }
         // For simplicity, other gradient types fall through to renderBackgroundImage
         // TODO: handle all gradient types per-layer if needed
