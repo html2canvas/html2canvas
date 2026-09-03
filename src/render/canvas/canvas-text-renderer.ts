@@ -432,7 +432,17 @@ export async function renderTextNode(
         });
     }
 
+    // -webkit-line-clamp: keep only the first N visual lines and mark where the
+    // trailing ellipsis must be drawn. Only applied to horizontal text (the
+    // property is meaningless for vertical writing modes). See computeLineClamp.
+    const clamp =
+        !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(text.textBounds, styles.webkitLineClamp) : null;
+
     text.textBounds.forEach(textBound => {
+        // Skip segments on lines beyond the clamp limit.
+        if (clamp && !clamp.kept.has(textBound)) {
+            return;
+        }
         // Determine whether this segment is on the first visual line.
         // If so, use firstLineStyles (overriding color, font, etc.) for rendering.
         const isOnFirstLine =
@@ -485,6 +495,77 @@ export async function renderTextNode(
             }
         });
     });
+
+    // Draw the clamp ellipsis after the last kept line, unless the text fill is
+    // handled elsewhere (background-clip: text) or the colour is transparent.
+    if (
+        clamp &&
+        clamp.ellipsisAnchor &&
+        getBackgroundValueForIndex(styles.backgroundClip, 0) !== BACKGROUND_CLIP.TEXT &&
+        !isTransparent(styles.color)
+    ) {
+        const anchor = clamp.ellipsisAnchor;
+        state.ctx.font = font;
+        state.ctx.fillStyle = asString(styles.color);
+        state.ctx.textBaseline = 'alphabetic';
+        state.ctx.fillText(ELLIPSIS, anchor.bounds.left + anchor.bounds.width, anchor.bounds.top + baseline);
+    }
+}
+
+const ELLIPSIS = '\u2026';
+
+/**
+ * Computes which text segments survive a `-webkit-line-clamp: maxLines` limit.
+ *
+ * Segments are grouped into visual lines by their rounded top coordinate. The
+ * first `maxLines` distinct lines are kept; the rest are dropped. The rightmost
+ * segment of the last kept line is returned as the ellipsis anchor so the caller
+ * can draw a trailing "…" right after it.
+ *
+ * Returns null when the text already fits within `maxLines` (no clamping needed).
+ */
+export function computeLineClamp(
+    textBounds: TextBounds[],
+    maxLines: number,
+): { kept: Set<TextBounds>; ellipsisAnchor: TextBounds | null } | null {
+    // Distinct line tops in visual order.
+    const lineTops: number[] = [];
+    const seen = new Set<number>();
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!seen.has(key)) {
+            seen.add(key);
+            lineTops.push(key);
+        }
+    }
+
+    // Nothing to clamp if the content already fits.
+    if (lineTops.length <= maxLines) {
+        return null;
+    }
+
+    const keptTops = new Set(lineTops.slice(0, maxLines).map(t => t));
+    const lastKeptTop = lineTops[maxLines - 1];
+
+    const kept = new Set<TextBounds>();
+    let ellipsisAnchor: TextBounds | null = null;
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!keptTops.has(key)) {
+            continue;
+        }
+        kept.add(tb);
+        // Track the rightmost segment of the last kept line for the ellipsis.
+        if (
+            key === lastKeptTop &&
+            (ellipsisAnchor === null ||
+                tb.bounds.left + tb.bounds.width > ellipsisAnchor.bounds.left + ellipsisAnchor.bounds.width)
+        ) {
+            ellipsisAnchor = tb;
+        }
+    }
+
+    return { kept, ellipsisAnchor };
 }
 
 // ---------------------------------------------------------------------------

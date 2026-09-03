@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+  <head>
+    <title>-webkit-line-clamp rendering</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style type="text/css">
+      html {
+        background: #ffffff;
+      }
+      body {
+        margin: 20px;
+        font-family: sans-serif;
+        font-size: 16px;
+        line-height: 20px;
+        color: #222;
+      }
+
+      .box {
+        width: 220px;
+        margin: 0 0 16px 0;
+        border: 1px solid #ccc;
+        padding: 6px;
+      }
+
+      /* Clamp to 2 lines with overflow:hidden (the common, spec-recommended combo) */
+      .clamp2 {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+      }
+
+      /* Clamp to 1 line */
+      .clamp1 {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+      }
+
+      /* Clamp to 3 lines */
+      .clamp3 {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+      }
+
+      /* Clamp larger than the content — should render all text, no ellipsis */
+      .clamp-fits {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 5;
+        overflow: hidden;
+      }
+
+      /* Coloured / bold text under clamp */
+      .clamp-colored {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        color: #c0392b;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Case 1: clamp to 2 lines -->
+    <div class="box clamp2">
+      This is a fairly long paragraph of text that will overflow well beyond two lines so that the line clamp has
+      something to truncate and an ellipsis to append at the end.
+    </div>
+
+    <!-- Case 2: clamp to 1 line -->
+    <div class="box clamp1">
+      A single line clamp should keep only the very first line of this sentence and drop everything else.
+    </div>
+
+    <!-- Case 3: clamp to 3 lines -->
+    <div class="box clamp3">
+      Three lines are kept from this longer block of text. The remaining content beyond the third visual line must be
+      truncated and replaced by an ellipsis marker on the last kept line.
+    </div>
+
+    <!-- Case 4: content shorter than the clamp limit — no truncation -->
+    <div class="box clamp-fits">Short text that fits.</div>
+
+    <!-- Case 5: coloured bold text -->
+    <div class="box clamp-colored">
+      Coloured and bold text should still clamp correctly to two lines with an ellipsis and keep its colour and weight.
+    </div>
+
+    <!-- Case 6: control — same text without any clamp -->
+    <div class="box">
+      This paragraph has no line clamp applied, so the full text should render across as many lines as needed.
+    </div>
+  </body>
+</html>
