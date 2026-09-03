@@ -20,6 +20,13 @@ export class ElementContainer {
     flags = 0;
     /** Computed styles for ::first-line, populated by parseNodeTree when the pseudo-element has effective styling. */
     firstLineStyles: CSSParsedDeclaration | null = null;
+    /**
+     * Bounds of the direct <legend> child of a <fieldset>, when present.
+     * Browsers render the fieldset's top border with a gap where the legend sits
+     * (the legend straddles the top border, centred vertically on it).
+     * The renderer uses these bounds to punch that gap in the top border.
+     */
+    readonly legendBounds?: Bounds;
 
     constructor(
         protected readonly context: Context,
@@ -79,6 +86,34 @@ export class ElementContainer {
         }
 
         this.bounds = parseBounds(this.context, element);
+
+        // --- <fieldset> / <legend> support ---
+        // In Chromium, getBoundingClientRect() on a fieldset returns a rect whose top
+        // is at the top of the <legend> (which overflows above the border line).
+        // We capture legendBounds for the gap rendering and correct bounds.top so that
+        // BoundCurves places the top border at the legend's vertical centre, matching
+        // the visual rendering.
+        if (element.tagName === 'FIELDSET') {
+            const legend = element.querySelector(':scope > legend') as HTMLElement | null;
+            if (legend) {
+                const legendBounds = parseBounds(this.context, legend);
+                (this as { legendBounds?: Bounds }).legendBounds = legendBounds;
+
+                // Top border sits at: legend centre - borderTopWidth / 2
+                const legendCentreY = legendBounds.top + legendBounds.height / 2;
+                const borderBoxTop = legendCentreY - this.styles.borderTopWidth / 2;
+                // Only correct when the bounding rect top is genuinely above the border edge
+                // (display:block case in Chromium). Use a 1px threshold to avoid FP noise.
+                if (borderBoxTop - this.bounds.top > 1) {
+                    this.bounds = new Bounds(
+                        this.bounds.left,
+                        borderBoxTop,
+                        this.bounds.width,
+                        this.bounds.height - (borderBoxTop - this.bounds.top),
+                    );
+                }
+            }
+        }
 
         if (isDebugging(element, DebuggerType.RENDER)) {
             this.flags |= FLAGS.DEBUG_RENDER;

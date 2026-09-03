@@ -10032,6 +10032,14 @@
                     return 3 /* BORDER_STYLE.DOTTED */;
                 case 'double':
                     return 4 /* BORDER_STYLE.DOUBLE */;
+                case 'groove':
+                    return 5 /* BORDER_STYLE.GROOVE */;
+                case 'ridge':
+                    return 6 /* BORDER_STYLE.RIDGE */;
+                case 'inset':
+                    return 7 /* BORDER_STYLE.INSET */;
+                case 'outset':
+                    return 8 /* BORDER_STYLE.OUTSET */;
             }
             return 1 /* BORDER_STYLE.SOLID */;
         },
@@ -12311,6 +12319,27 @@
                 }
             }
             this.bounds = parseBounds(this.context, element);
+            // --- <fieldset> / <legend> support ---
+            // In Chromium, getBoundingClientRect() on a fieldset returns a rect whose top
+            // is at the top of the <legend> (which overflows above the border line).
+            // We capture legendBounds for the gap rendering and correct bounds.top so that
+            // BoundCurves places the top border at the legend's vertical centre, matching
+            // the visual rendering.
+            if (element.tagName === 'FIELDSET') {
+                var legend = element.querySelector(':scope > legend');
+                if (legend) {
+                    var legendBounds = parseBounds(this.context, legend);
+                    this.legendBounds = legendBounds;
+                    // Top border sits at: legend centre - borderTopWidth / 2
+                    var legendCentreY = legendBounds.top + legendBounds.height / 2;
+                    var borderBoxTop = legendCentreY - this.styles.borderTopWidth / 2;
+                    // Only correct when the bounding rect top is genuinely above the border edge
+                    // (display:block case in Chromium). Use a 1px threshold to avoid FP noise.
+                    if (borderBoxTop - this.bounds.top > 1) {
+                        this.bounds = new Bounds(this.bounds.left, borderBoxTop, this.bounds.width, this.bounds.height - (borderBoxTop - this.bounds.top));
+                    }
+                }
+            }
             if (isDebugging(element, 4 /* DebuggerType.RENDER */)) {
                 this.flags |= 16 /* FLAGS.DEBUG_RENDER */;
             }
@@ -13369,6 +13398,14 @@
                             container.flags |= 4 /* FLAGS.CREATES_REAL_STACKING_CONTEXT */;
                         }
                         else if (createsStackingContext(container.styles)) {
+                            container.flags |= 2 /* FLAGS.CREATES_STACKING_CONTEXT */;
+                        }
+                        else if (container.legendBounds) {
+                            // A <fieldset> with a <legend> must create its own stacking context
+                            // so its children (legend, content) are rendered after its background,
+                            // not before. Without this, inline-block fieldsets end up in inlineLevel
+                            // while their children land in nonInlineLevel of the parent stacking
+                            // context, causing the fieldset background to paint over its children.
                             container.flags |= 2 /* FLAGS.CREATES_STACKING_CONTEXT */;
                         }
                         if (LIST_OWNERS.indexOf(childNode.tagName) !== -1) {
@@ -17790,6 +17827,188 @@
             });
         });
     }
+    // ---------------------------------------------------------------------------
+    // 3D border styles (groove / ridge / inset / outset)
+    // ---------------------------------------------------------------------------
+    /**
+     * Extracts the RGBA components from a packed color.
+     */
+    var unpackColor = function (color) { return [
+        0xff & (color >> 24),
+        0xff & (color >> 16),
+        0xff & (color >> 8),
+        0xff & color,
+    ]; };
+    /**
+     * Returns a darker shade of the given color by scaling RGB by `factor` (0..1).
+     * Alpha is preserved. Matches how browsers derive the "dark" side of 3D borders.
+     */
+    var darkenColor = function (color, factor) {
+        var _a = unpackColor(color), r = _a[0], g = _a[1], b = _a[2], a = _a[3];
+        return pack(Math.round(r * factor), Math.round(g * factor), Math.round(b * factor), a / 255);
+    };
+    /**
+     * Resolves the two shades used for 3D borders on a given side.
+     *
+     * Browsers render inset/outset/groove/ridge by lighting the box as if from the
+     * top-left: the top and left sides use one shade, the bottom and right the other.
+     * The base color is used as the "light" shade; a darkened variant (~50%) as the
+     * "dark" shade — this matches the common browser behaviour for a mid-tone base.
+     *
+     * @param side 0=top, 1=right, 2=bottom, 3=left
+     * @returns the color to use for that side's (outer, inner) halves
+     */
+    var resolve3dBorderShades = function (color, style, side) {
+        var light = color;
+        var dark = darkenColor(color, 0.5);
+        var isTopLeft = side === 0 || side === 3;
+        switch (style) {
+            case 7 /* BORDER_STYLE.INSET */:
+                // Top/left dark, bottom/right light (looks pressed in).
+                return { outer: isTopLeft ? dark : light, inner: isTopLeft ? dark : light };
+            case 8 /* BORDER_STYLE.OUTSET */:
+                // Top/left light, bottom/right dark (looks raised).
+                return { outer: isTopLeft ? light : dark, inner: isTopLeft ? light : dark };
+            case 5 /* BORDER_STYLE.GROOVE */:
+                // Carved-in: outer half like inset, inner half like outset.
+                return { outer: isTopLeft ? dark : light, inner: isTopLeft ? light : dark };
+            case 6 /* BORDER_STYLE.RIDGE */:
+                // Raised: outer half like outset, inner half like inset.
+                return { outer: isTopLeft ? light : dark, inner: isTopLeft ? dark : light };
+            default:
+                return { outer: color, inner: color };
+        }
+    };
+    /**
+     * Renders inset/outset borders: a single flat shade per side, chosen by the
+     * lighting model (top/left vs bottom/right).
+     */
+    function renderInsetOutsetBorder(state, color, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var outer;
+            return __generator(this, function (_a) {
+                outer = resolve3dBorderShades(color, style, side).outer;
+                canvasPath(state, parsePathForBorder(curvePoints, side));
+                state.ctx.fillStyle = asString(outer);
+                state.ctx.fill();
+                return [2 /*return*/];
+            });
+        });
+    }
+    /**
+     * Renders groove/ridge borders: the border is split into an outer and inner half
+     * along the border-stroke centre line, each half painted with a different shade
+     * to create the carved (groove) or raised (ridge) 3D effect.
+     */
+    function renderGrooveRidgeBorder(state, color, width, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, outer, inner, fullBorder, strokePath;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!(width < 2)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, renderInsetOutsetBorder(state, color, side, style, curvePoints)];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/];
+                    case 2:
+                        _a = resolve3dBorderShades(color, style, side), outer = _a.outer, inner = _a.inner;
+                        fullBorder = parsePathForBorder(curvePoints, side);
+                        strokePath = parsePathForBorderStroke(curvePoints, side);
+                        // Outer half: clip to the full border trapezoid, then fill the region on the
+                        // border-box side of the stroke centre line.
+                        // Inner half: same clip, fill the region on the padding-box side.
+                        // We approximate the two halves using the border-box→stroke and
+                        // stroke→padding-box sub-trapezoids built from the stroke centre line.
+                        // Outer half — border-box edge to stroke centre.
+                        state.ctx.save();
+                        canvasPath(state, fullBorder);
+                        state.ctx.clip();
+                        // Fill outer half: the border-box outer boundary down to the stroke line.
+                        canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'outer', strokePath));
+                        state.ctx.fillStyle = asString(outer);
+                        state.ctx.fill();
+                        // Fill inner half: the stroke line down to the padding-box boundary.
+                        canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'inner', strokePath));
+                        state.ctx.fillStyle = asString(inner);
+                        state.ctx.fill();
+                        state.ctx.restore();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    /**
+     * Builds the path for one half (outer=border-box→stroke, inner=stroke→padding-box)
+     * of a border side, used to paint groove/ridge halves. The stroke centre line is
+     * shared between the two halves so they meet without a gap.
+     */
+    var _buildHalfBorderPath = function (curvePoints, side, half, strokePath) {
+        var border = parsePathForBorder(curvePoints, side);
+        // border = [outerStart, outerEnd, innerEnd, innerStart] (trapezoid corners).
+        // strokePath = [strokeStart, strokeEnd] (centre line of the border).
+        var outerEdge = border.slice(0, 2); // border-box edge (2 points)
+        var innerEdge = border.slice(2, 4); // padding-box edge (2 points)
+        var stroke = strokePath.slice(0, 2);
+        var strokeReversed = [stroke[1], stroke[0]];
+        if (half === 'outer') {
+            // border-box edge → stroke centre (reversed to close the polygon)
+            return __spreadArray(__spreadArray([], outerEdge, true), strokeReversed, true);
+        }
+        // stroke centre → padding-box edge
+        return __spreadArray(__spreadArray([], stroke, true), innerEdge, true);
+    };
+    /**
+     * Dispatches border rendering for a single side to the appropriate renderer
+     * based on the border-style. Centralises the style switch so the three border
+     * loops (inline slice fragments, single box, fieldset top) stay in sync.
+     */
+    function renderBorderSide(state, color, width, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _a = style;
+                        switch (_a) {
+                            case 2 /* BORDER_STYLE.DASHED */: return [3 /*break*/, 1];
+                            case 3 /* BORDER_STYLE.DOTTED */: return [3 /*break*/, 3];
+                            case 4 /* BORDER_STYLE.DOUBLE */: return [3 /*break*/, 5];
+                            case 7 /* BORDER_STYLE.INSET */: return [3 /*break*/, 7];
+                            case 8 /* BORDER_STYLE.OUTSET */: return [3 /*break*/, 7];
+                            case 5 /* BORDER_STYLE.GROOVE */: return [3 /*break*/, 9];
+                            case 6 /* BORDER_STYLE.RIDGE */: return [3 /*break*/, 9];
+                        }
+                        return [3 /*break*/, 11];
+                    case 1: return [4 /*yield*/, renderDashedDottedBorder(state, color, width, side, curvePoints, 2 /* BORDER_STYLE.DASHED */)];
+                    case 2:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 3: return [4 /*yield*/, renderDashedDottedBorder(state, color, width, side, curvePoints, 3 /* BORDER_STYLE.DOTTED */)];
+                    case 4:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 5: return [4 /*yield*/, renderDoubleBorder(state, color, width, side, curvePoints)];
+                    case 6:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 7: return [4 /*yield*/, renderInsetOutsetBorder(state, color, side, style, curvePoints)];
+                    case 8:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 9: return [4 /*yield*/, renderGrooveRidgeBorder(state, color, width, side, style, curvePoints)];
+                    case 10:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 11: return [4 /*yield*/, renderSolidBorder(state, color, side, curvePoints)];
+                    case 12:
+                        _b.sent();
+                        _b.label = 13;
+                    case 13: return [2 /*return*/];
+                }
+            });
+        });
+    }
     function renderDashedDottedBorder(state, color, width, side, curvePoints, style) {
         return __awaiter(this, void 0, void 0, function () {
             var strokePaths, boxPaths, startX, startY, endX, endY, length, dashLength, spaceLength, useLineDash, multiplier, numberOfDashes, minSpace, maxSpace, path1, path2, path1, path2;
@@ -18023,7 +18242,7 @@
                                 _renderBoxShadows(state, fragPaint);
                             }
                         }
-                        if (!hasBorders) return [3 /*break*/, 22];
+                        if (!hasBorders) return [3 /*break*/, 16];
                         borders = [
                             { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
                             { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
@@ -18033,7 +18252,7 @@
                         _b = 0, fragments_4 = fragments;
                         _d.label = 10;
                     case 10:
-                        if (!(_b < fragments_4.length)) return [3 /*break*/, 22];
+                        if (!(_b < fragments_4.length)) return [3 /*break*/, 16];
                         fragment = fragments_4[_b];
                         sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
                         fragCurves = new BoundCurves(sliceContainer);
@@ -18041,7 +18260,7 @@
                         _c = 0, borders_1 = borders;
                         _d.label = 11;
                     case 11:
-                        if (!(_c < borders_1.length)) return [3 /*break*/, 21];
+                        if (!(_c < borders_1.length)) return [3 /*break*/, 15];
                         border = borders_1[_c];
                         skipRight = side === 1 && !fragment.isLast;
                         skipLeft = side === 3 && !fragment.isFirst;
@@ -18049,38 +18268,21 @@
                             !skipLeft &&
                             border.style !== 0 /* BORDER_STYLE.NONE */ &&
                             !isTransparent(border.color) &&
-                            border.width > 0)) return [3 /*break*/, 19];
-                        if (!(border.style === 2 /* BORDER_STYLE.DASHED */)) return [3 /*break*/, 13];
-                        return [4 /*yield*/, renderDashedDottedBorder(state, border.color, border.width, side, fragCurves, 2 /* BORDER_STYLE.DASHED */)];
+                            border.width > 0)) return [3 /*break*/, 13];
+                        return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, fragCurves)];
                     case 12:
                         _d.sent();
-                        return [3 /*break*/, 19];
+                        _d.label = 13;
                     case 13:
-                        if (!(border.style === 3 /* BORDER_STYLE.DOTTED */)) return [3 /*break*/, 15];
-                        return [4 /*yield*/, renderDashedDottedBorder(state, border.color, border.width, side, fragCurves, 3 /* BORDER_STYLE.DOTTED */)];
-                    case 14:
-                        _d.sent();
-                        return [3 /*break*/, 19];
-                    case 15:
-                        if (!(border.style === 4 /* BORDER_STYLE.DOUBLE */)) return [3 /*break*/, 17];
-                        return [4 /*yield*/, renderDoubleBorder(state, border.color, border.width, side, fragCurves)];
-                    case 16:
-                        _d.sent();
-                        return [3 /*break*/, 19];
-                    case 17: return [4 /*yield*/, renderSolidBorder(state, border.color, side, fragCurves)];
-                    case 18:
-                        _d.sent();
-                        _d.label = 19;
-                    case 19:
                         side++;
-                        _d.label = 20;
-                    case 20:
+                        _d.label = 14;
+                    case 14:
                         _c++;
                         return [3 /*break*/, 11];
-                    case 21:
+                    case 15:
                         _b++;
                         return [3 /*break*/, 10];
-                    case 22: return [2 /*return*/];
+                    case 16: return [2 /*return*/];
                 }
             });
         });
@@ -18485,7 +18687,7 @@
     // ---------------------------------------------------------------------------
     function _renderSingleBoxBackgroundAndBorders(state, paint) {
         return __awaiter(this, void 0, void 0, function () {
-            var styles, hasBackground, borders, broadestClip, i, clip, backgroundPaintingArea, isBackgroundClipText, hasMultipleClips, borderImageRendered, side, _i, borders_2, border;
+            var styles, hasBackground, borders, broadestClip, i, clip, backgroundPaintingArea, isBackgroundClipText, hasMultipleClips, borderImageRendered, side, _i, borders_2, border, legendBounds;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -18551,42 +18753,80 @@
                     case 7: return [4 /*yield*/, _renderBorderImage(state, paint)];
                     case 8:
                         borderImageRendered = _a.sent();
-                        if (!!borderImageRendered) return [3 /*break*/, 19];
+                        if (!!borderImageRendered) return [3 /*break*/, 15];
                         side = 0;
                         _i = 0, borders_2 = borders;
                         _a.label = 9;
                     case 9:
-                        if (!(_i < borders_2.length)) return [3 /*break*/, 19];
+                        if (!(_i < borders_2.length)) return [3 /*break*/, 15];
                         border = borders_2[_i];
-                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 17];
-                        if (!(border.style === 2 /* BORDER_STYLE.DASHED */)) return [3 /*break*/, 11];
-                        return [4 /*yield*/, renderDashedDottedBorder(state, border.color, border.width, side, paint.curves, 2 /* BORDER_STYLE.DASHED */)];
+                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 13];
+                        legendBounds = side === 0 ? paint.container.legendBounds : undefined;
+                        if (!legendBounds) return [3 /*break*/, 11];
+                        return [4 /*yield*/, _renderFieldsetTopBorder(state, paint, border, legendBounds)];
                     case 10:
                         _a.sent();
-                        return [3 /*break*/, 17];
-                    case 11:
-                        if (!(border.style === 3 /* BORDER_STYLE.DOTTED */)) return [3 /*break*/, 13];
-                        return [4 /*yield*/, renderDashedDottedBorder(state, border.color, border.width, side, paint.curves, 3 /* BORDER_STYLE.DOTTED */)];
+                        return [3 /*break*/, 13];
+                    case 11: return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, paint.curves)];
                     case 12:
                         _a.sent();
-                        return [3 /*break*/, 17];
+                        _a.label = 13;
                     case 13:
-                        if (!(border.style === 4 /* BORDER_STYLE.DOUBLE */)) return [3 /*break*/, 15];
-                        return [4 /*yield*/, renderDoubleBorder(state, border.color, border.width, side, paint.curves)];
-                    case 14:
-                        _a.sent();
-                        return [3 /*break*/, 17];
-                    case 15: return [4 /*yield*/, renderSolidBorder(state, border.color, side, paint.curves)];
-                    case 16:
-                        _a.sent();
-                        _a.label = 17;
-                    case 17:
                         side++;
-                        _a.label = 18;
-                    case 18:
+                        _a.label = 14;
+                    case 14:
                         _i++;
                         return [3 /*break*/, 9];
-                    case 19: return [2 /*return*/];
+                    case 15: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Fieldset top-border with legend gap
+    // ---------------------------------------------------------------------------
+    /**
+     * Renders the top border of a <fieldset> with a gap punched out where the
+     * <legend> sits, matching how browsers wrap the border around the legend.
+     *
+     * Strategy: apply an even-odd clip built from two rects — the full canvas area
+     * (outer) and the legend gap (inner). The evenodd fill rule turns the inner rect
+     * into a hole, so the border paints everywhere except behind the legend. The clip
+     * is scoped by ctx.save()/ctx.restore() so it does not affect subsequent drawing.
+     */
+    function _renderFieldsetTopBorder(state, paint, border, legendBounds) {
+        return __awaiter(this, void 0, void 0, function () {
+            var ctx, scale, borderTopY, gap, gapLeft, gapWidth, gapTop, gapHeight, pageW, pageH, outerLeft, outerTop;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        ctx = state.ctx;
+                        scale = state.options.scale;
+                        borderTopY = legendBounds.top + legendBounds.height / 2 - border.width / 2;
+                        gap = border.width / 2;
+                        gapLeft = legendBounds.left - gap;
+                        gapWidth = legendBounds.width + gap * 2;
+                        gapTop = borderTopY - 1;
+                        gapHeight = border.width + 2;
+                        pageW = state.canvas.width / scale;
+                        pageH = state.canvas.height / scale;
+                        outerLeft = state.options.x - 1;
+                        outerTop = state.options.y - 1;
+                        ctx.save();
+                        // Build an even-odd clip with two rects: the full canvas area (outer) and the
+                        // legend gap (inner). With the evenodd fill rule the inner rect becomes a hole,
+                        // so the border is drawn everywhere except behind the legend. We use the direct
+                        // ctx.beginPath()/ctx.rect() path API (a Path2D-based clip did not behave
+                        // consistently across Chromium versions here).
+                        ctx.beginPath();
+                        ctx.rect(outerLeft, outerTop, pageW + 2, pageH + 2);
+                        ctx.rect(gapLeft, gapTop, gapWidth, gapHeight);
+                        ctx.clip('evenodd');
+                        return [4 /*yield*/, renderBorderSide(state, border.color, border.width, 0, border.style, paint.curves)];
+                    case 1:
+                        _a.sent();
+                        ctx.restore();
+                        return [2 /*return*/];
                 }
             });
         });

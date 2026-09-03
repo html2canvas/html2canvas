@@ -36,7 +36,7 @@ Below is a list of all the supported CSS properties and values.
         - border-image-outset (length, number multiplier)
         - border-image-repeat (`stretch`, `repeat`, `round`, `space`)
     - border-radius
-    - border-style
+    - border-style (`solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset`, `outset`)
     - border-width
 - bottom
 - box-decoration-break (`slice` and `clone`)
@@ -207,7 +207,7 @@ These CSS properties are **NOT** currently supported
 - `<progress>` — bar with grey track and blue fill
 - `<meter>` — bar with green/yellow/red fill based on low/high/optimum thresholds
 - `<button>`, `<input type="submit|reset|button">` — rendered via generic CSS (no native chrome)
-- `<fieldset>`, `<legend>` — rendered via generic CSS
+- `<fieldset>`, `<legend>` — top border gap around the legend, with the legend centered on the border line
 
 ### List elements
 

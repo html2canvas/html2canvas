@@ -1,11 +1,15 @@
-import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 import { Context } from '../../core/context';
+import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
 export const enum BORDER_STYLE {
     NONE = 0,
     SOLID = 1,
     DASHED = 2,
     DOTTED = 3,
     DOUBLE = 4,
+    GROOVE = 5,
+    RIDGE = 6,
+    INSET = 7,
+    OUTSET = 8,
 }
 
 const borderStyleForSide = (side: string): IPropertyIdentValueDescriptor<BORDER_STYLE> => ({
@@ -23,6 +27,14 @@ const borderStyleForSide = (side: string): IPropertyIdentValueDescriptor<BORDER_
                 return BORDER_STYLE.DOTTED;
             case 'double':
                 return BORDER_STYLE.DOUBLE;
+            case 'groove':
+                return BORDER_STYLE.GROOVE;
+            case 'ridge':
+                return BORDER_STYLE.RIDGE;
+            case 'inset':
+                return BORDER_STYLE.INSET;
+            case 'outset':
+                return BORDER_STYLE.OUTSET;
         }
         return BORDER_STYLE.SOLID;
     },

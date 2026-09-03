@@ -8,7 +8,7 @@ import { BOX_DECORATION_BREAK } from '../../css/property-descriptors/box-decorat
 import { DIRECTION } from '../../css/property-descriptors/direction';
 import { DISPLAY } from '../../css/property-descriptors/display';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
-import { asString, isTransparent } from '../../css/types/color';
+import { asString, isTransparent, pack } from '../../css/types/color';
 import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
 import {
     CSSImageType,
@@ -785,6 +785,190 @@ export async function renderDoubleBorder(
     state.ctx.fill();
 }
 
+// ---------------------------------------------------------------------------
+// 3D border styles (groove / ridge / inset / outset)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts the RGBA components from a packed color.
+ */
+const unpackColor = (color: number): [number, number, number, number] => [
+    0xff & (color >> 24),
+    0xff & (color >> 16),
+    0xff & (color >> 8),
+    0xff & color,
+];
+
+/**
+ * Returns a darker shade of the given color by scaling RGB by `factor` (0..1).
+ * Alpha is preserved. Matches how browsers derive the "dark" side of 3D borders.
+ */
+const darkenColor = (color: number, factor: number): number => {
+    const [r, g, b, a] = unpackColor(color);
+    return pack(Math.round(r * factor), Math.round(g * factor), Math.round(b * factor), a / 255);
+};
+
+/**
+ * Resolves the two shades used for 3D borders on a given side.
+ *
+ * Browsers render inset/outset/groove/ridge by lighting the box as if from the
+ * top-left: the top and left sides use one shade, the bottom and right the other.
+ * The base color is used as the "light" shade; a darkened variant (~50%) as the
+ * "dark" shade — this matches the common browser behaviour for a mid-tone base.
+ *
+ * @param side 0=top, 1=right, 2=bottom, 3=left
+ * @returns the color to use for that side's (outer, inner) halves
+ */
+const resolve3dBorderShades = (color: number, style: BORDER_STYLE, side: number): { outer: number; inner: number } => {
+    const light = color;
+    const dark = darkenColor(color, 0.5);
+    const isTopLeft = side === 0 || side === 3;
+
+    switch (style) {
+        case BORDER_STYLE.INSET:
+            // Top/left dark, bottom/right light (looks pressed in).
+            return { outer: isTopLeft ? dark : light, inner: isTopLeft ? dark : light };
+        case BORDER_STYLE.OUTSET:
+            // Top/left light, bottom/right dark (looks raised).
+            return { outer: isTopLeft ? light : dark, inner: isTopLeft ? light : dark };
+        case BORDER_STYLE.GROOVE:
+            // Carved-in: outer half like inset, inner half like outset.
+            return { outer: isTopLeft ? dark : light, inner: isTopLeft ? light : dark };
+        case BORDER_STYLE.RIDGE:
+            // Raised: outer half like outset, inner half like inset.
+            return { outer: isTopLeft ? light : dark, inner: isTopLeft ? dark : light };
+        default:
+            return { outer: color, inner: color };
+    }
+};
+
+/**
+ * Renders inset/outset borders: a single flat shade per side, chosen by the
+ * lighting model (top/left vs bottom/right).
+ */
+export async function renderInsetOutsetBorder(
+    state: CanvasRenderState,
+    color: import('../../css/types/color').Color,
+    side: number,
+    style: BORDER_STYLE,
+    curvePoints: BoundCurves,
+): Promise<void> {
+    const { outer } = resolve3dBorderShades(color, style, side);
+    canvasPath(state, parsePathForBorder(curvePoints, side));
+    state.ctx.fillStyle = asString(outer);
+    state.ctx.fill();
+}
+
+/**
+ * Renders groove/ridge borders: the border is split into an outer and inner half
+ * along the border-stroke centre line, each half painted with a different shade
+ * to create the carved (groove) or raised (ridge) 3D effect.
+ */
+export async function renderGrooveRidgeBorder(
+    state: CanvasRenderState,
+    color: import('../../css/types/color').Color,
+    width: number,
+    side: number,
+    style: BORDER_STYLE,
+    curvePoints: BoundCurves,
+): Promise<void> {
+    // For hairline borders there is no room for two halves — fall back to a flat shade.
+    if (width < 2) {
+        await renderInsetOutsetBorder(state, color, side, style, curvePoints);
+        return;
+    }
+
+    const { outer, inner } = resolve3dBorderShades(color, style, side);
+    const fullBorder = parsePathForBorder(curvePoints, side);
+    const strokePath = parsePathForBorderStroke(curvePoints, side);
+
+    // Outer half: clip to the full border trapezoid, then fill the region on the
+    // border-box side of the stroke centre line.
+    // Inner half: same clip, fill the region on the padding-box side.
+    // We approximate the two halves using the border-box→stroke and
+    // stroke→padding-box sub-trapezoids built from the stroke centre line.
+
+    // Outer half — border-box edge to stroke centre.
+    state.ctx.save();
+    canvasPath(state, fullBorder);
+    state.ctx.clip();
+
+    // Fill outer half: the border-box outer boundary down to the stroke line.
+    canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'outer', strokePath));
+    state.ctx.fillStyle = asString(outer);
+    state.ctx.fill();
+
+    // Fill inner half: the stroke line down to the padding-box boundary.
+    canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'inner', strokePath));
+    state.ctx.fillStyle = asString(inner);
+    state.ctx.fill();
+
+    state.ctx.restore();
+}
+
+/**
+ * Builds the path for one half (outer=border-box→stroke, inner=stroke→padding-box)
+ * of a border side, used to paint groove/ridge halves. The stroke centre line is
+ * shared between the two halves so they meet without a gap.
+ */
+const _buildHalfBorderPath = (
+    curvePoints: BoundCurves,
+    side: number,
+    half: 'outer' | 'inner',
+    strokePath: Path[],
+): Path[] => {
+    const border = parsePathForBorder(curvePoints, side);
+    // border = [outerStart, outerEnd, innerEnd, innerStart] (trapezoid corners).
+    // strokePath = [strokeStart, strokeEnd] (centre line of the border).
+    const outerEdge = border.slice(0, 2); // border-box edge (2 points)
+    const innerEdge = border.slice(2, 4); // padding-box edge (2 points)
+    const stroke = strokePath.slice(0, 2);
+    const strokeReversed = [stroke[1], stroke[0]];
+
+    if (half === 'outer') {
+        // border-box edge → stroke centre (reversed to close the polygon)
+        return [...outerEdge, ...strokeReversed];
+    }
+    // stroke centre → padding-box edge
+    return [...stroke, ...innerEdge];
+};
+
+/**
+ * Dispatches border rendering for a single side to the appropriate renderer
+ * based on the border-style. Centralises the style switch so the three border
+ * loops (inline slice fragments, single box, fieldset top) stay in sync.
+ */
+export async function renderBorderSide(
+    state: CanvasRenderState,
+    color: import('../../css/types/color').Color,
+    width: number,
+    side: number,
+    style: BORDER_STYLE,
+    curvePoints: BoundCurves,
+): Promise<void> {
+    switch (style) {
+        case BORDER_STYLE.DASHED:
+            await renderDashedDottedBorder(state, color, width, side, curvePoints, BORDER_STYLE.DASHED);
+            break;
+        case BORDER_STYLE.DOTTED:
+            await renderDashedDottedBorder(state, color, width, side, curvePoints, BORDER_STYLE.DOTTED);
+            break;
+        case BORDER_STYLE.DOUBLE:
+            await renderDoubleBorder(state, color, width, side, curvePoints);
+            break;
+        case BORDER_STYLE.INSET:
+        case BORDER_STYLE.OUTSET:
+            await renderInsetOutsetBorder(state, color, side, style, curvePoints);
+            break;
+        case BORDER_STYLE.GROOVE:
+        case BORDER_STYLE.RIDGE:
+            await renderGrooveRidgeBorder(state, color, width, side, style, curvePoints);
+            break;
+        default:
+            await renderSolidBorder(state, color, side, curvePoints);
+    }
+}
+
 export async function renderDashedDottedBorder(
     state: CanvasRenderState,
     color: import('../../css/types/color').Color,
@@ -1076,29 +1260,7 @@ async function _renderInlineSlice(state: CanvasRenderState, paint: ElementPaint)
                     !isTransparent(border.color) &&
                     border.width > 0
                 ) {
-                    if (border.style === BORDER_STYLE.DASHED) {
-                        await renderDashedDottedBorder(
-                            state,
-                            border.color,
-                            border.width,
-                            side,
-                            fragCurves,
-                            BORDER_STYLE.DASHED,
-                        );
-                    } else if (border.style === BORDER_STYLE.DOTTED) {
-                        await renderDashedDottedBorder(
-                            state,
-                            border.color,
-                            border.width,
-                            side,
-                            fragCurves,
-                            BORDER_STYLE.DOTTED,
-                        );
-                    } else if (border.style === BORDER_STYLE.DOUBLE) {
-                        await renderDoubleBorder(state, border.color, border.width, side, fragCurves);
-                    } else {
-                        await renderSolidBorder(state, border.color, side, fragCurves);
-                    }
+                    await renderBorderSide(state, border.color, border.width, side, border.style, fragCurves);
                 }
                 side++;
             }
@@ -1730,31 +1892,74 @@ async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, pa
         let side = 0;
         for (const border of borders) {
             if (border.style !== BORDER_STYLE.NONE && !isTransparent(border.color) && border.width > 0) {
-                if (border.style === BORDER_STYLE.DASHED) {
-                    await renderDashedDottedBorder(
-                        state,
-                        border.color,
-                        border.width,
-                        side,
-                        paint.curves,
-                        BORDER_STYLE.DASHED,
-                    );
-                } else if (border.style === BORDER_STYLE.DOTTED) {
-                    await renderDashedDottedBorder(
-                        state,
-                        border.color,
-                        border.width,
-                        side,
-                        paint.curves,
-                        BORDER_STYLE.DOTTED,
-                    );
-                } else if (border.style === BORDER_STYLE.DOUBLE) {
-                    await renderDoubleBorder(state, border.color, border.width, side, paint.curves);
+                // For the top border of a <fieldset> with a <legend>, punch a gap
+                // where the legend sits so the border visually wraps around it.
+                const legendBounds = side === 0 ? paint.container.legendBounds : undefined;
+                if (legendBounds) {
+                    await _renderFieldsetTopBorder(state, paint, border, legendBounds);
                 } else {
-                    await renderSolidBorder(state, border.color, side, paint.curves);
+                    await renderBorderSide(state, border.color, border.width, side, border.style, paint.curves);
                 }
             }
             side++;
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Fieldset top-border with legend gap
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the top border of a <fieldset> with a gap punched out where the
+ * <legend> sits, matching how browsers wrap the border around the legend.
+ *
+ * Strategy: apply an even-odd clip built from two rects — the full canvas area
+ * (outer) and the legend gap (inner). The evenodd fill rule turns the inner rect
+ * into a hole, so the border paints everywhere except behind the legend. The clip
+ * is scoped by ctx.save()/ctx.restore() so it does not affect subsequent drawing.
+ */
+async function _renderFieldsetTopBorder(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    border: { style: BORDER_STYLE; color: import('../../css/types/color').Color; width: number },
+    legendBounds: import('../../css/layout/bounds').Bounds,
+): Promise<void> {
+    const ctx = state.ctx;
+    const scale = state.options.scale;
+
+    // The actual top border edge: legend vertical centre minus half border thickness.
+    // bounds.top == legendBounds.top in Chromium (fieldset bounding rect starts at
+    // the legend top, not the border top), so we compute border position from legendBounds.
+    const borderTopY = legendBounds.top + legendBounds.height / 2 - border.width / 2;
+
+    // Gap horizontal: half border-width padding on each side (matches browsers).
+    const gap = border.width / 2;
+    const gapLeft = legendBounds.left - gap;
+    const gapWidth = legendBounds.width + gap * 2;
+    // Gap vertical: the actual border stripe + 1px antialiasing margin on each side.
+    const gapTop = borderTopY - 1;
+    const gapHeight = border.width + 2;
+
+    // Outer rect in page-space coordinates (same CTM as main canvas).
+    // Must be large enough to cover the entire renderable area.
+    const pageW = state.canvas.width / scale;
+    const pageH = state.canvas.height / scale;
+    const outerLeft = state.options.x - 1;
+    const outerTop = state.options.y - 1;
+
+    ctx.save();
+    // Build an even-odd clip with two rects: the full canvas area (outer) and the
+    // legend gap (inner). With the evenodd fill rule the inner rect becomes a hole,
+    // so the border is drawn everywhere except behind the legend. We use the direct
+    // ctx.beginPath()/ctx.rect() path API (a Path2D-based clip did not behave
+    // consistently across Chromium versions here).
+    ctx.beginPath();
+    ctx.rect(outerLeft, outerTop, pageW + 2, pageH + 2);
+    ctx.rect(gapLeft, gapTop, gapWidth, gapHeight);
+    ctx.clip('evenodd');
+
+    await renderBorderSide(state, border.color, border.width, 0, border.style, paint.curves);
+
+    ctx.restore();
 }

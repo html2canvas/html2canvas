@@ -56,6 +56,13 @@ const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, r
                         container.flags |= FLAGS.CREATES_REAL_STACKING_CONTEXT;
                     } else if (createsStackingContext(container.styles)) {
                         container.flags |= FLAGS.CREATES_STACKING_CONTEXT;
+                    } else if (container.legendBounds) {
+                        // A <fieldset> with a <legend> must create its own stacking context
+                        // so its children (legend, content) are rendered after its background,
+                        // not before. Without this, inline-block fieldsets end up in inlineLevel
+                        // while their children land in nonInlineLevel of the parent stacking
+                        // context, causing the fieldset background to paint over its children.
+                        container.flags |= FLAGS.CREATES_STACKING_CONTEXT;
                     }
 
                     if (LIST_OWNERS.indexOf(childNode.tagName) !== -1) {
@@ -211,6 +218,8 @@ export const isObjectElement = (node: Element): node is HTMLObjectElement => nod
 export const isCustomElement = (node: Element): node is HTMLElement => node.tagName.indexOf('-') > 0;
 export const isDetailsElement = (node: Element): node is HTMLDetailsElement => node.tagName === 'DETAILS';
 export const isSummaryElement = (node: Element): node is HTMLElement => node.tagName === 'SUMMARY';
+export const isFieldsetElement = (node: Element): node is HTMLFieldSetElement => node.tagName === 'FIELDSET';
+export const isLegendElement = (node: Element): node is HTMLLegendElement => node.tagName === 'LEGEND';
 
 /**
  * Returns true when an `<object>` element has successfully loaded content that
