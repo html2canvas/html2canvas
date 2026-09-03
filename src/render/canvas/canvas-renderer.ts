@@ -38,6 +38,7 @@ import {
     renderReplacedElement,
     renderTextInputElement,
 } from './canvas-form-renderer';
+import { CanvasPool } from './canvas-pool';
 import { canvasMask, canvasPath, CanvasRenderState, formatPath } from './canvas-render-state';
 import { renderTextNode } from './canvas-text-renderer';
 
@@ -97,6 +98,7 @@ export class CanvasRenderer extends Renderer {
             fontMetrics: new FontMetrics(document, isFirefox ? 1 : 2),
             isFirefox,
             isChrome,
+            canvasPool: new CanvasPool(canvas.ownerDocument ?? document),
         };
 
         ctx.scale(options.scale, options.scale);
@@ -253,9 +255,7 @@ export class CanvasRenderer extends Renderer {
         const savedActiveEffects = this._activeEffects.splice(0);
 
         // Offscreen canvas — same physical size, same transform as the main canvas.
-        const offscreen = document.createElement('canvas');
-        offscreen.width = mainCanvas.width;
-        offscreen.height = mainCanvas.height;
+        const offscreen = this.state.canvasPool.acquire(mainCanvas.width, mainCanvas.height);
         const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
         offCtx.scale(this.options.scale, this.options.scale);
         offCtx.translate(-this.options.x, -this.options.y);
@@ -285,6 +285,9 @@ export class CanvasRenderer extends Renderer {
         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.state.ctx.drawImage(offscreen, 0, 0);
         this.state.ctx.restore();
+
+        // Return the offscreen canvas to the pool for reuse.
+        this.state.canvasPool.release(offscreen);
     }
 
     async renderStackContent(stack: StackingContext): Promise<void> {
@@ -495,6 +498,8 @@ export class CanvasRenderer extends Renderer {
         const stack = parseStackingContexts(element);
         await this.renderStack(stack);
         this.applyEffects([]);
+        // Release pooled offscreen canvases so their backing memory is reclaimed.
+        this.state.canvasPool.clear();
         return this.state.canvas;
     }
 }

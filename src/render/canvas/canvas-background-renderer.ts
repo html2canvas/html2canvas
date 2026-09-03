@@ -245,9 +245,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
+            const canvas = state.canvasPool.acquire(width, height);
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
@@ -258,9 +256,12 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                // createPattern reads the canvas synchronously; renderRepeat fills
+                // immediately, so the source canvas can be recycled right after.
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
+            state.canvasPool.release(canvas);
         } else if (isRepeatingLinearGradient(backgroundImage)) {
             const [path, x, y, width, height] = calculateBackgroundRendering(
                 container,
@@ -270,9 +271,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
+            const canvas = state.canvasPool.acquire(width, height);
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
@@ -324,6 +323,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
+            state.canvasPool.release(canvas);
         } else if (isRadialGradient(backgroundImage)) {
             const [path, left, top, width, height] = calculateBackgroundRendering(
                 container,
@@ -597,9 +597,7 @@ async function renderBackgroundImagePerLayer(
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
+            const canvas = state.canvasPool.acquire(width, height);
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
             processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
@@ -611,6 +609,7 @@ async function renderBackgroundImagePerLayer(
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
+            state.canvasPool.release(canvas);
         }
         // For simplicity, other gradient types fall through to renderBackgroundImage
         // TODO: handle all gradient types per-layer if needed
@@ -642,9 +641,7 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
         return;
     }
 
-    const offscreen = document.createElement('canvas');
-    offscreen.width = width;
-    offscreen.height = height;
+    const offscreen = state.canvasPool.acquire(width, height);
     const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
 
     offCtx.scale(state.options.scale, state.options.scale);
@@ -667,9 +664,7 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
     // All text is drawn as opaque black on a separate canvas so we can apply
     // the mask in a single 'destination-in' operation (avoiding the problem
     // where multiple fillText calls with destination-in erase each other).
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
+    const maskCanvas = state.canvasPool.acquire(width, height);
     const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D;
     maskCtx.scale(state.options.scale, state.options.scale);
     maskCtx.translate(-bounds.left, -bounds.top);
@@ -747,6 +742,10 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
 
     // Step 4: Draw the clipped result onto the main canvas
     state.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
+
+    // Return offscreen canvases to the pool for reuse.
+    state.canvasPool.release(maskCanvas);
+    state.canvasPool.release(offscreen);
 }
 
 // ---------------------------------------------------------------------------
@@ -1398,6 +1397,10 @@ async function _resolveBorderImageSource(
         return null;
     }
 
+    // Not pooled on purpose: this function returns either this canvas or a
+    // cache-owned HTMLImageElement (the URL branch above). Callers can't tell
+    // which, so recycling it into the pool could reinject a cache-owned image.
+    // It's also allocated once per border-image element, so the reuse win is small.
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.ceil(width));
     canvas.height = Math.max(1, Math.ceil(height));
@@ -1608,9 +1611,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
         tileW: number,
         tileH: number,
     ): Promise<HTMLCanvasElement> => {
-        const c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(tileW));
-        c.height = Math.max(1, Math.round(tileH));
+        const c = state.canvasPool.acquire(Math.round(tileW), Math.round(tileH));
         const cCtx = c.getContext('2d') as CanvasRenderingContext2D;
         // Always extract from the full source image (img) and scale to tile size.
         // This preserves gradient continuity and angle between corners and edges —
@@ -1671,6 +1672,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
             if (nx <= 0 || ny <= 0) {
                 // Tile larger than destination — don't draw (per Chromium behavior)
                 ctx.restore();
+                state.canvasPool.release(tileCanvas);
                 return;
             }
             const gapX = nx > 1 ? (dw - nx * finalTileW) / (nx - 1) : 0;
@@ -1699,9 +1701,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
             } else {
                 offsetY = (dh % finalTileH) / 2 - finalTileH;
             }
-            const pm = document.createElement('canvas');
-            pm.width = Math.max(1, Math.round(finalTileW));
-            pm.height = Math.max(1, Math.round(finalTileH));
+            const pm = state.canvasPool.acquire(Math.round(finalTileW), Math.round(finalTileH));
             (pm.getContext('2d') as CanvasRenderingContext2D).drawImage(tileCanvas, 0, 0, pm.width, pm.height);
             const pat = ctx.createPattern(pm, 'repeat');
             if (pat) {
@@ -1709,11 +1709,17 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
                 mat.translateSelf(dx + offsetX, dy + offsetY);
                 pat.setTransform(mat);
                 ctx.fillStyle = pat;
+                // createPattern sampled pm synchronously; fillRect consumes it now,
+                // so the pattern source can be recycled after this fill.
                 ctx.fillRect(dx, dy, dw, dh);
             }
+            state.canvasPool.release(pm);
         }
 
         ctx.restore();
+
+        // Recycle the tile canvas now that all draws referencing it are done.
+        state.canvasPool.release(tileCanvas);
     };
 
     // Tile size per CSS spec (same formula for gradients and URL images):

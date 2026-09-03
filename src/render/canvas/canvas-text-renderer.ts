@@ -502,9 +502,7 @@ function _renderTextShadows(
         .slice(0)
         .reverse()
         .forEach(textShadow => {
-            const shadowCanvas = document.createElement('canvas');
-            shadowCanvas.width = w;
-            shadowCanvas.height = h;
+            const shadowCanvas = state.canvasPool.acquire(w, h);
             const shadowCtx = shadowCanvas.getContext('2d') as CanvasRenderingContext2D;
             shadowCtx.scale(scale, scale);
             // Incorporate the shadow offset into the translate so the
@@ -530,6 +528,9 @@ function _renderTextShadows(
             if (textShadow.blur.number > 0) {
                 state.ctx.restore();
             }
+
+            // Return the shadow canvas to the pool for reuse.
+            state.canvasPool.release(shadowCanvas);
         });
 
     // Draw the real text on top of all shadows.

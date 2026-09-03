@@ -3,6 +3,7 @@ import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import { FontMetrics } from '../font-metrics';
 import { Path, reversePath } from '../path';
 import { Vector } from '../vector';
+import { CanvasPool } from './canvas-pool';
 import { RenderConfigurations } from './canvas-renderer';
 
 /**
@@ -17,6 +18,8 @@ export interface CanvasRenderState {
     fontMetrics: FontMetrics;
     isFirefox: boolean;
     isChrome: boolean;
+    /** Pool of reusable offscreen canvases for temporary rendering. */
+    canvasPool: CanvasPool;
 }
 
 // ---------------------------------------------------------------------------
