@@ -2,6 +2,7 @@ import { contains } from '../../core/bitwise';
 import { Context } from '../../core/context';
 import { FilterType } from '../../css/property-descriptors/filter';
 import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blend-mode';
+import { POSITION } from '../../css/property-descriptors/position';
 import { asString } from '../../css/types/color';
 import { ElementContainer, FLAGS } from '../../dom/element-container';
 import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
@@ -38,8 +39,10 @@ import {
     renderReplacedElement,
     renderTextInputElement,
 } from './canvas-form-renderer';
+import { CanvasPool } from './canvas-pool';
 import { canvasMask, canvasPath, CanvasRenderState, formatPath } from './canvas-render-state';
 import { renderTextNode } from './canvas-text-renderer';
+import { isOutsideViewport } from './cull';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: import('../../css/types/color').Color | null;
@@ -52,6 +55,13 @@ export interface RenderOptions {
     y: number;
     width: number;
     height: number;
+    /**
+     * When true, element nodes whose bounds fall entirely outside the output
+     * viewport are skipped. Conservative: nodes with a transform (own or
+     * inherited) or with fixed/sticky positioning are never skipped, since
+     * their painted position may differ from their bounds. Defaults to false.
+     */
+    cullOffscreen?: boolean;
 }
 
 export class CanvasRenderer extends Renderer {
@@ -97,6 +107,9 @@ export class CanvasRenderer extends Renderer {
             fontMetrics: new FontMetrics(document, isFirefox ? 1 : 2),
             isFirefox,
             isChrome,
+            canvasPool: new CanvasPool(canvas.ownerDocument ?? document),
+            resizeCache: new Map<string, HTMLCanvasElement>(),
+            gradientCanvasCache: new Map<string, HTMLCanvasElement>(),
         };
 
         ctx.scale(options.scale, options.scale);
@@ -253,9 +266,7 @@ export class CanvasRenderer extends Renderer {
         const savedActiveEffects = this._activeEffects.splice(0);
 
         // Offscreen canvas — same physical size, same transform as the main canvas.
-        const offscreen = document.createElement('canvas');
-        offscreen.width = mainCanvas.width;
-        offscreen.height = mainCanvas.height;
+        const offscreen = this.state.canvasPool.acquire(mainCanvas.width, mainCanvas.height);
         const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
         offCtx.scale(this.options.scale, this.options.scale);
         offCtx.translate(-this.options.x, -this.options.y);
@@ -285,6 +296,9 @@ export class CanvasRenderer extends Renderer {
         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.state.ctx.drawImage(offscreen, 0, 0);
         this.state.ctx.restore();
+
+        // Return the offscreen canvas to the pool for reuse.
+        this.state.canvasPool.release(offscreen);
     }
 
     async renderStackContent(stack: StackingContext): Promise<void> {
@@ -345,10 +359,48 @@ export class CanvasRenderer extends Renderer {
         if (contains(paint.container.flags, FLAGS.DEBUG_RENDER)) {
             debugger;
         }
-        if (paint.container.styles.isVisible()) {
+        if (paint.container.styles.isVisible() && !this._isCulled(paint)) {
             await this.renderNodeBackgroundAndBorders(paint);
             await this.renderNodeContent(paint);
         }
+    }
+
+    /**
+     * Returns true if `paint` can be safely skipped because it lies entirely
+     * outside the output viewport.
+     *
+     * Conservative by design — returns false (i.e. do NOT cull) whenever the
+     * node's painted position may differ from its bounds:
+     *  - culling disabled via options,
+     *  - the node or any ancestor has a CSS transform,
+     *  - the node is fixed/sticky positioned.
+     * A small margin absorbs rounding and outset effects (shadows, outlines).
+     */
+    private _isCulled(paint: ElementPaint): boolean {
+        if (!this.options.cullOffscreen) {
+            return false;
+        }
+
+        const position = paint.container.styles.position;
+        if (position === POSITION.FIXED || position === POSITION.STICKY) {
+            return false;
+        }
+
+        // A transform on the node or any ancestor moves the painted pixels away
+        // from the layout bounds, so bounds-based culling is unsafe.
+        for (let node: ElementPaint | null = paint; node; node = node.parent) {
+            if (node.container.styles.isTransformed()) {
+                return false;
+            }
+        }
+
+        return isOutsideViewport(
+            paint.container.bounds,
+            this.options.x,
+            this.options.y,
+            this.options.width,
+            this.options.height,
+        );
     }
 
     async renderNodeBackgroundAndBorders(paint: ElementPaint): Promise<void> {
@@ -495,6 +547,11 @@ export class CanvasRenderer extends Renderer {
         const stack = parseStackingContexts(element);
         await this.renderStack(stack);
         this.applyEffects([]);
+        // Release pooled offscreen canvases and the per-render caches so their
+        // backing memory is reclaimed.
+        this.state.canvasPool.clear();
+        this.state.resizeCache.clear();
+        this.state.gradientCanvasCache.clear();
         return this.state.canvas;
     }
 }

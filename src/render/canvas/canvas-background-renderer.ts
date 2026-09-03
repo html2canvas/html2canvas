@@ -1,5 +1,4 @@
 import { Bounds } from '../../css/layout/bounds';
-import { segmentGraphemes } from '../../css/layout/text';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
 import { BORDER_IMAGE_REPEAT } from '../../css/property-descriptors/border-image-repeat';
 import { BorderImageWidthValue } from '../../css/property-descriptors/border-image-width';
@@ -46,10 +45,19 @@ import {
     canvasPath,
     CanvasRenderState,
     formatPath,
+    getLinearGradientCanvas,
     renderRepeat,
     resizeImage,
 } from './canvas-render-state';
-import { createFontStyle } from './canvas-text-renderer';
+import { createFontStyle, drawTextWithLetterSpacing } from './canvas-text-renderer';
+
+/**
+ * Builds a stable cache key fragment from processed gradient stops.
+ * Colours are packed numbers and stops are normalised numbers, so a simple
+ * join uniquely identifies the gradient's appearance.
+ */
+const gradientStopsKey = (stops: ReadonlyArray<{ color: number; stop: number }>): string =>
+    stops.map(s => `${s.color}@${s.stop}`).join(',');
 
 // ---------------------------------------------------------------------------
 // Inline fragment bounds (for box-decoration-break)
@@ -244,20 +252,18 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 state.context.windowBounds,
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+            const stops = processColorStops(backgroundImage.stops, lineLength || 1);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-
-            processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
-                gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
-            );
-
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
+                // A pattern is bound to the context that creates it, so build a
+                // fresh one from the cached canvas on the current state.ctx.
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
@@ -270,18 +276,14 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-
             // processColorStops normalises stops to [0,1] relative to lineLength
             const processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
             const tileStart = processedStops[0].stop;
             const tileEnd = processedStops[processedStops.length - 1].stop;
             const tileSize = tileEnd - tileStart;
 
+            // Resolve the final stop list once (tiled for repeating gradients).
+            let finalStops = processedStops;
             if (tileSize > 0) {
                 // Build all tiled stops in [0,1] by repeating the tile backward and forward.
                 // Use a max-iterations guard to prevent runaway loops on degenerate inputs.
@@ -313,14 +315,17 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
                 }
 
-                allStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
-            } else {
-                processedStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                finalStops = allStops;
             }
 
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                const key = `rlin|${x0},${y0},${x1},${y1}|${gradientStopsKey(finalStops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    finalStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
@@ -596,18 +601,16 @@ async function renderBackgroundImagePerLayer(
                 state.context.windowBounds,
             );
             const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
+            const stops = processColorStops(backgroundImage.stops, lineLength || 1);
 
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
-            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
-            processColorStops(backgroundImage.stops, lineLength || 1).forEach(colorStop =>
-                gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
-            );
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, width, height);
             if (width > 0 && height > 0) {
+                const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
+                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    gCtx.fillStyle = gradient;
+                    gCtx.fillRect(0, 0, w, h);
+                });
                 const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
                 renderRepeat(state, path, pattern, x, y);
             }
@@ -642,9 +645,7 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
         return;
     }
 
-    const offscreen = document.createElement('canvas');
-    offscreen.width = width;
-    offscreen.height = height;
+    const offscreen = state.canvasPool.acquire(width, height);
     const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
 
     offCtx.scale(state.options.scale, state.options.scale);
@@ -667,9 +668,7 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
     // All text is drawn as opaque black on a separate canvas so we can apply
     // the mask in a single 'destination-in' operation (avoiding the problem
     // where multiple fillText calls with destination-in erase each other).
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
+    const maskCanvas = state.canvasPool.acquire(width, height);
     const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D;
     maskCtx.scale(state.options.scale, state.options.scale);
     maskCtx.translate(-bounds.left, -bounds.top);
@@ -714,26 +713,23 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
                 }
                 maskCtx.restore();
             } else {
-                if (styles.letterSpacing === 0) {
-                    if (!state.isFirefox) {
-                        maskCtx.textBaseline = 'ideographic';
-                        maskCtx.fillText(
-                            textBound.text,
-                            textBound.bounds.left,
-                            textBound.bounds.top + textBound.bounds.height,
-                        );
-                    } else {
-                        maskCtx.textBaseline = 'alphabetic';
-                        maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + baseline);
-                    }
+                if (styles.letterSpacing === 0 && !state.isFirefox) {
+                    maskCtx.textBaseline = 'ideographic';
+                    maskCtx.fillText(
+                        textBound.text,
+                        textBound.bounds.left,
+                        textBound.bounds.top + textBound.bounds.height,
+                    );
                 } else {
+                    // letterSpacing !== 0, or Firefox (which needs the baseline offset).
                     maskCtx.textBaseline = 'alphabetic';
-                    const letters = segmentGraphemes(textBound.text);
-                    letters.reduce((left, letter, index) => {
-                        maskCtx.fillText(letter, left, textBound.bounds.top + baseline);
-                        const isLast = index === letters.length - 1;
-                        return left + maskCtx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
-                    }, textBound.bounds.left);
+                    drawTextWithLetterSpacing(
+                        maskCtx,
+                        textBound.text,
+                        textBound.bounds.left,
+                        textBound.bounds.top + baseline,
+                        styles.letterSpacing,
+                    );
                 }
             }
         }
@@ -747,6 +743,10 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
 
     // Step 4: Draw the clipped result onto the main canvas
     state.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
+
+    // Return offscreen canvases to the pool for reuse.
+    state.canvasPool.release(maskCanvas);
+    state.canvasPool.release(offscreen);
 }
 
 // ---------------------------------------------------------------------------
@@ -1398,6 +1398,10 @@ async function _resolveBorderImageSource(
         return null;
     }
 
+    // Not pooled on purpose: this function returns either this canvas or a
+    // cache-owned HTMLImageElement (the URL branch above). Callers can't tell
+    // which, so recycling it into the pool could reinject a cache-owned image.
+    // It's also allocated once per border-image element, so the reuse win is small.
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.ceil(width));
     canvas.height = Math.max(1, Math.ceil(height));
@@ -1608,9 +1612,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
         tileW: number,
         tileH: number,
     ): Promise<HTMLCanvasElement> => {
-        const c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(tileW));
-        c.height = Math.max(1, Math.round(tileH));
+        const c = state.canvasPool.acquire(Math.round(tileW), Math.round(tileH));
         const cCtx = c.getContext('2d') as CanvasRenderingContext2D;
         // Always extract from the full source image (img) and scale to tile size.
         // This preserves gradient continuity and angle between corners and edges —
@@ -1671,6 +1673,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
             if (nx <= 0 || ny <= 0) {
                 // Tile larger than destination — don't draw (per Chromium behavior)
                 ctx.restore();
+                state.canvasPool.release(tileCanvas);
                 return;
             }
             const gapX = nx > 1 ? (dw - nx * finalTileW) / (nx - 1) : 0;
@@ -1699,9 +1702,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
             } else {
                 offsetY = (dh % finalTileH) / 2 - finalTileH;
             }
-            const pm = document.createElement('canvas');
-            pm.width = Math.max(1, Math.round(finalTileW));
-            pm.height = Math.max(1, Math.round(finalTileH));
+            const pm = state.canvasPool.acquire(Math.round(finalTileW), Math.round(finalTileH));
             (pm.getContext('2d') as CanvasRenderingContext2D).drawImage(tileCanvas, 0, 0, pm.width, pm.height);
             const pat = ctx.createPattern(pm, 'repeat');
             if (pat) {
@@ -1709,11 +1710,17 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
                 mat.translateSelf(dx + offsetX, dy + offsetY);
                 pat.setTransform(mat);
                 ctx.fillStyle = pat;
+                // createPattern sampled pm synchronously; fillRect consumes it now,
+                // so the pattern source can be recycled after this fill.
                 ctx.fillRect(dx, dy, dw, dh);
             }
+            state.canvasPool.release(pm);
         }
 
         ctx.restore();
+
+        // Recycle the tile canvas now that all draws referencing it are done.
+        state.canvasPool.release(tileCanvas);
     };
 
     // Tile size per CSS spec (same formula for gradients and URL images):
