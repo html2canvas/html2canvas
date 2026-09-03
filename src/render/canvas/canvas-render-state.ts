@@ -96,8 +96,9 @@ export function resizeImage(
     height: number,
 ): HTMLCanvasElement | HTMLImageElement {
     // Note: the "return image unchanged when sizes match" shortcut is deliberately
-    // NOT used — it triggers "Operation is insecure" on Safari. We always draw to a
-    // canvas, but memoise the result so identical (source, size) requests reuse it.
+    // NOT used — it triggers "Operation is insecure" on Safari (see upstream
+    // niklasvh/html2canvas#2911). We always draw to a canvas, but memoise the
+    // result so identical (source, size) requests reuse it.
     const key = `${image.src}|${width}|${height}`;
 
     const cached = state.resizeCache.get(key);

@@ -41,7 +41,32 @@ export interface ResourceOptions {
      * should be treated as same-origin.
      */
     isResourceSameOrigin?: (src: string) => boolean | undefined;
+    /**
+     * Maximum number of images to keep in the shared cache. When the limit is
+     * exceeded, the least-recently-used entries are evicted. Leave undefined (or
+     * <= 0) for an unbounded cache — the historical behaviour.
+     */
+    maxCacheSize?: number;
 }
+
+/**
+ * Insertion/access order of keys in `cache`, oldest first. Kept in sync with
+ * `cache` so that LRU eviction can drop the least-recently-used entry.
+ */
+const cacheOrder: string[] = [];
+
+const removeFromOrder = (key: string): void => {
+    const i = cacheOrder.indexOf(key);
+    if (i !== -1) {
+        cacheOrder.splice(i, 1);
+    }
+};
+
+// Mark `key` as most-recently-used (moves it to the end of the order list).
+const touchOrder = (key: string): void => {
+    removeFromOrder(key);
+    cacheOrder.push(key);
+};
 
 export class Cache {
     constructor(
@@ -52,6 +77,7 @@ export class Cache {
     deleteImage(src: string): boolean {
         if (this.has(src)) {
             delete cache[src];
+            removeFromOrder(src);
             return true;
         }
 
@@ -76,6 +102,7 @@ export class Cache {
         for (const key of keys) {
             delete cache[key];
         }
+        cacheOrder.length = 0;
         return keys.length;
     }
 
@@ -85,6 +112,8 @@ export class Cache {
             (cache[src] = this.loadImage(src)).catch(() => {
                 // prevent unhandled rejection
             });
+            touchOrder(src);
+            this._evictIfNeeded();
             return true;
         }
         return false;
@@ -92,7 +121,28 @@ export class Cache {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     match(src: string): Promise<any> {
+        // Accessing an entry marks it as recently used for LRU purposes.
+        if (src in cache) {
+            touchOrder(src);
+        }
         return cache[src];
+    }
+
+    /**
+     * Evicts least-recently-used entries while the cache exceeds maxCacheSize.
+     * No-op when maxCacheSize is undefined or <= 0 (unbounded cache).
+     */
+    private _evictIfNeeded(): void {
+        const max = this._options.maxCacheSize;
+        if (!max || max <= 0) {
+            return;
+        }
+        while (cacheOrder.length > max) {
+            const oldest = cacheOrder.shift();
+            if (oldest !== undefined) {
+                delete cache[oldest];
+            }
+        }
     }
 
     private isSameOrigin(src: string): boolean {

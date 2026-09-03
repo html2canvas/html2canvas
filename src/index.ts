@@ -59,6 +59,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         proxy: opts.proxy,
         useCORS: opts.useCORS ?? false,
         isResourceSameOrigin: opts.isResourceSameOrigin,
+        maxCacheSize: opts.maxCacheSize,
     };
 
     const contextOptions = {
