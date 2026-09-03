@@ -131,6 +131,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         y: (opts.y ?? 0) + top,
         width: opts.width ?? Math.ceil(width),
         height: opts.height ?? Math.ceil(height),
+        cullOffscreen: opts.cullOffscreen ?? false,
     };
 
     let canvas;

@@ -2,6 +2,7 @@ import { contains } from '../../core/bitwise';
 import { Context } from '../../core/context';
 import { FilterType } from '../../css/property-descriptors/filter';
 import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blend-mode';
+import { POSITION } from '../../css/property-descriptors/position';
 import { asString } from '../../css/types/color';
 import { ElementContainer, FLAGS } from '../../dom/element-container';
 import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
@@ -41,6 +42,7 @@ import {
 import { CanvasPool } from './canvas-pool';
 import { canvasMask, canvasPath, CanvasRenderState, formatPath } from './canvas-render-state';
 import { renderTextNode } from './canvas-text-renderer';
+import { isOutsideViewport } from './cull';
 
 export type RenderConfigurations = RenderOptions & {
     backgroundColor: import('../../css/types/color').Color | null;
@@ -53,6 +55,13 @@ export interface RenderOptions {
     y: number;
     width: number;
     height: number;
+    /**
+     * When true, element nodes whose bounds fall entirely outside the output
+     * viewport are skipped. Conservative: nodes with a transform (own or
+     * inherited) or with fixed/sticky positioning are never skipped, since
+     * their painted position may differ from their bounds. Defaults to false.
+     */
+    cullOffscreen?: boolean;
 }
 
 export class CanvasRenderer extends Renderer {
@@ -349,10 +358,48 @@ export class CanvasRenderer extends Renderer {
         if (contains(paint.container.flags, FLAGS.DEBUG_RENDER)) {
             debugger;
         }
-        if (paint.container.styles.isVisible()) {
+        if (paint.container.styles.isVisible() && !this._isCulled(paint)) {
             await this.renderNodeBackgroundAndBorders(paint);
             await this.renderNodeContent(paint);
         }
+    }
+
+    /**
+     * Returns true if `paint` can be safely skipped because it lies entirely
+     * outside the output viewport.
+     *
+     * Conservative by design — returns false (i.e. do NOT cull) whenever the
+     * node's painted position may differ from its bounds:
+     *  - culling disabled via options,
+     *  - the node or any ancestor has a CSS transform,
+     *  - the node is fixed/sticky positioned.
+     * A small margin absorbs rounding and outset effects (shadows, outlines).
+     */
+    private _isCulled(paint: ElementPaint): boolean {
+        if (!this.options.cullOffscreen) {
+            return false;
+        }
+
+        const position = paint.container.styles.position;
+        if (position === POSITION.FIXED || position === POSITION.STICKY) {
+            return false;
+        }
+
+        // A transform on the node or any ancestor moves the painted pixels away
+        // from the layout bounds, so bounds-based culling is unsafe.
+        for (let node: ElementPaint | null = paint; node; node = node.parent) {
+            if (node.container.styles.isTransformed()) {
+                return false;
+            }
+        }
+
+        return isOutsideViewport(
+            paint.container.bounds,
+            this.options.x,
+            this.options.y,
+            this.options.width,
+            this.options.height,
+        );
     }
 
     async renderNodeBackgroundAndBorders(paint: ElementPaint): Promise<void> {
