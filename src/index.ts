@@ -14,6 +14,17 @@ export type Options = CloneOptions &
         backgroundColor: string | null;
         foreignObjectRendering: boolean;
         removeContainer?: boolean;
+        /**
+         * When `true`, the shared image cache is emptied once rendering finishes,
+         * releasing the memory held by loaded images. Defaults to `false` to
+         * preserve the existing behaviour where the cache persists across calls
+         * (which speeds up repeated captures of the same resources).
+         *
+         * Enable this in long-lived apps (SPAs) that capture many distinct
+         * screenshots and would otherwise accumulate cached images indefinitely.
+         * Do not enable it when sharing a cache between concurrent captures.
+         */
+        clearImageCache?: boolean;
     };
 
 const html2canvas = (element: HTMLElement, options: Partial<Options> = {}): Promise<HTMLCanvasElement> => {
@@ -48,6 +59,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         proxy: opts.proxy,
         useCORS: opts.useCORS ?? false,
         isResourceSameOrigin: opts.isResourceSameOrigin,
+        maxCacheSize: opts.maxCacheSize,
     };
 
     const contextOptions = {
@@ -120,6 +132,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         y: (opts.y ?? 0) + top,
         width: opts.width ?? Math.ceil(width),
         height: opts.height ?? Math.ceil(height),
+        cullOffscreen: opts.cullOffscreen ?? false,
     };
 
     let canvas;
@@ -152,6 +165,11 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         if (!DocumentCloner.destroy(ownerDocument, container.id)) {
             context.logger.error(`Cannot detach cloned iframe as it is not in the DOM anymore`);
         }
+    }
+
+    if (opts.clearImageCache === true) {
+        const removed = context.cache.clear();
+        context.logger.debug(`Cleared image cache (${removed} entries removed)`);
     }
 
     context.logger.debug(`Finished rendering`);

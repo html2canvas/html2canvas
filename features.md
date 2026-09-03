@@ -137,7 +137,10 @@ Below is a list of all the supported CSS properties and values.
 - word-wrap
 - z-index
 - zoom (**accumulated nested zoom supported**)
+- -webkit-line-clamp (truncates to N lines with a trailing ellipsis; horizontal text only)
 - -webkit-text-stroke
+    - -webkit-text-stroke-color
+    - -webkit-text-stroke-width
 
 ## Values
 

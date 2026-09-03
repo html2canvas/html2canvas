@@ -60,6 +60,56 @@ export function createFontStyle(styles: CSSParsedDeclaration): string[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Draws a run of text at (x, y) applying `letterSpacing` (in px).
+ *
+ * When the native `ctx.letterSpacing` property is available (Chrome 94+,
+ * Firefox 115+, Safari 16.4+) the whole run is drawn with a single
+ * fill/strokeText call. Otherwise it falls back to drawing one grapheme at a
+ * time, advancing by the measured width plus the spacing. The `- 1` in the
+ * fallback matches html2canvas' historical per-character spacing compensation.
+ *
+ * The caller is responsible for baseline/alignment and for any rotation used
+ * by vertical writing modes; this helper only handles horizontal advance.
+ */
+export function drawTextWithLetterSpacing(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    letterSpacing: number,
+    useStroke = false,
+): void {
+    const draw = useStroke
+        ? (t: string, dx: number, dy: number) => ctx.strokeText(t, dx, dy)
+        : (t: string, dx: number, dy: number) => ctx.fillText(t, dx, dy);
+
+    if (letterSpacing === 0) {
+        draw(text, x, y);
+        return;
+    }
+
+    // TS lib types don't declare letterSpacing on CanvasRenderingContext2D yet,
+    // so read/write it through a typed view without narrowing `ctx` itself.
+    const spacingCtx = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    if (typeof spacingCtx.letterSpacing === 'string') {
+        // Native path: one draw call for the whole run.
+        const previous = spacingCtx.letterSpacing;
+        spacingCtx.letterSpacing = `${letterSpacing}px`;
+        draw(text, x, y);
+        spacingCtx.letterSpacing = previous;
+        return;
+    }
+
+    // Fallback: draw each grapheme and advance manually.
+    const letters = segmentGraphemes(text);
+    letters.reduce((left, letter, index) => {
+        draw(letter, left, y);
+        const isLast = index === letters.length - 1;
+        return left + ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
+    }, x);
+}
+
+/**
  * Draws a single text segment, handling vertical writing modes and letter-spacing.
  */
 export function renderTextWithLetterSpacing(
@@ -105,40 +155,33 @@ export function renderTextWithLetterSpacing(
         );
         const rotatedText = new TextBounds(text.text, rotatedBounds);
 
-        if (letterSpacing === 0) {
-            if (!state.isFirefox) {
-                state.ctx.textBaseline = 'ideographic';
-                drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
-            } else {
-                drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + baseline);
-            }
+        if (letterSpacing === 0 && !state.isFirefox) {
+            state.ctx.textBaseline = 'ideographic';
+            drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
         } else {
-            const letters = segmentGraphemes(rotatedText.text);
-            letters.reduce((left, letter, index) => {
-                drawText(letter, left, rotatedText.bounds.top + baseline);
-                const isLast = index === letters.length - 1;
-                return left + state.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-            }, rotatedText.bounds.left);
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = rotatedText.bounds.top + baseline;
+            drawTextWithLetterSpacing(
+                state.ctx,
+                rotatedText.text,
+                rotatedText.bounds.left,
+                drawY,
+                letterSpacing,
+                useStroke,
+            );
         }
 
         state.ctx.restore();
     } else {
-        if (letterSpacing === 0) {
+        if (letterSpacing === 0 && !state.isFirefox) {
             // Fixed an issue with characters moving up in non-Firefox.
             // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-            if (!state.isFirefox) {
-                state.ctx.textBaseline = 'ideographic';
-                drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
-            } else {
-                drawText(text.text, text.bounds.left, text.bounds.top + baseline);
-            }
+            state.ctx.textBaseline = 'ideographic';
+            drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
         } else {
-            const letters = segmentGraphemes(text.text);
-            letters.reduce((left, letter, index) => {
-                drawText(letter, left, text.bounds.top + baseline);
-                const isLast = index === letters.length - 1;
-                return left + state.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-            }, text.bounds.left);
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = text.bounds.top + baseline;
+            drawTextWithLetterSpacing(state.ctx, text.text, text.bounds.left, drawY, letterSpacing, useStroke);
         }
     }
 }
@@ -389,7 +432,17 @@ export async function renderTextNode(
         });
     }
 
+    // -webkit-line-clamp: keep only the first N visual lines and mark where the
+    // trailing ellipsis must be drawn. Only applied to horizontal text (the
+    // property is meaningless for vertical writing modes). See computeLineClamp.
+    const clamp =
+        !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(text.textBounds, styles.webkitLineClamp) : null;
+
     text.textBounds.forEach(textBound => {
+        // Skip segments on lines beyond the clamp limit.
+        if (clamp && !clamp.kept.has(textBound)) {
+            return;
+        }
         // Determine whether this segment is on the first visual line.
         // If so, use firstLineStyles (overriding color, font, etc.) for rendering.
         const isOnFirstLine =
@@ -442,6 +495,77 @@ export async function renderTextNode(
             }
         });
     });
+
+    // Draw the clamp ellipsis after the last kept line, unless the text fill is
+    // handled elsewhere (background-clip: text) or the colour is transparent.
+    if (
+        clamp &&
+        clamp.ellipsisAnchor &&
+        getBackgroundValueForIndex(styles.backgroundClip, 0) !== BACKGROUND_CLIP.TEXT &&
+        !isTransparent(styles.color)
+    ) {
+        const anchor = clamp.ellipsisAnchor;
+        state.ctx.font = font;
+        state.ctx.fillStyle = asString(styles.color);
+        state.ctx.textBaseline = 'alphabetic';
+        state.ctx.fillText(ELLIPSIS, anchor.bounds.left + anchor.bounds.width, anchor.bounds.top + baseline);
+    }
+}
+
+const ELLIPSIS = '\u2026';
+
+/**
+ * Computes which text segments survive a `-webkit-line-clamp: maxLines` limit.
+ *
+ * Segments are grouped into visual lines by their rounded top coordinate. The
+ * first `maxLines` distinct lines are kept; the rest are dropped. The rightmost
+ * segment of the last kept line is returned as the ellipsis anchor so the caller
+ * can draw a trailing "…" right after it.
+ *
+ * Returns null when the text already fits within `maxLines` (no clamping needed).
+ */
+export function computeLineClamp(
+    textBounds: TextBounds[],
+    maxLines: number,
+): { kept: Set<TextBounds>; ellipsisAnchor: TextBounds | null } | null {
+    // Distinct line tops in visual order.
+    const lineTops: number[] = [];
+    const seen = new Set<number>();
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!seen.has(key)) {
+            seen.add(key);
+            lineTops.push(key);
+        }
+    }
+
+    // Nothing to clamp if the content already fits.
+    if (lineTops.length <= maxLines) {
+        return null;
+    }
+
+    const keptTops = new Set(lineTops.slice(0, maxLines).map(t => t));
+    const lastKeptTop = lineTops[maxLines - 1];
+
+    const kept = new Set<TextBounds>();
+    let ellipsisAnchor: TextBounds | null = null;
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!keptTops.has(key)) {
+            continue;
+        }
+        kept.add(tb);
+        // Track the rightmost segment of the last kept line for the ellipsis.
+        if (
+            key === lastKeptTop &&
+            (ellipsisAnchor === null ||
+                tb.bounds.left + tb.bounds.width > ellipsisAnchor.bounds.left + ellipsisAnchor.bounds.width)
+        ) {
+            ellipsisAnchor = tb;
+        }
+    }
+
+    return { kept, ellipsisAnchor };
 }
 
 // ---------------------------------------------------------------------------
@@ -502,9 +626,7 @@ function _renderTextShadows(
         .slice(0)
         .reverse()
         .forEach(textShadow => {
-            const shadowCanvas = document.createElement('canvas');
-            shadowCanvas.width = w;
-            shadowCanvas.height = h;
+            const shadowCanvas = state.canvasPool.acquire(w, h);
             const shadowCtx = shadowCanvas.getContext('2d') as CanvasRenderingContext2D;
             shadowCtx.scale(scale, scale);
             // Incorporate the shadow offset into the translate so the
@@ -530,6 +652,9 @@ function _renderTextShadows(
             if (textShadow.blur.number > 0) {
                 state.ctx.restore();
             }
+
+            // Return the shadow canvas to the pool for reuse.
+            state.canvasPool.release(shadowCanvas);
         });
 
     // Draw the real text on top of all shadows.

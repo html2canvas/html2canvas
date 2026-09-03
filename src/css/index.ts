@@ -93,6 +93,7 @@ import { textUnderlinePosition } from './property-descriptors/text-underline-pos
 import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
+import { webkitLineClamp } from './property-descriptors/webkit-line-clamp';
 import { webkitTextStrokeColor } from './property-descriptors/webkit-text-stroke-color';
 import { webkitTextStrokeWidth } from './property-descriptors/webkit-text-stroke-width';
 import { wordBreak } from './property-descriptors/word-break';
@@ -215,6 +216,7 @@ export class CSSParsedDeclaration {
     transform: ReturnType<typeof transform.parse>;
     transformOrigin: ReturnType<typeof transformOrigin.parse>;
     visibility: ReturnType<typeof visibility.parse>;
+    webkitLineClamp: ReturnType<typeof webkitLineClamp.parse>;
     webkitTextStrokeColor: Color;
     webkitTextStrokeWidth: ReturnType<typeof webkitTextStrokeWidth.parse>;
     wordBreak: ReturnType<typeof wordBreak.parse>;
@@ -316,6 +318,7 @@ export class CSSParsedDeclaration {
         this.transform = parse(context, transform, declaration.transform);
         this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
         this.visibility = parse(context, visibility, declaration.visibility);
+        this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
         this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);

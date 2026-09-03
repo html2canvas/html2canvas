@@ -33,7 +33,7 @@ import { calculateObjectFitBounds } from '../object-fit';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
 import { CanvasRenderState, canvasPath } from './canvas-render-state';
-import { createFontStyle, renderTextWithLetterSpacing } from './canvas-text-renderer';
+import { createFontStyle, drawTextWithLetterSpacing, renderTextWithLetterSpacing } from './canvas-text-renderer';
 
 // ---------------------------------------------------------------------------
 // Replaced elements (img, canvas, svg, iframe handled separately in orchestrator)
@@ -499,16 +499,7 @@ function _renderSingleLineInput(
     const midY = pBounds.top + pBounds.height / 2 + 1;
     const startX = bounds.left + x;
 
-    if (styles.letterSpacing === 0) {
-        state.ctx.fillText(container.value, startX, midY);
-    } else {
-        const letters = segmentGraphemes(container.value);
-        letters.reduce((left, letter, index) => {
-            state.ctx.fillText(letter, left, midY);
-            const isLast = index === letters.length - 1;
-            return left + state.ctx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
-        }, startX);
-    }
+    drawTextWithLetterSpacing(state.ctx, container.value, startX, midY, styles.letterSpacing);
 }
 
 // ---------------------------------------------------------------------------
