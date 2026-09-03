@@ -53,6 +53,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
     const contextOptions = {
         logging: opts.logging ?? true,
         cache: opts.cache,
+        onError: opts.onError,
         ...resourceOptions,
     };
 

@@ -220,7 +220,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             try {
                 image = await state.context.cache.match(url);
             } catch (e) {
-                state.context.logger.error(`Error loading background-image ${url}`);
+                state.context.error(`Error loading background-image ${url}`, e);
             }
 
             if (image && image.width > 0 && image.height > 0) {
@@ -572,7 +572,7 @@ async function renderBackgroundImagePerLayer(
             try {
                 image = await state.context.cache.match(url);
             } catch (e) {
-                state.context.logger.error(`Error loading background-image ${url}`);
+                state.context.error(`Error loading background-image ${url}`, e);
             }
 
             if (image && image.width > 0 && image.height > 0) {
@@ -1388,7 +1388,7 @@ async function _resolveBorderImageSource(
         try {
             return await state.context.cache.match(url);
         } catch (e) {
-            state.context.logger.error(`Error loading border-image-source ${url}`);
+            state.context.error(`Error loading border-image-source ${url}`, e);
             return null;
         }
     }
