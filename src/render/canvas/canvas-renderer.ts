@@ -99,6 +99,7 @@ export class CanvasRenderer extends Renderer {
             isFirefox,
             isChrome,
             canvasPool: new CanvasPool(canvas.ownerDocument ?? document),
+            resizeCache: new Map<string, HTMLCanvasElement>(),
         };
 
         ctx.scale(options.scale, options.scale);
@@ -498,8 +499,10 @@ export class CanvasRenderer extends Renderer {
         const stack = parseStackingContexts(element);
         await this.renderStack(stack);
         this.applyEffects([]);
-        // Release pooled offscreen canvases so their backing memory is reclaimed.
+        // Release pooled offscreen canvases and the resize cache so their
+        // backing memory is reclaimed.
         this.state.canvasPool.clear();
+        this.state.resizeCache.clear();
         return this.state.canvas;
     }
 }
