@@ -58,6 +58,27 @@ export class Cache {
         return false;
     }
 
+    /**
+     * Removes every entry from the (module-level, shared) image cache.
+     *
+     * Because the cache is global and persists across `html2canvas()` calls, it
+     * grows without bound in long-lived applications (e.g. SPAs) that capture
+     * many screenshots. Call this to reclaim the memory held by cached images.
+     *
+     * Note: the cache is shared, so clearing it affects any other in-flight or
+     * subsequent render that relies on the same entries. Only clear when no
+     * other capture depends on the cached resources.
+     *
+     * @returns the number of entries removed.
+     */
+    clear(): number {
+        const keys = Object.keys(cache);
+        for (const key of keys) {
+            delete cache[key];
+        }
+        return keys.length;
+    }
+
     addImage(src: string): boolean {
         if (this.has(src)) return true;
         if (isBlobImage(src) || isRenderable(src)) {

@@ -171,6 +171,45 @@ describe('cache-storage', () => {
         deepStrictEqual(images[0].src, 'http://example.com/test.jpg');
     });
 
+    describe('clear', () => {
+        // `cache` (imported from ../cache-storage) is the shared module-level map.
+        // The Context exposes a Cache instance that reads/writes that same map.
+        it('removes all cached entries from the shared map', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.addImage('http://example.com/test2.jpg');
+            deepStrictEqual(Object.keys(cache).length, 2);
+
+            ctx.cache.clear();
+
+            deepStrictEqual(Object.keys(cache).length, 0);
+        });
+
+        it('returns the number of entries removed', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.addImage('http://example.com/test2.jpg');
+
+            deepStrictEqual(ctx.cache.clear(), 2);
+        });
+
+        it('returns 0 when the cache is already empty', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+
+            deepStrictEqual(ctx.cache.clear(), 0);
+        });
+
+        it('a subsequent addImage repopulates the cache after clear', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.clear();
+            ctx.cache.addImage('http://example.com/test2.jpg');
+
+            deepStrictEqual(cache.hasOwnProperty('http://example.com/test.jpg'), false);
+            deepStrictEqual(cache.hasOwnProperty('http://example.com/test2.jpg'), true);
+        });
+    });
+
     describe('svg', () => {
         it('should add svg images correctly', () => {
             const { cache } = createMockContext('http://example.com');
