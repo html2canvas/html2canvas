@@ -60,6 +60,56 @@ export function createFontStyle(styles: CSSParsedDeclaration): string[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Draws a run of text at (x, y) applying `letterSpacing` (in px).
+ *
+ * When the native `ctx.letterSpacing` property is available (Chrome 94+,
+ * Firefox 115+, Safari 16.4+) the whole run is drawn with a single
+ * fill/strokeText call. Otherwise it falls back to drawing one grapheme at a
+ * time, advancing by the measured width plus the spacing. The `- 1` in the
+ * fallback matches html2canvas' historical per-character spacing compensation.
+ *
+ * The caller is responsible for baseline/alignment and for any rotation used
+ * by vertical writing modes; this helper only handles horizontal advance.
+ */
+export function drawTextWithLetterSpacing(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    letterSpacing: number,
+    useStroke = false,
+): void {
+    const draw = useStroke
+        ? (t: string, dx: number, dy: number) => ctx.strokeText(t, dx, dy)
+        : (t: string, dx: number, dy: number) => ctx.fillText(t, dx, dy);
+
+    if (letterSpacing === 0) {
+        draw(text, x, y);
+        return;
+    }
+
+    // TS lib types don't declare letterSpacing on CanvasRenderingContext2D yet,
+    // so read/write it through a typed view without narrowing `ctx` itself.
+    const spacingCtx = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    if (typeof spacingCtx.letterSpacing === 'string') {
+        // Native path: one draw call for the whole run.
+        const previous = spacingCtx.letterSpacing;
+        spacingCtx.letterSpacing = `${letterSpacing}px`;
+        draw(text, x, y);
+        spacingCtx.letterSpacing = previous;
+        return;
+    }
+
+    // Fallback: draw each grapheme and advance manually.
+    const letters = segmentGraphemes(text);
+    letters.reduce((left, letter, index) => {
+        draw(letter, left, y);
+        const isLast = index === letters.length - 1;
+        return left + ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
+    }, x);
+}
+
+/**
  * Draws a single text segment, handling vertical writing modes and letter-spacing.
  */
 export function renderTextWithLetterSpacing(
@@ -105,40 +155,33 @@ export function renderTextWithLetterSpacing(
         );
         const rotatedText = new TextBounds(text.text, rotatedBounds);
 
-        if (letterSpacing === 0) {
-            if (!state.isFirefox) {
-                state.ctx.textBaseline = 'ideographic';
-                drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
-            } else {
-                drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + baseline);
-            }
+        if (letterSpacing === 0 && !state.isFirefox) {
+            state.ctx.textBaseline = 'ideographic';
+            drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
         } else {
-            const letters = segmentGraphemes(rotatedText.text);
-            letters.reduce((left, letter, index) => {
-                drawText(letter, left, rotatedText.bounds.top + baseline);
-                const isLast = index === letters.length - 1;
-                return left + state.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-            }, rotatedText.bounds.left);
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = rotatedText.bounds.top + baseline;
+            drawTextWithLetterSpacing(
+                state.ctx,
+                rotatedText.text,
+                rotatedText.bounds.left,
+                drawY,
+                letterSpacing,
+                useStroke,
+            );
         }
 
         state.ctx.restore();
     } else {
-        if (letterSpacing === 0) {
+        if (letterSpacing === 0 && !state.isFirefox) {
             // Fixed an issue with characters moving up in non-Firefox.
             // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-            if (!state.isFirefox) {
-                state.ctx.textBaseline = 'ideographic';
-                drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
-            } else {
-                drawText(text.text, text.bounds.left, text.bounds.top + baseline);
-            }
+            state.ctx.textBaseline = 'ideographic';
+            drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
         } else {
-            const letters = segmentGraphemes(text.text);
-            letters.reduce((left, letter, index) => {
-                drawText(letter, left, text.bounds.top + baseline);
-                const isLast = index === letters.length - 1;
-                return left + state.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-            }, text.bounds.left);
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = text.bounds.top + baseline;
+            drawTextWithLetterSpacing(state.ctx, text.text, text.bounds.left, drawY, letterSpacing, useStroke);
         }
     }
 }

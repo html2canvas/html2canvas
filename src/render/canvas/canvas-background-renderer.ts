@@ -1,5 +1,4 @@
 import { Bounds } from '../../css/layout/bounds';
-import { segmentGraphemes } from '../../css/layout/text';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
 import { BORDER_IMAGE_REPEAT } from '../../css/property-descriptors/border-image-repeat';
 import { BorderImageWidthValue } from '../../css/property-descriptors/border-image-width';
@@ -49,7 +48,7 @@ import {
     renderRepeat,
     resizeImage,
 } from './canvas-render-state';
-import { createFontStyle } from './canvas-text-renderer';
+import { createFontStyle, drawTextWithLetterSpacing } from './canvas-text-renderer';
 
 // ---------------------------------------------------------------------------
 // Inline fragment bounds (for box-decoration-break)
@@ -709,26 +708,23 @@ export async function renderBackgroundClipText(state: CanvasRenderState, paint: 
                 }
                 maskCtx.restore();
             } else {
-                if (styles.letterSpacing === 0) {
-                    if (!state.isFirefox) {
-                        maskCtx.textBaseline = 'ideographic';
-                        maskCtx.fillText(
-                            textBound.text,
-                            textBound.bounds.left,
-                            textBound.bounds.top + textBound.bounds.height,
-                        );
-                    } else {
-                        maskCtx.textBaseline = 'alphabetic';
-                        maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + baseline);
-                    }
+                if (styles.letterSpacing === 0 && !state.isFirefox) {
+                    maskCtx.textBaseline = 'ideographic';
+                    maskCtx.fillText(
+                        textBound.text,
+                        textBound.bounds.left,
+                        textBound.bounds.top + textBound.bounds.height,
+                    );
                 } else {
+                    // letterSpacing !== 0, or Firefox (which needs the baseline offset).
                     maskCtx.textBaseline = 'alphabetic';
-                    const letters = segmentGraphemes(textBound.text);
-                    letters.reduce((left, letter, index) => {
-                        maskCtx.fillText(letter, left, textBound.bounds.top + baseline);
-                        const isLast = index === letters.length - 1;
-                        return left + maskCtx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
-                    }, textBound.bounds.left);
+                    drawTextWithLetterSpacing(
+                        maskCtx,
+                        textBound.text,
+                        textBound.bounds.left,
+                        textBound.bounds.top + baseline,
+                        styles.letterSpacing,
+                    );
                 }
             }
         }
