@@ -47,6 +47,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         imageTimeout: opts.imageTimeout ?? 15000,
         proxy: opts.proxy,
         useCORS: opts.useCORS ?? false,
+        isResourceSameOrigin: opts.isResourceSameOrigin,
     };
 
     const contextOptions = {

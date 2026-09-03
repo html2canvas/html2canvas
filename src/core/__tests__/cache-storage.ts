@@ -239,6 +239,45 @@ describe('cache-storage', () => {
             deepStrictEqual(images[0].crossOrigin, 'anonymous');
         });
 
+        it('isResourceSameOrigin can force a cross-origin URL to be treated as same-origin', () => {
+            // Without proxy or CORS, a genuinely cross-origin image would normally be
+            // skipped. Forcing same-origin lets it load directly.
+            const { cache } = createMockContext('http://example.com', {
+                proxy: undefined,
+                isResourceSameOrigin: (src: string) => src.indexOf('cdn.example.com') !== -1,
+            });
+            cache.addImage('http://cdn.example.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(images[0].src, 'http://cdn.example.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, undefined);
+        });
+
+        it('isResourceSameOrigin returning undefined falls back to the default origin check', () => {
+            // Returning undefined means "no opinion" → default check applies, so a
+            // cross-origin image with CORS enabled still gets crossOrigin=anonymous.
+            const { cache } = createMockContext('http://example.com', {
+                useCORS: true,
+                isResourceSameOrigin: () => undefined,
+            });
+            cache.addImage('http://html2canvas.hertzen.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(removeQueryString(images[0].src), 'http://html2canvas.hertzen.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, 'anonymous');
+        });
+
+        it('isResourceSameOrigin can force a same-origin URL to be treated as cross-origin', () => {
+            // Forcing false on a same-origin URL with CORS enabled makes it load with
+            // crossOrigin=anonymous instead of directly.
+            const { cache } = createMockContext('http://example.com', {
+                useCORS: true,
+                isResourceSameOrigin: () => false,
+            });
+            cache.addImage('http://example.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(removeQueryString(images[0].src), 'http://example.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, 'anonymous');
+        });
+
         it('addImage should use proxy ', async () => {
             const { cache } = createMockContext('http://example.com');
             cache.addImage('http://html2canvas.hertzen.com/test.jpg');
