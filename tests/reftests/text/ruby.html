@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ruby / rt tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, 'Noto Sans JP', sans-serif;
+        font-size: 28px;
+      }
+
+      section {
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 15px;
+        margin: 8px 0 4px;
+        font-family: Roboto, sans-serif;
+      }
+
+      .box {
+        border: 1px solid #999;
+        padding: 10px 6px 6px;
+        width: 360px;
+        margin-bottom: 8px;
+      }
+
+      rt {
+        font-size: 14px;
+      }
+
+      .wide rt {
+        font-size: 22px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 1. rt is centered over its base by default -->
+    <section>
+      <h2>1. rt centered over base (latin)</h2>
+      <div class="box">
+        latin: <ruby>WWW<rt>web</rt></ruby> end
+      </div>
+    </section>
+
+    <!-- 2. rt wider than its base spreads the base -->
+    <section>
+      <h2>2. rt wider than base</h2>
+      <div class="box wide">
+        wide: <ruby>A<rt>wwwwww</rt></ruby> x
+      </div>
+    </section>
+
+    <!-- 3. single kanji + kana annotation -->
+    <section>
+      <h2>3. kanji with kana annotation</h2>
+      <div class="box">
+        kana: <ruby>&#x6F22;<rt>&#x304B;&#x3093;</rt></ruby> ok
+      </div>
+    </section>
+
+    <!-- 4. multiple base/rt pairs -->
+    <section>
+      <h2>4. multiple pairs</h2>
+      <div class="box">
+        multi: <ruby>&#x65E5;<rt>&#x306B;</rt>&#x672C;<rt>&#x307B;&#x3093;</rt>&#x8A9E;<rt>&#x3054;</rt></ruby>
+      </div>
+    </section>
+
+    <!-- 5. rp fallback parentheses are hidden when ruby is supported -->
+    <section>
+      <h2>5. rp parentheses (hidden)</h2>
+      <div class="box">
+        rp: <ruby>&#x6F22;<rp>(</rp><rt>&#x304B;&#x3093;</rt><rp>)</rp></ruby> done
+      </div>
+    </section>
+
+    <!-- 6. ruby-align variations -->
+    <section>
+      <h2>6. ruby-align</h2>
+      <div class="box">
+        start: <ruby style="ruby-align: start">WWWWWW<rt>ab</rt></ruby> end
+      </div>
+      <div class="box">
+        center: <ruby style="ruby-align: center">WWWWWW<rt>ab</rt></ruby> end
+      </div>
+      <div class="box">
+        space-between: <ruby style="ruby-align: space-between">WWWWWW<rt>ab</rt></ruby> end
+      </div>
+    </section>
+
+    <!-- 7. ruby-position over / under -->
+    <section>
+      <h2>7. ruby-position</h2>
+      <div class="box" style="padding-top: 16px">
+        over: <ruby style="ruby-position: over">WWW<rt>ab</rt></ruby> end
+      </div>
+      <div class="box" style="padding-bottom: 20px">
+        under: <ruby style="ruby-position: under">WWW<rt>ab</rt></ruby> end
+      </div>
+    </section>
+  </body>
+</html>

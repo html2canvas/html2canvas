@@ -20,6 +20,17 @@ import { TextContainer } from './text-container';
 const LIST_OWNERS = ['OL', 'UL', 'MENU'];
 
 const parseNodeTree = (context: Context, node: Node, parent: ElementContainer, root: ElementContainer) => {
+    // A <select> renders its own content (dropdown value or list-box rows) via
+    // SelectElementContainer + the form renderer. Never descend into its <option>
+    // / <optgroup> children: doing so would parse each option as a generic element
+    // whose UA background and text paint on top of the form renderer's output
+    // (double-drawn text, selection highlight overwritten). The guard below in the
+    // child loop only prevents descending FROM a parent INTO a nested <select>;
+    // when a <select> is the captured root element, this early return is what
+    // stops its options from being parsed.
+    if (isElementNode(node) && isSelectElement(node)) {
+        return;
+    }
     for (let childNode = node.firstChild, nextNode; childNode; childNode = nextNode) {
         nextNode = childNode.nextSibling;
         // Fixes #2238 #1624 - Fix the issue of TextNode content being overlooked in rendering due to being perceived as blank by trim().

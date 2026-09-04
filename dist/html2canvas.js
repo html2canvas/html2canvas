@@ -11379,6 +11379,26 @@
         return open ? quote.open : quote.close;
     };
 
+    var rubyAlign = {
+        name: 'ruby-align',
+        initialValue: 'space-around',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, value) {
+            switch (value) {
+                case 'start':
+                    return 0 /* RUBY_ALIGN.START */;
+                case 'center':
+                    return 1 /* RUBY_ALIGN.CENTER */;
+                case 'space-between':
+                    return 2 /* RUBY_ALIGN.SPACE_BETWEEN */;
+                case 'space-around':
+                default:
+                    return 3 /* RUBY_ALIGN.SPACE_AROUND */;
+            }
+        },
+    };
+
     var textAlign = {
         name: 'text-align',
         initialValue: 'left',
@@ -11841,6 +11861,30 @@
         },
     };
 
+    var unicodeBidi = {
+        name: 'unicode-bidi',
+        initialValue: 'normal',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, bidi) {
+            switch (bidi) {
+                case 'bidi-override':
+                    return 3 /* UNICODE_BIDI.BIDI_OVERRIDE */;
+                case 'isolate-override':
+                    return 4 /* UNICODE_BIDI.ISOLATE_OVERRIDE */;
+                case 'embed':
+                    return 1 /* UNICODE_BIDI.EMBED */;
+                case 'isolate':
+                    return 2 /* UNICODE_BIDI.ISOLATE */;
+                case 'plaintext':
+                    return 5 /* UNICODE_BIDI.PLAINTEXT */;
+                case 'normal':
+                default:
+                    return 0 /* UNICODE_BIDI.NORMAL */;
+            }
+        },
+    };
+
     var visibility = {
         name: 'visible',
         initialValue: 'none',
@@ -12056,6 +12100,7 @@
             this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
             this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
             this.position = parse(context, position, declaration.position);
+            this.rubyAlign = parse(context, rubyAlign, declaration.rubyAlign);
             this.textAlign = parse(context, textAlign, declaration.textAlign);
             this.textDecorationColor = parse(context, textDecorationColor, (_b = declaration.textDecorationColor) !== null && _b !== void 0 ? _b : declaration.color);
             this.textDecorationInset = parse(context, textDecorationInset, declaration.textDecorationInset);
@@ -12068,6 +12113,7 @@
             this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
             this.transform = parse(context, transform$1, declaration.transform);
             this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
+            this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
             this.visibility = parse(context, visibility, declaration.visibility);
             this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
             this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
@@ -12422,8 +12468,25 @@
         __extends(SelectElementContainer, _super);
         function SelectElementContainer(context, element) {
             var _this = _super.call(this, context, element) || this;
-            var option = element.options[element.selectedIndex || 0];
-            _this.value = option ? option.text || '' : '';
+            // A <select> renders as a multi-line list box when `multiple` is set or
+            // its `size` attribute is greater than 1. Otherwise it is the familiar
+            // single-line closed dropdown showing the selected option.
+            _this.isListBox = element.multiple || element.size > 1;
+            _this.scrollTop = element.scrollTop;
+            // Read the native per-option geometry rather than estimating a row
+            // height: option box heights differ between engines (e.g. 18px in
+            // Chromium vs 26px in Firefox for the same 14px font), and offsetTop
+            // already encodes the layout. offsetTop is relative to the select's
+            // border box; the renderer subtracts the top border + scrollTop.
+            _this.options = Array.from(element.options).map(function (option) { return ({
+                text: option.text || '',
+                selected: option.selected,
+                offsetTop: option.offsetTop,
+                offsetHeight: option.offsetHeight,
+            }); });
+            var firstSelected = _this.options.find(function (o) { return o.selected; });
+            var fallback = element.options[element.selectedIndex || 0];
+            _this.value = firstSelected ? firstSelected.text : fallback ? fallback.text || '' : '';
             return _this;
         }
         return SelectElementContainer;
@@ -13408,6 +13471,17 @@
     var LIST_OWNERS = ['OL', 'UL', 'MENU'];
     var parseNodeTree = function (context, node, parent, root) {
         var _a, _b, _c, _d;
+        // A <select> renders its own content (dropdown value or list-box rows) via
+        // SelectElementContainer + the form renderer. Never descend into its <option>
+        // / <optgroup> children: doing so would parse each option as a generic element
+        // whose UA background and text paint on top of the form renderer's output
+        // (double-drawn text, selection highlight overwritten). The guard below in the
+        // child loop only prevents descending FROM a parent INTO a nested <select>;
+        // when a <select> is the captured root element, this early return is what
+        // stops its options from being parsed.
+        if (isElementNode(node) && isSelectElement(node)) {
+            return;
+        }
         for (var childNode = node.firstChild, nextNode = void 0; childNode; childNode = nextNode) {
             nextNode = childNode.nextSibling;
             // Fixes #2238 #1624 - Fix the issue of TextNode content being overlooked in rendering due to being perceived as blank by trim().
@@ -14585,6 +14659,9 @@
                     switch (_c.label) {
                         case 0:
                             this.scrolledElements.forEach(restoreNodeScroll);
+                            // Re-apply scroll offsets that were serialized as data attributes (the
+                            // in-memory clone references above do not survive document.write()).
+                            restoreScrollFromAttr(documentClone);
                             if (cloneWindow) {
                                 cloneWindow.scrollTo(windowSize.left, windowSize.top);
                                 if (/(iPad|iPhone|iPod)/g.test(navigator.userAgent) &&
@@ -14942,8 +15019,19 @@
                         : undefined;
                     copyCSSStyles(style, clone, this.options.onCopyProperty, inlineStyle);
                 }
-                if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
-                    this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
+                // Persist scroll offsets through the outerHTML + document.write() round-trip.
+                // The in-memory `clone` node is discarded when the iframe re-parses the
+                // serialized HTML, so pushing it onto scrolledElements (whose references are
+                // restored after load) does not survive. Instead, stamp the wanted scroll on
+                // a data attribute that is part of the serialized HTML; restoreScrollFromAttr
+                // re-applies it to the freshly-parsed node after load.
+                //
+                // A multi-line list-box <select> must be handled even when the original
+                // scroll is 0: the browser auto-scrolls the fresh clone so the selected
+                // <option> is visible, so we stamp 0 explicitly to override that auto-scroll.
+                var isListBoxSelect = isSelectElement(node) && (node.multiple || node.size > 1);
+                if (node.scrollTop !== 0 || node.scrollLeft !== 0 || isListBoxSelect) {
+                    clone.setAttribute(SCROLL_ATTR, "".concat(node.scrollLeft, ",").concat(node.scrollTop));
                 }
                 if ((isTextareaElement(node) || isSelectElement(node)) &&
                     (isTextareaElement(clone) || isSelectElement(clone))) {
@@ -15471,6 +15559,30 @@
         var element = _a[0], x = _a[1], y = _a[2];
         element.scrollLeft = x;
         element.scrollTop = y;
+    };
+    /**
+     * Attribute used to carry an element's scroll offset ("scrollLeft,scrollTop")
+     * through the outerHTML + document.write() serialization round-trip, since the
+     * in-memory clone node references are discarded when the iframe re-parses.
+     */
+    var SCROLL_ATTR = 'data-html2canvas-scroll';
+    /**
+     * Re-apply scroll offsets stamped via SCROLL_ATTR onto the freshly-parsed iframe
+     * document. This restores scrolled containers (and neutralises the browser's
+     * auto-scroll of list-box <select> elements toward their selected option).
+     */
+    var restoreScrollFromAttr = function (document) {
+        var scrolled = document.querySelectorAll("[".concat(SCROLL_ATTR, "]"));
+        scrolled.forEach(function (element) {
+            var raw = element.getAttribute(SCROLL_ATTR);
+            element.removeAttribute(SCROLL_ATTR);
+            if (!raw) {
+                return;
+            }
+            var _a = raw.split(',').map(Number), x = _a[0], y = _a[1];
+            element.scrollLeft = x || 0;
+            element.scrollTop = y || 0;
+        });
     };
     var PSEUDO_BEFORE = ':before';
     var PSEUDO_AFTER = ':after';
@@ -16900,6 +17012,46 @@
     };
     var fontStyleCache = new WeakMap();
     /**
+     * True when the element forces a directional glyph override (unicode-bidi:
+     * bidi-override / isolate-override), as produced by <bdo>. In that case the
+     * glyph order must follow the resolved `direction` regardless of the text's
+     * intrinsic bidi character types.
+     */
+    function isBidiOverride(styles) {
+        return styles.unicodeBidi === 3 /* UNICODE_BIDI.BIDI_OVERRIDE */ || styles.unicodeBidi === 4 /* UNICODE_BIDI.ISOLATE_OVERRIDE */;
+    }
+    /**
+     * Align ruby annotation segments within their measured boxes.
+     *
+     * For `<rt>` (display: ruby-text) the DOM Range of the annotation text reports
+     * the full ruby-column width (matching the base), while the browser paints the
+     * shorter annotation text within that column according to `ruby-align`. Since
+     * the renderer draws at bounds.left with textAlign='left', we shift each segment
+     * so it lands where the browser places it:
+     *   - `start`: keep bounds.left (left edge of the column).
+     *   - everything else (`center` / `space-around` / `space-between`): centre the
+     *     text within the measured column box. `space-*` distribute glyphs, but that
+     *     layout is not exposed reliably via getClientRects, so we approximate with
+     *     centering, which matches the common default (`space-around`) visually.
+     * `ctx.font` must already be set to the annotation's font before calling this.
+     */
+    function alignRubyText(ctx, bounds, align) {
+        if (align === 0 /* RUBY_ALIGN.START */) {
+            return bounds;
+        }
+        return bounds.map(function (tb) {
+            var textWidth = ctx.measureText(tb.text).width;
+            var slack = tb.bounds.width - textWidth;
+            // Only shift when the measured box is wider than the text (the ruby
+            // column case); never shift when the box is already tight.
+            if (slack <= 0.5) {
+                return tb;
+            }
+            var centeredLeft = tb.bounds.left + slack / 2;
+            return new TextBounds(tb.text, new Bounds(centeredLeft, tb.bounds.top, textWidth, tb.bounds.height));
+        });
+    }
+    /**
      * Returns [fontString, fontFamily, fontSize] for use with ctx.font.
      * Results are cached per CSSParsedDeclaration instance.
      */
@@ -16967,9 +17119,20 @@
     /**
      * Draws a single text segment, handling vertical writing modes and letter-spacing.
      */
-    function renderTextWithLetterSpacing(state, text, letterSpacing, baseline, writingMode, useStroke) {
+    function renderTextWithLetterSpacing(state, text, letterSpacing, baseline, writingMode, useStroke, reverseGraphemes) {
         if (writingMode === void 0) { writingMode = 0 /* WRITING_MODE.HORIZONTAL_TB */; }
         if (useStroke === void 0) { useStroke = false; }
+        if (reverseGraphemes === void 0) { reverseGraphemes = false; }
+        // unicode-bidi: bidi-override forces glyphs to be laid out in the direction's
+        // visual order. The canvas 2d bidi algorithm (ctx.direction) will not reverse
+        // a run of strong-LTR characters (e.g. latin) the way <bdo dir="rtl"> does, so
+        // when an override is in effect we reverse the grapheme order ourselves and
+        // draw the result as a plain run. Only correct for scripts that do not require
+        // contextual shaping (latin, digits); complex-shaping scripts are left as-is.
+        if (reverseGraphemes) {
+            var reversed = segmentGraphemes(text.text).reverse().join('');
+            text = new TextBounds(reversed, text.bounds);
+        }
         var isVertical = writingMode === 1 /* WRITING_MODE.VERTICAL_RL */ ||
             writingMode === 2 /* WRITING_MODE.VERTICAL_LR */ ||
             writingMode === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
@@ -17163,8 +17326,8 @@
     // ---------------------------------------------------------------------------
     function renderTextNode(state, text, styles, firstLineStyles) {
         return __awaiter(this, void 0, void 0, function () {
-            var _a, font, fontFamily, fontSize, fontSizePx, FIRST_LINE_TOLERANCE, firstLineTop, paintOrder, wm, isVertical, baseline, lineStartMap, lineEndMap, isFirstInLine, lineMin, lineMax_1, _i, _b, tb, lineKey, start, end, minEntry, maxEntry, clamp, anchor;
-            return __generator(this, function (_c) {
+            var _a, font, fontFamily, fontSize, fontSizePx, FIRST_LINE_TOLERANCE, firstLineTop, RUBY_TEXT_MASK, renderTextBounds, paintOrder, wm, isVertical, baseline, lineStartMap, lineEndMap, isFirstInLine, lineMin, lineMax_1, _i, renderTextBounds_1, tb, lineKey, start, end, minEntry, maxEntry, clamp, anchor;
+            return __generator(this, function (_b) {
                 _a = createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
                 fontSizePx = getNumber(styles.fontSize);
                 FIRST_LINE_TOLERANCE = 1;
@@ -17176,6 +17339,10 @@
                 state.ctx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
                 state.ctx.textAlign = 'left';
                 state.ctx.textBaseline = 'alphabetic';
+                RUBY_TEXT_MASK = 2097152 /* DISPLAY.RUBY_TEXT */ | 1048576 /* DISPLAY.RUBY_BASE */ | 512 /* DISPLAY.RUBY */;
+                renderTextBounds = (styles.display & RUBY_TEXT_MASK) !== 0
+                    ? alignRubyText(state.ctx, text.textBounds, styles.rubyAlign)
+                    : text.textBounds;
                 paintOrder = styles.paintOrder;
                 wm = styles.writingMode;
                 isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
@@ -17189,8 +17356,8 @@
                 if (styles.textDecorationLine.length) {
                     lineMin = new Map();
                     lineMax_1 = new Map();
-                    for (_i = 0, _b = text.textBounds; _i < _b.length; _i++) {
-                        tb = _b[_i];
+                    for (_i = 0, renderTextBounds_1 = renderTextBounds; _i < renderTextBounds_1.length; _i++) {
+                        tb = renderTextBounds_1[_i];
                         lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
                         start = isVertical ? tb.bounds.top : tb.bounds.left;
                         end = isVertical ? tb.bounds.top + tb.bounds.height : tb.bounds.left + tb.bounds.width;
@@ -17215,8 +17382,8 @@
                         lineEndMap.set(firstTb, lineMax_1.get(lineKey).val);
                     });
                 }
-                clamp = !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(text.textBounds, styles.webkitLineClamp) : null;
-                text.textBounds.forEach(function (textBound) {
+                clamp = !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(renderTextBounds, styles.webkitLineClamp) : null;
+                renderTextBounds.forEach(function (textBound) {
                     // Skip segments on lines beyond the clamp limit.
                     if (clamp && !clamp.kept.has(textBound)) {
                         return;
@@ -17327,11 +17494,15 @@
     // ---------------------------------------------------------------------------
     function _renderTextFill(state, textBound, styles, baseline, wm, fontSizePx, isVertical, lineStartMap, lineEndMap, isFirstInLine) {
         var textShadows = styles.textShadow;
+        // <bdo dir="rtl"> (bidi-override + RTL) lays glyphs right-to-left; reverse the
+        // grapheme order so a single fillText reproduces it. bidi-override with LTR
+        // keeps logical order, so no reversal is needed there.
+        var reverse = isBidiOverride(styles) && styles.direction === 1 /* DIRECTION.RTL */ && !isVertical;
         if (textShadows.length && textBound.text.trim().length) {
             _renderTextShadows(state, textBound, styles, baseline, wm, textShadows);
         }
         else if (!isTransparent(styles.color)) {
-            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, false, reverse);
         }
         if (styles.textDecorationLine.length) {
             _renderTextDecorations(state, textBound, styles, baseline, wm, isVertical, fontSizePx, lineStartMap, lineEndMap, isFirstInLine);
@@ -19555,7 +19726,14 @@
                         _d.sent();
                         return [3 /*break*/, 3];
                     case 2:
-                        _renderSingleLineInput(state, container, styles, bounds);
+                        if (container instanceof SelectElementContainer && container.isListBox) {
+                            // The parser no longer descends into <option> children (see parseNodeTree),
+                            // so the list-box content is drawn solely here, consistently across engines.
+                            _renderListBoxSelect(state, container, styles, bounds);
+                        }
+                        else {
+                            _renderSingleLineInput(state, container, styles, bounds);
+                        }
                         _d.label = 3;
                     case 3:
                         state.ctx.restore();
@@ -19708,6 +19886,72 @@
         var midY = pBounds.top + pBounds.height / 2 + 1;
         var startX = bounds.left + x;
         drawTextWithLetterSpacing(state.ctx, container.value, startX, midY, styles.letterSpacing);
+    }
+    /**
+     * Renders a multi-line list-box `<select>` (i.e. `multiple` or `size > 1`):
+     * one option per line, with selected options drawn on a highlight background.
+     *
+     * The highlight colour approximates the browser default selection colour; the
+     * text colour on a selected row switches to white for contrast, matching how
+     * browsers paint selected list-box rows.
+     */
+    function _renderListBoxSelect(state, container, styles, bounds, baseline) {
+        var _a;
+        var textColor = asString(styles.color);
+        // Default browser highlight for selected list-box rows (Chromium's is a blue
+        // similar to #0069d9 / rgb(0,105,217)); white text keeps contrast.
+        var HIGHLIGHT_BG = 'rgb(0, 105, 217)';
+        var HIGHLIGHT_TEXT = 'rgb(255, 255, 255)';
+        var xOffset = 0;
+        switch (container.styles.textAlign) {
+            case 1 /* TEXT_ALIGN.CENTER */:
+                xOffset = bounds.width / 2;
+                break;
+            case 2 /* TEXT_ALIGN.RIGHT */:
+                xOffset = bounds.width;
+                break;
+        }
+        var originX = bounds.left + xOffset;
+        // The browser auto-scrolls the list so the selected option is visible; apply
+        // the same offset so we render the same visible slice of options.
+        var scrollTop = (_a = container.scrollTop) !== null && _a !== void 0 ? _a : 0;
+        // Position rows relative to the FIRST option rather than using each option's
+        // absolute offsetTop added to the border box. offsetTop is measured from the
+        // select's border box and includes an internal UA gap (~10px on Chromium)
+        // that the browser absorbs when laying out the visible rows, so adding it to
+        // the border-box top pushes every row down by that gap and overflows the box.
+        // Anchoring the first option to the content-box top and spacing subsequent
+        // rows by their offsetTop delta reproduces the native layout on both engines.
+        var firstOffsetTop = container.options.length > 0 ? container.options[0].offsetTop : 0;
+        var rowsOrigin = bounds.top;
+        var clipTop = bounds.top;
+        var clipBottom = bounds.top + bounds.height;
+        // Draw option text with textBaseline='middle' centred in each row. This
+        // bypasses renderTextWithLetterSpacing's engine-specific baseline handling
+        // (ideographic on Chromium, measured baseline on Firefox) which caused the
+        // text to drift relative to the row in Firefox. Centering on the row's
+        // vertical middle places the text correctly on both engines.
+        var startX = originX;
+        var previousBaseline = state.ctx.textBaseline;
+        container.options.forEach(function (option) {
+            var rowTop = rowsOrigin + (option.offsetTop - firstOffsetTop) - scrollTop;
+            var rowHeight = option.offsetHeight;
+            // Skip rows fully outside the content box.
+            if (rowTop + rowHeight < clipTop || rowTop > clipBottom) {
+                return;
+            }
+            if (option.selected) {
+                state.ctx.save();
+                state.ctx.fillStyle = HIGHLIGHT_BG;
+                state.ctx.fillRect(bounds.left, rowTop, bounds.width, rowHeight);
+                state.ctx.restore();
+            }
+            state.ctx.fillStyle = option.selected ? HIGHLIGHT_TEXT : textColor;
+            state.ctx.textBaseline = 'middle';
+            var midY = rowTop + rowHeight / 2 + 1;
+            drawTextWithLetterSpacing(state.ctx, option.text, startX, midY, styles.letterSpacing);
+        });
+        state.ctx.textBaseline = previousBaseline;
     }
     // ---------------------------------------------------------------------------
     // List markers
@@ -20361,7 +20605,7 @@
         };
         CanvasRenderer.prototype.renderNodeContent = function (paint) {
             return __awaiter(this, void 0, void 0, function () {
-                var container, curves, styles, _i, _a, child, image, e_1, image, _e_1, image, e_2, image, e_3, iframeRenderer, canvas;
+                var container, curves, styles, _i, _a, child, image, e_1, image, _e_1, image, e_2, image, e_3, iframeRenderer, canvas, isListBoxSelect;
                 var _b;
                 return __generator(this, function (_c) {
                     switch (_c.label) {
@@ -20486,7 +20730,9 @@
                             if (container instanceof MeterElementContainer) {
                                 renderMeter(this.state, container);
                             }
-                            if (!(isTextInputElement(container) && container.value.length)) return [3 /*break*/, 26];
+                            if (!isTextInputElement(container)) return [3 /*break*/, 26];
+                            isListBoxSelect = container instanceof SelectElementContainer && container.isListBox && container.options.length > 0;
+                            if (!(container.value.length || isListBoxSelect)) return [3 /*break*/, 26];
                             return [4 /*yield*/, renderTextInputElement(this.state, container, styles)];
                         case 25:
                             _c.sent();

@@ -81,6 +81,7 @@ import { paddingBottom, paddingLeft, paddingRight, paddingTop } from './property
 import { paintOrder } from './property-descriptors/paint-order';
 import { POSITION, position } from './property-descriptors/position';
 import { quotes } from './property-descriptors/quotes';
+import { rubyAlign } from './property-descriptors/ruby-align';
 import { textAlign } from './property-descriptors/text-align';
 import { textDecorationColor } from './property-descriptors/text-decoration-color';
 import { textDecorationInset } from './property-descriptors/text-decoration-inset';
@@ -93,6 +94,7 @@ import { textUnderlineOffset } from './property-descriptors/text-underline-offse
 import { textUnderlinePosition } from './property-descriptors/text-underline-position';
 import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
+import { unicodeBidi } from './property-descriptors/unicode-bidi';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
 import { webkitLineClamp } from './property-descriptors/webkit-line-clamp';
 import { webkitTextStrokeColor } from './property-descriptors/webkit-text-stroke-color';
@@ -205,6 +207,7 @@ export class CSSParsedDeclaration {
     paddingLeft: LengthPercentage;
     paintOrder: ReturnType<typeof paintOrder.parse>;
     position: ReturnType<typeof position.parse>;
+    rubyAlign: ReturnType<typeof rubyAlign.parse>;
     textAlign: ReturnType<typeof textAlign.parse>;
     textDecorationColor: Color;
     textDecorationInset: ReturnType<typeof textDecorationInset.parse>;
@@ -217,6 +220,7 @@ export class CSSParsedDeclaration {
     textUnderlinePosition: ReturnType<typeof textUnderlinePosition.parse>;
     transform: ReturnType<typeof transform.parse>;
     transformOrigin: ReturnType<typeof transformOrigin.parse>;
+    unicodeBidi: ReturnType<typeof unicodeBidi.parse>;
     visibility: ReturnType<typeof visibility.parse>;
     webkitLineClamp: ReturnType<typeof webkitLineClamp.parse>;
     webkitTextStrokeColor: Color;
@@ -300,6 +304,7 @@ export class CSSParsedDeclaration {
         this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
         this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
         this.position = parse(context, position, declaration.position);
+        this.rubyAlign = parse(context, rubyAlign, declaration.rubyAlign);
         this.textAlign = parse(context, textAlign, declaration.textAlign);
         this.textDecorationColor = parse(
             context,
@@ -320,6 +325,7 @@ export class CSSParsedDeclaration {
         this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
         this.transform = parse(context, transform, declaration.transform);
         this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
+        this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
         this.visibility = parse(context, visibility, declaration.visibility);
         this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);

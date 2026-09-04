@@ -51,6 +51,7 @@
 </li>
 <li>content</li>
 <li>color</li>
+<li>direction</li>
 <li>display</li>
 <li>filter<ul>
 <li>blur()</li>
@@ -101,6 +102,8 @@
 <li>paint-order</li>
 <li>position</li>
 <li>right</li>
+<li>ruby-align (<code>start</code>, <code>center</code>, <code>space-around</code>, <code>space-between</code>)</li>
+<li>ruby-position (<code>over</code>, <code>under</code>, <code>inter-character</code>)</li>
 <li>text-align</li>
 <li>text-decoration<ul>
 <li>text-decoration-color</li>
@@ -139,6 +142,7 @@
 <li>perspective() (<strong>no-op in 2D</strong>)</li>
 </ul>
 </li>
+<li>unicode-bidi (<code>bidi-override</code>, <code>isolate-override</code>)</li>
 <li>visibility</li>
 <li>white-space</li>
 <li>writing-mode (<strong>Limited support</strong>)</li>
@@ -221,7 +225,7 @@
 <li><code>&lt;input type=&quot;radio&quot;&gt;</code> — styled radio with filled circle when checked</li>
 <li><code>&lt;input type=&quot;range&quot;&gt;</code> — track and thumb rendered based on min/max/value</li>
 <li><code>&lt;textarea&gt;</code> — multi-line text with word-wrap, scroll offset, and letter-spacing</li>
-<li><code>&lt;select&gt;</code> — selected option text rendered</li>
+<li><code>&lt;select&gt;</code> — closed dropdown: selected option text rendered; list box (<code>multiple</code> or <code>size &gt; 1</code>): one option per line with selected rows highlighted</li>
 <li><code>&lt;progress&gt;</code> — bar with grey track and blue fill</li>
 <li><code>&lt;meter&gt;</code> — bar with green/yellow/red fill based on low/high/optimum thresholds</li>
 <li><code>&lt;button&gt;</code>, <code>&lt;input type=&quot;submit|reset|button&quot;&gt;</code> — rendered via generic CSS (no native chrome)</li>
@@ -234,7 +238,7 @@
 </ul>
 <h3>Structural elements (generic CSS rendering)</h3>
 <p>These elements have no special rendering logic — they are painted using their computed CSS styles (backgrounds, borders, text, layout):</p>
-<p><code>&lt;div&gt;</code>, <code>&lt;span&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;section&gt;</code>, <code>&lt;article&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;aside&gt;</code>, <code>&lt;main&gt;</code>, <code>&lt;header&gt;</code>, <code>&lt;footer&gt;</code>, <code>&lt;h1&gt;</code>–<code>&lt;h6&gt;</code>, <code>&lt;figure&gt;</code>, <code>&lt;figcaption&gt;</code>, <code>&lt;blockquote&gt;</code>, <code>&lt;pre&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;address&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code>, <code>&lt;s&gt;</code>, <code>&lt;small&gt;</code>, <code>&lt;mark&gt;</code>, <code>&lt;del&gt;</code>, <code>&lt;ins&gt;</code>, <code>&lt;sub&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;abbr&gt;</code>, <code>&lt;cite&gt;</code>, <code>&lt;kbd&gt;</code>, <code>&lt;samp&gt;</code>, <code>&lt;var&gt;</code>, <code>&lt;time&gt;</code>, <code>&lt;ruby&gt;</code>, <code>&lt;rt&gt;</code>, <code>&lt;bdi&gt;</code>, <code>&lt;bdo&gt;</code>, <code>&lt;wbr&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;hr&gt;</code></p>
+<p><code>&lt;div&gt;</code>, <code>&lt;span&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;section&gt;</code>, <code>&lt;article&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;aside&gt;</code>, <code>&lt;main&gt;</code>, <code>&lt;header&gt;</code>, <code>&lt;footer&gt;</code>, <code>&lt;h1&gt;</code>–<code>&lt;h6&gt;</code>, <code>&lt;figure&gt;</code>, <code>&lt;figcaption&gt;</code>, <code>&lt;blockquote&gt;</code>, <code>&lt;pre&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;address&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code>, <code>&lt;s&gt;</code>, <code>&lt;small&gt;</code>, <code>&lt;mark&gt;</code>, <code>&lt;del&gt;</code>, <code>&lt;ins&gt;</code>, <code>&lt;sub&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;abbr&gt;</code>, <code>&lt;cite&gt;</code>, <code>&lt;kbd&gt;</code>, <code>&lt;samp&gt;</code>, <code>&lt;var&gt;</code>, <code>&lt;time&gt;</code>, <code>&lt;ruby&gt;</code>, <code>&lt;rt&gt;</code>, <code>&lt;rp&gt;</code>, <code>&lt;bdi&gt;</code>, <code>&lt;bdo&gt;</code>, <code>&lt;wbr&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;hr&gt;</code></p>
 <h3>Table elements</h3>
 <p><code>&lt;table&gt;</code>, <code>&lt;thead&gt;</code>, <code>&lt;tbody&gt;</code>, <code>&lt;tfoot&gt;</code>, <code>&lt;tr&gt;</code>, <code>&lt;td&gt;</code>, <code>&lt;th&gt;</code>, <code>&lt;caption&gt;</code></p>
 <h3>Special handling</h3>
@@ -260,4 +264,4 @@
     <path d="M0 0h24v24H0z" fill="none"/>
     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
 </svg>
-</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.D6G9AdYu.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>
+</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.C7CYW4oA.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>
