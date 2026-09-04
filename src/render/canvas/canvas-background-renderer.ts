@@ -759,9 +759,27 @@ export async function renderSolidBorder(
     side: number,
     curvePoints: BoundCurves,
 ): Promise<void> {
-    canvasPath(state, parsePathForBorder(curvePoints, side));
-    state.ctx.fillStyle = asString(color);
+    const paths = parsePathForBorder(curvePoints, side);
+    const fillStyle = asString(color);
+
+    canvasPath(state, paths);
+    state.ctx.fillStyle = fillStyle;
     state.ctx.fill();
+
+    // Each side is filled as a separate trapezoid. Where two differently-coloured
+    // sides meet along a corner's diagonal miter, the two independently
+    // anti-aliased edges do not overlap perfectly and leave a thin lighter/jagged
+    // seam. Stroking the same trapezoid outline in the same colour paints a hairline
+    // that straddles the edge and covers that seam. lineWidth is kept at ~1 device
+    // pixel (divided by scale, since the stroke is applied in the scaled CTM) so it
+    // never visibly thickens the border. Adjacent sides paint over each other in
+    // T→R→B→L order, sealing every diagonal.
+    if (!isTransparent(color)) {
+        state.ctx.strokeStyle = fillStyle;
+        state.ctx.lineWidth = 1 / state.options.scale;
+        state.ctx.lineJoin = 'round';
+        state.ctx.stroke();
+    }
 }
 
 export async function renderDoubleBorder(
@@ -932,6 +950,39 @@ const _buildHalfBorderPath = (
     // stroke centre → padding-box edge
     return [...stroke, ...innerEdge];
 };
+
+/**
+ * Fast path for a uniform solid border: all four sides share the same colour
+ * and style, so browsers paint one continuous ring with NO diagonal miter seam
+ * between the sides. html2canvas normally fills the four sides as separate
+ * trapezoids, whose shared diagonal edges get independently anti-aliased and
+ * leave a faint seam (or a double-blended line) at each corner.
+ *
+ * Here we instead paint the whole border as a single closed ring: the outer
+ * border-box path with the inner padding-box path punched out via the even-odd
+ * fill rule. Because it is one fill(), there are no internal edges to anti-alias,
+ * matching the browser's continuous-ring rendering exactly.
+ *
+ * This works for any corner radius (the border-box / padding-box paths already
+ * carry the Bézier curves), so rounded uniform borders benefit too.
+ */
+function renderUniformSolidBorder(
+    state: CanvasRenderState,
+    color: import('../../css/types/color').Color,
+    curvePoints: BoundCurves,
+): void {
+    const ctx = state.ctx;
+    ctx.beginPath();
+    // Outer contour: border-box.
+    formatPath(ctx, calculateBorderBoxPath(curvePoints));
+    ctx.closePath();
+    // Inner contour: padding-box. With the even-odd rule this becomes a hole
+    // regardless of winding order.
+    formatPath(ctx, calculatePaddingBoxPath(curvePoints));
+    ctx.closePath();
+    ctx.fillStyle = asString(color);
+    ctx.fill('evenodd');
+}
 
 /**
  * Dispatches border rendering for a single side to the appropriate renderer
@@ -1896,21 +1947,57 @@ async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, pa
     const borderImageRendered = await _renderBorderImage(state, paint);
 
     if (!borderImageRendered) {
-        let side = 0;
-        for (const border of borders) {
-            if (border.style !== BORDER_STYLE.NONE && !isTransparent(border.color) && border.width > 0) {
-                // For the top border of a <fieldset> with a <legend>, punch a gap
-                // where the legend sits so the border visually wraps around it.
-                const legendBounds = side === 0 ? paint.container.legendBounds : undefined;
-                if (legendBounds) {
-                    await _renderFieldsetTopBorder(state, paint, border, legendBounds);
-                } else {
-                    await renderBorderSide(state, border.color, border.width, side, border.style, paint.curves);
+        // Fast path: a fully uniform solid border (all four sides same style,
+        // colour and width, all visible, and no fieldset legend gap) is painted
+        // as a single continuous ring to avoid diagonal miter seams between the
+        // separately-filled sides. See renderUniformSolidBorder.
+        if (_isUniformSolidBorder(borders) && !paint.container.legendBounds) {
+            renderUniformSolidBorder(state, borders[0].color, paint.curves);
+        } else {
+            let side = 0;
+            for (const border of borders) {
+                if (border.style !== BORDER_STYLE.NONE && !isTransparent(border.color) && border.width > 0) {
+                    // For the top border of a <fieldset> with a <legend>, punch a gap
+                    // where the legend sits so the border visually wraps around it.
+                    const legendBounds = side === 0 ? paint.container.legendBounds : undefined;
+                    if (legendBounds) {
+                        await _renderFieldsetTopBorder(state, paint, border, legendBounds);
+                    } else {
+                        await renderBorderSide(state, border.color, border.width, side, border.style, paint.curves);
+                    }
                 }
+                side++;
             }
-            side++;
         }
     }
+}
+
+/**
+ * True when all four borders are solid, visible, and share the same colour and
+ * width — the case a browser paints as one continuous ring. Only then is it safe
+ * to replace the four per-side fills with a single ring fill.
+ */
+function _isUniformSolidBorder(
+    borders: { style: BORDER_STYLE; color: import('../../css/types/color').Color; width: number }[],
+): boolean {
+    const [top, right, bottom, left] = borders;
+    return (
+        top.style === BORDER_STYLE.SOLID &&
+        right.style === BORDER_STYLE.SOLID &&
+        bottom.style === BORDER_STYLE.SOLID &&
+        left.style === BORDER_STYLE.SOLID &&
+        top.width > 0 &&
+        right.width > 0 &&
+        bottom.width > 0 &&
+        left.width > 0 &&
+        !isTransparent(top.color) &&
+        top.color === right.color &&
+        top.color === bottom.color &&
+        top.color === left.color &&
+        top.width === right.width &&
+        top.width === bottom.width &&
+        top.width === left.width
+    );
 }
 
 // ---------------------------------------------------------------------------

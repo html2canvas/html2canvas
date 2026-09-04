@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Border corner joins (diagonal miter) tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #ffffff;
+      }
+
+      .box {
+        width: 120px;
+        height: 120px;
+        display: inline-block;
+        margin: 12px;
+        border-style: solid;
+        box-sizing: border-box;
+        vertical-align: top;
+      }
+
+      /* Thick border, all four sides the SAME colour.
+               Browsers paint this as one continuous ring with no diagonal seam.
+               This is the primary case the "no diagonal when colours match"
+               optimisation (1b) must reproduce. */
+      .same-color {
+        border-width: 24px;
+        border-color: #000000;
+        background: #ffd400;
+      }
+
+      /* Thick border, all four sides DIFFERENT colours.
+               Each corner has a visible diagonal miter line; the goal is that
+               the two sides meet exactly on the diagonal without a light seam. */
+      .diff-color {
+        border-width: 24px;
+        border-top-color: #d81b60;
+        border-right-color: #1e88e5;
+        border-bottom-color: #43a047;
+        border-left-color: #fb8c00;
+        background: #eeeeee;
+      }
+
+      /* Two-colour pairs (top/left one colour, right/bottom another) —
+               the classic "3D bevel" seam case. */
+      .bevel {
+        border-width: 24px;
+        border-top-color: #ffffff;
+        border-left-color: #ffffff;
+        border-right-color: #555555;
+        border-bottom-color: #555555;
+        background: #cccccc;
+      }
+
+      /* Acid2-style corner made purely of borders: a zero-size box whose
+               thick borders form coloured triangles meeting at diagonals. */
+      .triangles {
+        width: 0;
+        height: 0;
+        border-width: 60px;
+        border-top-color: #000000;
+        border-right-color: #ffd400;
+        border-bottom-color: #d81b60;
+        border-left-color: #1e88e5;
+      }
+
+      /* Same-colour but with a border-radius, to confirm the optimisation
+               does not break rounded corners (Bézier arcs must stay smooth). */
+      .rounded-same {
+        border-width: 24px;
+        border-color: #000000;
+        border-radius: 30px;
+        background: #ffd400;
+      }
+
+      /* Uniform SEMI-TRANSPARENT border. This is the case where painting
+               four overlapping trapezoids visibly darkens the corners (double
+               alpha blend), while a single even-odd ring composites once and
+               keeps the corners the same tone as the sides. Rendered over a
+               background so the alpha is visible. */
+      .translucent-same {
+        border-width: 24px;
+        border-color: rgba(0, 0, 0, 0.5);
+        background: #ffd400;
+      }
+
+      /* Uniform colour but UNEQUAL widths: the fast path must NOT trigger
+               (miters are asymmetric), so this exercises the per-side fallback
+               while sharing a colour. */
+      .same-color-uneven {
+        border-width: 12px 36px;
+        border-color: #000000;
+        background: #ffd400;
+      }
+
+      /* One side missing (width 0): not a complete ring, must fall back to
+               per-side rendering. */
+      .missing-side {
+        border-width: 24px;
+        border-color: #000000;
+        border-top-width: 0;
+        background: #ffd400;
+      }
+
+      /* Uniform colour but DASHED style: fast path is solid-only, so this
+               must keep the dashed per-side rendering. */
+      .dashed-same {
+        border-width: 12px;
+        border-style: dashed;
+        border-color: #000000;
+        background: #ffd400;
+      }
+
+      /* Radius smaller than the border width, uniform colour: stresses the
+               rounded ring where the inner (padding-box) corner is square. */
+      .rounded-tight {
+        border-width: 30px;
+        border-color: #000000;
+        border-radius: 12px;
+        background: #ffd400;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box same-color">&nbsp;</div>
+    <div class="box diff-color">&nbsp;</div>
+    <div class="box bevel">&nbsp;</div>
+    <div class="box triangles"></div>
+    <div class="box rounded-same">&nbsp;</div>
+    <div class="box translucent-same">&nbsp;</div>
+    <div class="box same-color-uneven">&nbsp;</div>
+    <div class="box missing-side">&nbsp;</div>
+    <div class="box dashed-same">&nbsp;</div>
+    <div class="box rounded-tight">&nbsp;</div>
+  </body>
+</html>
