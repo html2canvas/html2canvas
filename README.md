@@ -108,28 +108,24 @@ npm run unittest
 
 The project uses Playwright to run visual regression tests against all reftest HTML fixtures. Each fixture is rendered through html2canvas and the output is compared pixel-by-pixel against committed baseline snapshots.
 
-1. Build the project first (only needed once, or after source changes):
+The tests run inside a Docker container so the rendering (fonts in particular) is reproducible and matches the committed baselines. Running Playwright directly against the host would depend on the system fonts and produce spurious diffs.
+
+1. Run the visual regression tests (the container builds the project first):
 
     ```shell
-    npm run build
+    npm run test:visual:docker
     ```
 
-2. Run the visual regression tests:
-
-    ```shell
-    npm run test:visual
-    ```
-
-3. If a test fails, open the interactive HTML report to inspect diffs:
+2. If a test fails, open the interactive HTML report to inspect diffs:
 
     ```shell
     npm run test:visual:report
     ```
 
-4. After an intentional rendering change, update the baselines:
+3. After an intentional rendering change, update the baselines:
 
     ```shell
-    npm run test:visual:update
+    npm run test:visual:docker:update
     ```
 
     This regenerates all snapshot PNGs in `tests/visual/reftests.spec.ts-snapshots/`. Review the changes and commit them.

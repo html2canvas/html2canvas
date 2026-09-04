@@ -125,8 +125,6 @@
     "test": "npm run lint && npm run unittest && npm run karma",
     "unittest": "node node_modules/jest-cli/bin/jest.js --runInBand",
     "reftests-diff": "mkdir -p tmp/snapshots && jest --roots=tests --testMatch=**/reftest-diff.ts",
-    "test:visual": "npx playwright test",
-    "test:visual:update": "npx playwright test --update-snapshots",
     "test:visual:docker": "docker run --rm --user $(id -u):$(id -g) -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble bash -c 'npm ci && npm run build && npx playwright test'",
     "test:visual:docker:update": "docker run --rm --user $(id -u):$(id -g) -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble bash -c 'npm ci && npm run build && npx playwright test --update-snapshots'",
     "test:visual:report": "npx playwright show-report",
