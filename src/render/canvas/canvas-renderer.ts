@@ -62,6 +62,29 @@ export interface RenderOptions {
      * their painted position may differ from their bounds. Defaults to false.
      */
     cullOffscreen?: boolean;
+    /**
+     * Default image smoothing (anti-aliasing) applied when drawing/scaling
+     * images. Maps to CanvasRenderingContext2D.imageSmoothingEnabled. When
+     * false, images are drawn with nearest-neighbour sampling (crisp pixel art,
+     * no blur on upscale). Defaults to true.
+     *
+     * The per-element CSS `image-rendering` property overrides this default,
+     * unless `forceImageQuality` is set.
+     */
+    imageSmoothing?: boolean;
+    /**
+     * Quality hint used when image smoothing is enabled. Maps to
+     * CanvasRenderingContext2D.imageSmoothingQuality. Defaults to 'low' (the
+     * canvas default) to preserve existing output.
+     */
+    imageSmoothingQuality?: ImageSmoothingQuality;
+    /**
+     * When true, the global `imageSmoothing`/`imageSmoothingQuality` settings
+     * are applied to every image regardless of the element's CSS
+     * `image-rendering` value (the CSS is ignored). Defaults to false, i.e. CSS
+     * `image-rendering` takes precedence when present.
+     */
+    forceImageQuality?: boolean;
 }
 
 export class CanvasRenderer extends Renderer {
@@ -115,6 +138,11 @@ export class CanvasRenderer extends Renderer {
         ctx.scale(options.scale, options.scale);
         ctx.translate(-options.x, -options.y);
         ctx.textBaseline = 'bottom';
+        // Apply the global image-smoothing default to the main context. Per-element
+        // CSS image-rendering may override this at each image draw (see
+        // resolveImageSmoothing), unless forceImageQuality is set.
+        ctx.imageSmoothingEnabled = options.imageSmoothing ?? true;
+        ctx.imageSmoothingQuality = options.imageSmoothingQuality ?? 'low';
         this._activeEffects = [];
         context.logger.debug(
             `Canvas renderer initialized (${options.width}x${options.height}) with scale ${options.scale}`,

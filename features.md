@@ -72,6 +72,7 @@ Below is a list of all the supported CSS properties and values.
     - font-variant
     - font-weight
 - height
+- image-rendering (`auto`, `pixelated`, `crisp-edges`, `smooth`; also `-webkit-optimize-contrast` and vendor `crisp-edges` prefixes)
 - left
 - letter-spacing
 - line-break

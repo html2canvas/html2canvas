@@ -10861,6 +10861,32 @@ var fontWeight = {
     },
 };
 
+var imageRendering = {
+    name: 'image-rendering',
+    initialValue: 'auto',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: function (_context, value) {
+        switch (value) {
+            case 'pixelated':
+            // Legacy Chromium/WebKit alias that also disables smoothing.
+            case '-webkit-optimize-contrast':
+                return 1 /* IMAGE_RENDERING.PIXELATED */;
+            case 'crisp-edges':
+            case '-webkit-crisp-edges':
+            case '-moz-crisp-edges':
+            case '-o-crisp-edges':
+                return 2 /* IMAGE_RENDERING.CRISP_EDGES */;
+            case 'smooth':
+            case 'high-quality':
+                return 3 /* IMAGE_RENDERING.SMOOTH */;
+            case 'auto':
+            default:
+                return 0 /* IMAGE_RENDERING.AUTO */;
+        }
+    },
+};
+
 var letterSpacing = {
     name: 'letter-spacing',
     initialValue: '0',
@@ -11999,6 +12025,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
         this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
         this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
+        this.imageRendering = parse(context, imageRendering, declaration.imageRendering);
         this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
         this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
         this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
@@ -16725,6 +16752,41 @@ var createPathFromCurves = function (outer1, inner1, outer2, inner2) {
 };
 
 // ---------------------------------------------------------------------------
+// Image smoothing resolution
+// ---------------------------------------------------------------------------
+/**
+ * Resolves the effective image-smoothing settings for a given element, applying
+ * the precedence rule:
+ *
+ *   forceImageQuality === true   -> always use the global options (ignore CSS)
+ *   otherwise                    -> the element's CSS `image-rendering` wins when
+ *                                   it is not `auto`; if it is `auto`, fall back
+ *                                   to the global options.
+ *
+ * `pixelated` and `crisp-edges` disable smoothing; `smooth` forces it on (high
+ * quality); `auto` defers to the global default.
+ *
+ * Returns the enabled flag and quality so callers can apply them to whichever
+ * context actually performs the draw/scale (main context or an offscreen resize).
+ */
+function resolveImageSmoothing(state, imageRendering) {
+    var _a, _b;
+    var globalEnabled = (_a = state.options.imageSmoothing) !== null && _a !== void 0 ? _a : true;
+    var globalQuality = (_b = state.options.imageSmoothingQuality) !== null && _b !== void 0 ? _b : 'low';
+    if (state.options.forceImageQuality || imageRendering === 0 /* IMAGE_RENDERING.AUTO */) {
+        return { enabled: globalEnabled, quality: globalQuality };
+    }
+    switch (imageRendering) {
+        case 1 /* IMAGE_RENDERING.PIXELATED */:
+        case 2 /* IMAGE_RENDERING.CRISP_EDGES */:
+            return { enabled: false, quality: globalQuality };
+        case 3 /* IMAGE_RENDERING.SMOOTH */:
+            return { enabled: true, quality: 'high' };
+        default:
+            return { enabled: globalEnabled, quality: globalQuality };
+    }
+}
+// ---------------------------------------------------------------------------
 // Low-level path primitives
 // These are plain functions so any renderer can call them without inheritance.
 // ---------------------------------------------------------------------------
@@ -16767,13 +16829,16 @@ function renderRepeat(state, path, pattern, offsetX, offsetY) {
     state.ctx.fill();
     state.ctx.translate(-offsetX, -offsetY);
 }
-function resizeImage(state, image, width, height) {
+function resizeImage(state, image, width, height, smoothing) {
     var _a;
     // Note: the "return image unchanged when sizes match" shortcut is deliberately
     // NOT used — it triggers "Operation is insecure" on Safari (see upstream
     // niklasvh/html2canvas#2911). We always draw to a canvas, but memoise the
     // result so identical (source, size) requests reuse it.
-    var key = "".concat(image.src, "|").concat(width, "|").concat(height);
+    // The smoothing mode is part of the cache key so a crisp (pixelated) resize
+    // and a smooth resize of the same source+size don't collide.
+    var smoothingKey = '';
+    var key = "".concat(image.src, "|").concat(width, "|").concat(height).concat(smoothingKey);
     var cached = state.resizeCache.get(key);
     if (cached) {
         return cached;
@@ -19237,6 +19302,12 @@ function renderReplacedElement(state, container, curves, image) {
                 box.height), src = _b.src, dest = _b.dest;
             state.ctx.save();
             state.ctx.clip();
+            // Honour the element's image-rendering (unless forceImageQuality
+            // overrides it). Scoped to this save()/restore() so it does not leak
+            // to sibling elements.
+            var smoothing = resolveImageSmoothing(state, container.styles.imageRendering);
+            state.ctx.imageSmoothingEnabled = smoothing.enabled;
+            state.ctx.imageSmoothingQuality = smoothing.quality;
             if (isContainerWSizes) {
                 state.ctx.drawImage(image, src.left, src.top, src.width, src.height, box.left + dest.left, box.top + dest.top, dest.width, dest.height);
             }
@@ -19879,7 +19950,7 @@ var isOutsideViewport = function (bounds, x, y, width, height) {
 var CanvasRenderer = /** @class */ (function (_super) {
     __extends(CanvasRenderer, _super);
     function CanvasRenderer(context, options) {
-        var _a;
+        var _a, _b, _c;
         var _this = _super.call(this, context, options) || this;
         _this._activeEffects = [];
         var canvas = options.canvas ? options.canvas : document.createElement('canvas');
@@ -19908,6 +19979,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
         ctx.scale(options.scale, options.scale);
         ctx.translate(-options.x, -options.y);
         ctx.textBaseline = 'bottom';
+        // Apply the global image-smoothing default to the main context. Per-element
+        // CSS image-rendering may override this at each image draw (see
+        // resolveImageSmoothing), unless forceImageQuality is set.
+        ctx.imageSmoothingEnabled = (_b = options.imageSmoothing) !== null && _b !== void 0 ? _b : true;
+        ctx.imageSmoothingQuality = (_c = options.imageSmoothingQuality) !== null && _c !== void 0 ? _c : 'low';
         _this._activeEffects = [];
         context.logger.debug("Canvas renderer initialized (".concat(options.width, "x").concat(options.height, ") with scale ").concat(options.scale));
         return _this;
@@ -20511,9 +20587,9 @@ if (typeof window !== 'undefined') {
 }
 var renderElement = function (element, opts) { return __awaiter(void 0, void 0, void 0, function () {
     var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, container, clonedElement, _a, width, height, left, top, backgroundColor, renderOptions, canvas, renderer, root, renderer, removed;
-    var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
-    return __generator(this, function (_v) {
-        switch (_v.label) {
+    var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+    return __generator(this, function (_y) {
+        switch (_y.label) {
             case 0:
                 if (!element || typeof element !== 'object') {
                     return [2 /*return*/, Promise.reject('Invalid element provided as first argument')];
@@ -20559,7 +20635,7 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                 }
                 return [4 /*yield*/, documentCloner.toIFrame(ownerDocument, windowBounds)];
             case 1:
-                container = _v.sent();
+                container = _y.sent();
                 clonedElement = documentCloner.clonedReferenceElement;
                 if (!clonedElement) {
                     return [2 /*return*/, Promise.reject("Unable to find element in cloned iframe")];
@@ -20577,13 +20653,16 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     width: (_r = opts.width) !== null && _r !== void 0 ? _r : Math.ceil(width),
                     height: (_s = opts.height) !== null && _s !== void 0 ? _s : Math.ceil(height),
                     cullOffscreen: (_t = opts.cullOffscreen) !== null && _t !== void 0 ? _t : false,
+                    imageSmoothing: (_u = opts.imageSmoothing) !== null && _u !== void 0 ? _u : true,
+                    imageSmoothingQuality: (_v = opts.imageSmoothingQuality) !== null && _v !== void 0 ? _v : 'low',
+                    forceImageQuality: (_w = opts.forceImageQuality) !== null && _w !== void 0 ? _w : false,
                 };
                 if (!foreignObjectRendering) return [3 /*break*/, 3];
                 context.logger.debug("Document cloned, using foreign object rendering");
                 renderer = new ForeignObjectRenderer(context, renderOptions);
                 return [4 /*yield*/, renderer.render(clonedElement)];
             case 2:
-                canvas = _v.sent();
+                canvas = _y.sent();
                 return [3 /*break*/, 5];
             case 3:
                 context.logger.debug("Document cloned, element located at ".concat(left, ",").concat(top, " with size ").concat(width, "x").concat(height, " using computed rendering"));
@@ -20596,10 +20675,10 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                 renderer = new CanvasRenderer(context, renderOptions);
                 return [4 /*yield*/, renderer.render(root)];
             case 4:
-                canvas = _v.sent();
-                _v.label = 5;
+                canvas = _y.sent();
+                _y.label = 5;
             case 5:
-                if ((_u = opts.removeContainer) !== null && _u !== void 0 ? _u : true) {
+                if ((_x = opts.removeContainer) !== null && _x !== void 0 ? _x : true) {
                     if (!DocumentCloner.destroy(ownerDocument, container.id)) {
                         context.logger.error("Cannot detach cloned iframe as it is not in the DOM anymore");
                     }

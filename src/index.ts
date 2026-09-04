@@ -133,6 +133,9 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         width: opts.width ?? Math.ceil(width),
         height: opts.height ?? Math.ceil(height),
         cullOffscreen: opts.cullOffscreen ?? false,
+        imageSmoothing: opts.imageSmoothing ?? true,
+        imageSmoothingQuality: opts.imageSmoothingQuality ?? 'low',
+        forceImageQuality: opts.forceImageQuality ?? false,
     };
 
     let canvas;
