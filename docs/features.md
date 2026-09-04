@@ -207,7 +207,7 @@ These CSS properties are **NOT** currently supported
 - `<input type="radio">` — styled radio with filled circle when checked
 - `<input type="range">` — track and thumb rendered based on min/max/value
 - `<textarea>` — multi-line text with word-wrap, scroll offset, and letter-spacing
-- `<select>` — selected option text rendered
+- `<select>` — closed dropdown: selected option text rendered; list box (`multiple` or `size > 1`): one option per line with selected rows highlighted
 - `<progress>` — bar with grey track and blue fill
 - `<meter>` — bar with green/yellow/red fill based on low/high/optimum thresholds
 - `<button>`, `<input type="submit|reset|button">` — rendered via generic CSS (no native chrome)

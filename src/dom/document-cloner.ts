@@ -130,6 +130,9 @@ export class DocumentCloner {
 
         const iframeLoad = iframeLoader(iframe).then(async () => {
             this.scrolledElements.forEach(restoreNodeScroll);
+            // Re-apply scroll offsets that were serialized as data attributes (the
+            // in-memory clone references above do not survive document.write()).
+            restoreScrollFromAttr(documentClone);
             if (cloneWindow) {
                 cloneWindow.scrollTo(windowSize.left, windowSize.top);
                 if (
@@ -538,8 +541,19 @@ export class DocumentCloner {
                         : undefined;
                 copyCSSStyles(style, clone, this.options.onCopyProperty, inlineStyle);
             }
-            if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
-                this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
+            // Persist scroll offsets through the outerHTML + document.write() round-trip.
+            // The in-memory `clone` node is discarded when the iframe re-parses the
+            // serialized HTML, so pushing it onto scrolledElements (whose references are
+            // restored after load) does not survive. Instead, stamp the wanted scroll on
+            // a data attribute that is part of the serialized HTML; restoreScrollFromAttr
+            // re-applies it to the freshly-parsed node after load.
+            //
+            // A multi-line list-box <select> must be handled even when the original
+            // scroll is 0: the browser auto-scrolls the fresh clone so the selected
+            // <option> is visible, so we stamp 0 explicitly to override that auto-scroll.
+            const isListBoxSelect = isSelectElement(node) && (node.multiple || node.size > 1);
+            if (node.scrollTop !== 0 || node.scrollLeft !== 0 || isListBoxSelect) {
+                clone.setAttribute(SCROLL_ATTR, `${node.scrollLeft},${node.scrollTop}`);
             }
 
             if (
@@ -1137,6 +1151,32 @@ const restoreOwnerScroll = (ownerDocument: Document | null, x: number, y: number
 const restoreNodeScroll = ([element, x, y]: [HTMLElement, number, number]) => {
     element.scrollLeft = x;
     element.scrollTop = y;
+};
+
+/**
+ * Attribute used to carry an element's scroll offset ("scrollLeft,scrollTop")
+ * through the outerHTML + document.write() serialization round-trip, since the
+ * in-memory clone node references are discarded when the iframe re-parses.
+ */
+const SCROLL_ATTR = 'data-html2canvas-scroll';
+
+/**
+ * Re-apply scroll offsets stamped via SCROLL_ATTR onto the freshly-parsed iframe
+ * document. This restores scrolled containers (and neutralises the browser's
+ * auto-scroll of list-box <select> elements toward their selected option).
+ */
+const restoreScrollFromAttr = (document: Document): void => {
+    const scrolled = document.querySelectorAll<HTMLElement>(`[${SCROLL_ATTR}]`);
+    scrolled.forEach(element => {
+        const raw = element.getAttribute(SCROLL_ATTR);
+        element.removeAttribute(SCROLL_ATTR);
+        if (!raw) {
+            return;
+        }
+        const [x, y] = raw.split(',').map(Number);
+        element.scrollLeft = x || 0;
+        element.scrollTop = y || 0;
+    });
 };
 
 const PSEUDO_BEFORE = ':before';

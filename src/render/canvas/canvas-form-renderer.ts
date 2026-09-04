@@ -337,6 +337,10 @@ export async function renderTextInputElement(
 
     if (container instanceof TextareaElementContainer) {
         await _renderTextarea(state, container, styles, bounds, baseline, fontFamily, fontSize);
+    } else if (container instanceof SelectElementContainer && container.isListBox) {
+        // The parser no longer descends into <option> children (see parseNodeTree),
+        // so the list-box content is drawn solely here, consistently across engines.
+        _renderListBoxSelect(state, container, styles, bounds, baseline);
     } else {
         _renderSingleLineInput(state, container, styles, bounds, baseline);
     }
@@ -506,6 +510,89 @@ function _renderSingleLineInput(
     const startX = bounds.left + x;
 
     drawTextWithLetterSpacing(state.ctx, container.value, startX, midY, styles.letterSpacing);
+}
+
+/**
+ * Renders a multi-line list-box `<select>` (i.e. `multiple` or `size > 1`):
+ * one option per line, with selected options drawn on a highlight background.
+ *
+ * The highlight colour approximates the browser default selection colour; the
+ * text colour on a selected row switches to white for contrast, matching how
+ * browsers paint selected list-box rows.
+ */
+function _renderListBoxSelect(
+    state: CanvasRenderState,
+    container: SelectElementContainer,
+    styles: CSSParsedDeclaration,
+    bounds: Bounds,
+    baseline: number,
+): void {
+    const textColor = asString(styles.color);
+
+    // Default browser highlight for selected list-box rows (Chromium's is a blue
+    // similar to #0069d9 / rgb(0,105,217)); white text keeps contrast.
+    const HIGHLIGHT_BG = 'rgb(0, 105, 217)';
+    const HIGHLIGHT_TEXT = 'rgb(255, 255, 255)';
+
+    let xOffset = 0;
+    switch (container.styles.textAlign) {
+        case TEXT_ALIGN.CENTER:
+            xOffset = bounds.width / 2;
+            break;
+        case TEXT_ALIGN.RIGHT:
+            xOffset = bounds.width;
+            break;
+    }
+    const originX = bounds.left + xOffset;
+
+    // The browser auto-scrolls the list so the selected option is visible; apply
+    // the same offset so we render the same visible slice of options.
+    const scrollTop = container.scrollTop ?? 0;
+
+    // Position rows relative to the FIRST option rather than using each option's
+    // absolute offsetTop added to the border box. offsetTop is measured from the
+    // select's border box and includes an internal UA gap (~10px on Chromium)
+    // that the browser absorbs when laying out the visible rows, so adding it to
+    // the border-box top pushes every row down by that gap and overflows the box.
+    // Anchoring the first option to the content-box top and spacing subsequent
+    // rows by their offsetTop delta reproduces the native layout on both engines.
+    const firstOffsetTop = container.options.length > 0 ? container.options[0].offsetTop : 0;
+    const rowsOrigin = bounds.top;
+    const clipTop = bounds.top;
+    const clipBottom = bounds.top + bounds.height;
+
+    // Draw option text with textBaseline='middle' centred in each row. This
+    // bypasses renderTextWithLetterSpacing's engine-specific baseline handling
+    // (ideographic on Chromium, measured baseline on Firefox) which caused the
+    // text to drift relative to the row in Firefox. Centering on the row's
+    // vertical middle places the text correctly on both engines.
+    const startX = originX;
+    const previousBaseline = state.ctx.textBaseline;
+
+    container.options.forEach(option => {
+        const rowTop = rowsOrigin + (option.offsetTop - firstOffsetTop) - scrollTop;
+        const rowHeight = option.offsetHeight;
+        // Skip rows fully outside the content box.
+        if (rowTop + rowHeight < clipTop || rowTop > clipBottom) {
+            return;
+        }
+
+        if (option.selected) {
+            state.ctx.save();
+            state.ctx.fillStyle = HIGHLIGHT_BG;
+            state.ctx.fillRect(bounds.left, rowTop, bounds.width, rowHeight);
+            state.ctx.restore();
+        }
+
+        state.ctx.fillStyle = option.selected ? HIGHLIGHT_TEXT : textColor;
+        state.ctx.textBaseline = 'middle';
+        const midY = rowTop + rowHeight / 2 + 1;
+        drawTextWithLetterSpacing(state.ctx, option.text, startX, midY, styles.letterSpacing);
+    });
+
+    state.ctx.textBaseline = previousBaseline;
+    // baseline retained in signature for consistency with other row renderers.
+    void baseline;
 }
 
 // ---------------------------------------------------------------------------

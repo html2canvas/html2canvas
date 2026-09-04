@@ -5,6 +5,7 @@ import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blen
 import { POSITION } from '../../css/property-descriptors/position';
 import { asString } from '../../css/types/color';
 import { ElementContainer, FLAGS } from '../../dom/element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
 import { CanvasElementContainer } from '../../dom/replaced-elements/canvas-element-container';
 import { IFrameElementContainer } from '../../dom/replaced-elements/iframe-element-container';
 import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
@@ -538,9 +539,15 @@ export class CanvasRenderer extends Renderer {
             renderMeter(this.state, container);
         }
 
-        // Text input values
-        if (isTextInputElement(container) && container.value.length) {
-            await renderTextInputElement(this.state, container, styles);
+        // Text input values. A list-box <select> must render even with no
+        // selected option (empty value), so it has its own condition based on
+        // having options rather than a non-empty value.
+        if (isTextInputElement(container)) {
+            const isListBoxSelect =
+                container instanceof SelectElementContainer && container.isListBox && container.options.length > 0;
+            if (container.value.length || isListBoxSelect) {
+                await renderTextInputElement(this.state, container, styles);
+            }
         }
 
         // List markers
