@@ -3,7 +3,9 @@ import { Bounds } from '../../css/layout/bounds';
 import { TextBounds, segmentGraphemes } from '../../css/layout/text';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
 import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
 import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { RUBY_ALIGN } from '../../css/property-descriptors/ruby-align';
 import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
 import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
 import { TextShadow } from '../../css/property-descriptors/text-shadow';
@@ -40,6 +42,38 @@ const fontStyleCache = new WeakMap<CSSParsedDeclaration, string[]>();
  */
 function isBidiOverride(styles: CSSParsedDeclaration): boolean {
     return styles.unicodeBidi === UNICODE_BIDI.BIDI_OVERRIDE || styles.unicodeBidi === UNICODE_BIDI.ISOLATE_OVERRIDE;
+}
+
+/**
+ * Align ruby annotation segments within their measured boxes.
+ *
+ * For `<rt>` (display: ruby-text) the DOM Range of the annotation text reports
+ * the full ruby-column width (matching the base), while the browser paints the
+ * shorter annotation text within that column according to `ruby-align`. Since
+ * the renderer draws at bounds.left with textAlign='left', we shift each segment
+ * so it lands where the browser places it:
+ *   - `start`: keep bounds.left (left edge of the column).
+ *   - everything else (`center` / `space-around` / `space-between`): centre the
+ *     text within the measured column box. `space-*` distribute glyphs, but that
+ *     layout is not exposed reliably via getClientRects, so we approximate with
+ *     centering, which matches the common default (`space-around`) visually.
+ * `ctx.font` must already be set to the annotation's font before calling this.
+ */
+function alignRubyText(ctx: CanvasRenderingContext2D, bounds: TextBounds[], align: RUBY_ALIGN): TextBounds[] {
+    if (align === RUBY_ALIGN.START) {
+        return bounds;
+    }
+    return bounds.map(tb => {
+        const textWidth = ctx.measureText(tb.text).width;
+        const slack = tb.bounds.width - textWidth;
+        // Only shift when the measured box is wider than the text (the ruby
+        // column case); never shift when the box is already tight.
+        if (slack <= 0.5) {
+            return tb;
+        }
+        const centeredLeft = tb.bounds.left + slack / 2;
+        return new TextBounds(tb.text, new Bounds(centeredLeft, tb.bounds.top, textWidth, tb.bounds.height));
+    });
 }
 
 /**
@@ -398,6 +432,19 @@ export async function renderTextNode(
     state.ctx.textAlign = 'left';
     state.ctx.textBaseline = 'alphabetic';
 
+    // Ruby text (both the annotation <rt>/ruby-text and the base directly under
+    // <ruby>/ruby-base) is positioned within its shared column by the browser per
+    // `ruby-align`. getClientRects() on the text node returns the full ruby-column
+    // box (as wide as the widest of base/annotation), not the tight text rect, so
+    // drawing at bounds.left with textAlign='left' would always left-align it.
+    // alignRubyText places the text per ruby-align — this also centers a short
+    // base under a wider annotation (and vice-versa).
+    const RUBY_TEXT_MASK = DISPLAY.RUBY_TEXT | DISPLAY.RUBY_BASE | DISPLAY.RUBY;
+    const renderTextBounds =
+        (styles.display & RUBY_TEXT_MASK) !== 0
+            ? alignRubyText(state.ctx, text.textBounds, styles.rubyAlign)
+            : text.textBounds;
+
     const paintOrder = styles.paintOrder;
     const wm = styles.writingMode;
     const isVertical =
@@ -431,7 +478,7 @@ export async function renderTextNode(
         // corresponding first/last segment on that line.
         const lineMin = new Map<number, { val: number; tb: TextBounds }>();
         const lineMax = new Map<number, { val: number; tb: TextBounds }>();
-        for (const tb of text.textBounds) {
+        for (const tb of renderTextBounds) {
             const lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
             const start = isVertical ? tb.bounds.top : tb.bounds.left;
             const end = isVertical ? tb.bounds.top + tb.bounds.height : tb.bounds.left + tb.bounds.width;
@@ -459,9 +506,9 @@ export async function renderTextNode(
     // trailing ellipsis must be drawn. Only applied to horizontal text (the
     // property is meaningless for vertical writing modes). See computeLineClamp.
     const clamp =
-        !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(text.textBounds, styles.webkitLineClamp) : null;
+        !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(renderTextBounds, styles.webkitLineClamp) : null;
 
-    text.textBounds.forEach(textBound => {
+    renderTextBounds.forEach(textBound => {
         // Skip segments on lines beyond the clamp limit.
         if (clamp && !clamp.kept.has(textBound)) {
             return;

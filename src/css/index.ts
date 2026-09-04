@@ -81,6 +81,7 @@ import { paddingBottom, paddingLeft, paddingRight, paddingTop } from './property
 import { paintOrder } from './property-descriptors/paint-order';
 import { POSITION, position } from './property-descriptors/position';
 import { quotes } from './property-descriptors/quotes';
+import { rubyAlign } from './property-descriptors/ruby-align';
 import { textAlign } from './property-descriptors/text-align';
 import { textDecorationColor } from './property-descriptors/text-decoration-color';
 import { textDecorationInset } from './property-descriptors/text-decoration-inset';
@@ -206,6 +207,7 @@ export class CSSParsedDeclaration {
     paddingLeft: LengthPercentage;
     paintOrder: ReturnType<typeof paintOrder.parse>;
     position: ReturnType<typeof position.parse>;
+    rubyAlign: ReturnType<typeof rubyAlign.parse>;
     textAlign: ReturnType<typeof textAlign.parse>;
     textDecorationColor: Color;
     textDecorationInset: ReturnType<typeof textDecorationInset.parse>;
@@ -302,6 +304,7 @@ export class CSSParsedDeclaration {
         this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
         this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
         this.position = parse(context, position, declaration.position);
+        this.rubyAlign = parse(context, rubyAlign, declaration.rubyAlign);
         this.textAlign = parse(context, textAlign, declaration.textAlign);
         this.textDecorationColor = parse(
             context,

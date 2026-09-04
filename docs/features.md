@@ -96,6 +96,8 @@ Below is a list of all the supported CSS properties and values.
 - paint-order
 - position
 - right
+- ruby-align (`start`, `center`, `space-around`, `space-between`)
+- ruby-position (`over`, `under`, `inter-character`)
 - text-align
 - text-decoration
     - text-decoration-color
@@ -130,7 +132,7 @@ Below is a list of all the supported CSS properties and values.
     - skewX()
     - skewY()
     - perspective() (**no-op in 2D**)
-- unicode-bidi (`bidi-override` / `isolate-override` glyph reversal for `<bdo>` and RTL overrides; horizontal text, non-shaping scripts)
+- unicode-bidi (`bidi-override`, `isolate-override`)
 - visibility
 - white-space
 - writing-mode (**Limited support**)
@@ -224,7 +226,7 @@ These CSS properties are **NOT** currently supported
 
 These elements have no special rendering logic — they are painted using their computed CSS styles (backgrounds, borders, text, layout):
 
-`<div>`, `<span>`, `<p>`, `<section>`, `<article>`, `<nav>`, `<aside>`, `<main>`, `<header>`, `<footer>`, `<h1>`–`<h6>`, `<figure>`, `<figcaption>`, `<blockquote>`, `<pre>`, `<code>`, `<address>`, `<a>`, `<em>`, `<strong>`, `<b>`, `<i>`, `<u>`, `<s>`, `<small>`, `<mark>`, `<del>`, `<ins>`, `<sub>`, `<sup>`, `<abbr>`, `<cite>`, `<kbd>`, `<samp>`, `<var>`, `<time>`, `<ruby>`, `<rt>`, `<bdi>`, `<bdo>`, `<wbr>`, `<br>`, `<hr>`
+`<div>`, `<span>`, `<p>`, `<section>`, `<article>`, `<nav>`, `<aside>`, `<main>`, `<header>`, `<footer>`, `<h1>`–`<h6>`, `<figure>`, `<figcaption>`, `<blockquote>`, `<pre>`, `<code>`, `<address>`, `<a>`, `<em>`, `<strong>`, `<b>`, `<i>`, `<u>`, `<s>`, `<small>`, `<mark>`, `<del>`, `<ins>`, `<sub>`, `<sup>`, `<abbr>`, `<cite>`, `<kbd>`, `<samp>`, `<var>`, `<time>`, `<ruby>`, `<rt>`, `<rp>`, `<bdi>`, `<bdo>`, `<wbr>`, `<br>`, `<hr>`
 
 ### Table elements
 
