@@ -1,4 +1,50 @@
 # Changelog
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [1.12.0](https://github.com/html2canvas/html2canvas/compare/v1.10.0...v1.12.0) (2026-09-04)
+
+### Features
+
+* add ::first-letter and ::first-line pseudo-element support ([18905ea](https://github.com/html2canvas/html2canvas/commit/18905ea4fa70a2e001d62134895133b8a2715653))
+* add ::placeholder and ::marker pseudo-element support ([f708155](https://github.com/html2canvas/html2canvas/commit/f708155586c4db8b59e2cbb1c272c373684d2365))
+* add interactive playground and integrate examples into Astro site ([4b7b500](https://github.com/html2canvas/html2canvas/commit/4b7b50045cad46e1fb6049cd9d50b98215378d9e))
+* **border:** add fieldset/legend gap and groove/ridge/inset/outset border styles ([bffae98](https://github.com/html2canvas/html2canvas/commit/bffae988e85eac5a9b1920743a5504bd569196e2))
+* **cache:** add Cache.clear() and opt-in clearImageCache option ([290c780](https://github.com/html2canvas/html2canvas/commit/290c780c3edcfd47ce2806af04a4f27db913fcf4))
+* **cache:** add isResourceSameOrigin option to override same-origin checks ([13ab7e7](https://github.com/html2canvas/html2canvas/commit/13ab7e7ad556751b39d0736c84019317e36f6b86))
+* **cache:** bounded image cache with LRU eviction (maxCacheSize) ([2b7e9e4](https://github.com/html2canvas/html2canvas/commit/2b7e9e480e65c1e225026397293438abd899eea4)), references [niklasvh/html2canvas#2911](https://github.com/niklasvh/html2canvas/issues/2911)
+* **canvas:** render canvas elements with their actual pixel content ([f519315](https://github.com/html2canvas/html2canvas/commit/f5193151f2b26019c6edb3f6970a6b26732dac3b))
+* **context:** add onError callback for resource loading failures ([e908009](https://github.com/html2canvas/html2canvas/commit/e9080090a21101b041377e08224ad325d261c705))
+* **details:** support <details> and <summary> elements rendering ([6dfea02](https://github.com/html2canvas/html2canvas/commit/6dfea0246b3d3adc7a1ed4b3d013a21365111373))
+* **image:** support image-rendering CSS and image smoothing options ([f98e909](https://github.com/html2canvas/html2canvas/commit/f98e909ef86b9b0ba3c64c173f3a53333430ca8a))
+* implement background-attachment, object element support, and clone height fix ([44b706b](https://github.com/html2canvas/html2canvas/commit/44b706bfd8c60324bd840032a2c72c1fdee47e5d))
+* implement border-image CSS property support ([0b2e107](https://github.com/html2canvas/html2canvas/commit/0b2e1073a760914d436a51672698a5779a5ce24d))
+* implement object-position CSS property ([dc05844](https://github.com/html2canvas/html2canvas/commit/dc0584461016cced4e4b10764b38637b6bc94e80))
+* **text:** render ruby annotations with ruby-align and ruby-position ([e8417cf](https://github.com/html2canvas/html2canvas/commit/e8417cf1682af180857ef406aa9a3f8fe16e0a1b))
+* **text:** support -webkit-line-clamp ([5e62335](https://github.com/html2canvas/html2canvas/commit/5e6233503fa7f576ae636177fbe04a4e7ff832bc))
+* **text:** support unicode-bidi override for <bdo> ([358fc41](https://github.com/html2canvas/html2canvas/commit/358fc418332bb5073fc6660b902b8b13a901b860))
+
+### Bug Fixes
+
+* add eslint-disable for Intl.Segmenter any casts ([9f92b16](https://github.com/html2canvas/html2canvas/commit/9f92b16d7f9f894e16cb3d72ceba6967ff7c5536))
+* **border:** eliminate corner seams on solid borders ([dd360ec](https://github.com/html2canvas/html2canvas/commit/dd360ec7b88385761d245cccce22b633a6435744))
+* **cloner:** serialize a valid doctype to keep the clone in standards mode ([052d4b3](https://github.com/html2canvas/html2canvas/commit/052d4b3f90390968f1fb18646c7d6158693c1811))
+* correct examples links to account for Astro base URL ([b441b95](https://github.com/html2canvas/html2canvas/commit/b441b950d2b2c6e5ae229a2b85d212ea3f2f0360))
+* CSS Astro home page ([11ff7f8](https://github.com/html2canvas/html2canvas/commit/11ff7f82fe7d35ac5d134a7fbd11c8d08806b329))
+* improve ::placeholder support and fix input text vertical centering ([a219e8a](https://github.com/html2canvas/html2canvas/commit/a219e8ad3b6047260f4c5325c468df987558ad65))
+* per-layer background-clip with border-radius ([937032c](https://github.com/html2canvas/html2canvas/commit/937032ceb652c73b6e71cb7595167d8538b9a18f))
+* **select:** correct list-box option rendering across engines ([af6683e](https://github.com/html2canvas/html2canvas/commit/af6683e197b5806c6503a0e62f3a461221c0a6e6))
+* support <q> element quotes (open-quote/close-quote with quotes:auto) ([27b8b72](https://github.com/html2canvas/html2canvas/commit/27b8b72e865cfbd2e073662cf4415f0ca32ebfa5))
+* **test:** use domcontentloaded for reftest navigation ([e7dc1ee](https://github.com/html2canvas/html2canvas/commit/e7dc1ee534b7405d0f64766e91072137e8f9091d))
+
+### Performance Improvements
+
+* **render:** cache rasterised linear-gradient canvases ([44c2704](https://github.com/html2canvas/html2canvas/commit/44c27044f3fb8496d3159f10366dc5e00d8a88ba))
+* **render:** memoise resized background images ([6b7b888](https://github.com/html2canvas/html2canvas/commit/6b7b8884d538a610360b83d0c215d1cbd3699d0d))
+* **render:** opt-in viewport culling of offscreen nodes ([0bc2682](https://github.com/html2canvas/html2canvas/commit/0bc26828ec67b0d4c9c1293d57dcb148dae6cabc))
+* **render:** pool offscreen canvases to cut GC pressure ([974e7c5](https://github.com/html2canvas/html2canvas/commit/974e7c5b5c1404c62292c5711bb58ee0044b9f38))
+* **text:** use native ctx.letterSpacing with per-grapheme fallback ([13a4368](https://github.com/html2canvas/html2canvas/commit/13a43682ef182408463c0c6dc361ec082863a877))
+
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
