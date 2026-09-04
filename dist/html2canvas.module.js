@@ -7676,23 +7676,28 @@ var copyCSSStyles = function (style, target, onCopyProperty, inlineStyle) {
     return target;
 };
 var serializeDoctype = function (doctype) {
-    var str = '';
-    if (doctype) {
-        str += '<!DOCTYPE ';
-        if (doctype.name) {
-            str += doctype.name;
-        }
-        if (doctype.internalSubset) {
-            str += doctype.internalSubset;
-        }
-        if (doctype.publicId) {
-            str += "\"".concat(doctype.publicId, "\"");
-        }
-        if (doctype.systemId) {
-            str += "\"".concat(doctype.systemId, "\"");
-        }
-        str += '>';
+    if (!doctype) {
+        return '';
     }
+    // Serialize the doctype following the HTML/XML spec grammar. A malformed
+    // doctype (e.g. missing the PUBLIC/SYSTEM keyword, or the publicId glued to
+    // the name without a separating space) makes the cloned iframe fall back to
+    // "quirks mode", which changes margin-collapsing and height computation and
+    // therefore breaks the layout html2canvas reads back. See the Acid2 reftest,
+    // whose `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">` must round-trip
+    // to standards mode.
+    var str = "<!DOCTYPE ".concat(doctype.name || 'html');
+    if (doctype.publicId) {
+        str += " PUBLIC \"".concat(doctype.publicId, "\"");
+        // The systemId, when present alongside a publicId, follows without a keyword.
+        if (doctype.systemId) {
+            str += " \"".concat(doctype.systemId, "\"");
+        }
+    }
+    else if (doctype.systemId) {
+        str += " SYSTEM \"".concat(doctype.systemId, "\"");
+    }
+    str += '>';
     return str;
 };
 var restoreOwnerScroll = function (ownerDocument, x, y) {
