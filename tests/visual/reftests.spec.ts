@@ -34,9 +34,13 @@ for (const fixture of fixtures) {
     }
 
     test(`reftest: ${fixture}`, async ({ page }) => {
-        // Navigate to the fixture with reftest query params (same as Karma runner)
+        // Navigate to the fixture with reftest query params (same as Karma runner).
+        // Use 'domcontentloaded' rather than 'load': some fixtures (e.g. acid2.html)
+        // reference external network resources that never resolve in a sandboxed CI
+        // (GitHub Actions), which would block 'load' until the test times out. The
+        // readiness waits below (html2canvas present + fonts.ready) gate the capture.
         await page.goto(`/tests/reftests/${fixture}?selenium&run=false&reftest`, {
-            waitUntil: 'load',
+            waitUntil: 'domcontentloaded',
         });
 
         // Wait for html2canvas and jQuery to be loaded by test.js
