@@ -18019,10 +18019,27 @@
     // ---------------------------------------------------------------------------
     function renderSolidBorder(state, color, side, curvePoints) {
         return __awaiter(this, void 0, void 0, function () {
+            var paths, fillStyle;
             return __generator(this, function (_a) {
-                canvasPath(state, parsePathForBorder(curvePoints, side));
-                state.ctx.fillStyle = asString(color);
+                paths = parsePathForBorder(curvePoints, side);
+                fillStyle = asString(color);
+                canvasPath(state, paths);
+                state.ctx.fillStyle = fillStyle;
                 state.ctx.fill();
+                // Each side is filled as a separate trapezoid. Where two differently-coloured
+                // sides meet along a corner's diagonal miter, the two independently
+                // anti-aliased edges do not overlap perfectly and leave a thin lighter/jagged
+                // seam. Stroking the same trapezoid outline in the same colour paints a hairline
+                // that straddles the edge and covers that seam. lineWidth is kept at ~1 device
+                // pixel (divided by scale, since the stroke is applied in the scaled CTM) so it
+                // never visibly thickens the border. Adjacent sides paint over each other in
+                // T→R→B→L order, sealing every diagonal.
+                if (!isTransparent(color)) {
+                    state.ctx.strokeStyle = fillStyle;
+                    state.ctx.lineWidth = 1 / state.options.scale;
+                    state.ctx.lineJoin = 'round';
+                    state.ctx.stroke();
+                }
                 return [2 /*return*/];
             });
         });
@@ -18182,6 +18199,34 @@
         // stroke centre → padding-box edge
         return __spreadArray(__spreadArray([], stroke, true), innerEdge, true);
     };
+    /**
+     * Fast path for a uniform solid border: all four sides share the same colour
+     * and style, so browsers paint one continuous ring with NO diagonal miter seam
+     * between the sides. html2canvas normally fills the four sides as separate
+     * trapezoids, whose shared diagonal edges get independently anti-aliased and
+     * leave a faint seam (or a double-blended line) at each corner.
+     *
+     * Here we instead paint the whole border as a single closed ring: the outer
+     * border-box path with the inner padding-box path punched out via the even-odd
+     * fill rule. Because it is one fill(), there are no internal edges to anti-alias,
+     * matching the browser's continuous-ring rendering exactly.
+     *
+     * This works for any corner radius (the border-box / padding-box paths already
+     * carry the Bézier curves), so rounded uniform borders benefit too.
+     */
+    function renderUniformSolidBorder(state, color, curvePoints) {
+        var ctx = state.ctx;
+        ctx.beginPath();
+        // Outer contour: border-box.
+        formatPath(ctx, calculateBorderBoxPath(curvePoints));
+        ctx.closePath();
+        // Inner contour: padding-box. With the even-odd rule this becomes a hole
+        // regardless of winding order.
+        formatPath(ctx, calculatePaddingBoxPath(curvePoints));
+        ctx.closePath();
+        ctx.fillStyle = asString(color);
+        ctx.fill('evenodd');
+    }
     /**
      * Dispatches border rendering for a single side to the appropriate renderer
      * based on the border-style. Centralises the style switch so the three border
@@ -18979,34 +19024,61 @@
                     case 7: return [4 /*yield*/, _renderBorderImage(state, paint)];
                     case 8:
                         borderImageRendered = _a.sent();
-                        if (!!borderImageRendered) return [3 /*break*/, 15];
+                        if (!!borderImageRendered) return [3 /*break*/, 16];
+                        if (!(_isUniformSolidBorder(borders) && !paint.container.legendBounds)) return [3 /*break*/, 9];
+                        renderUniformSolidBorder(state, borders[0].color, paint.curves);
+                        return [3 /*break*/, 16];
+                    case 9:
                         side = 0;
                         _i = 0, borders_2 = borders;
-                        _a.label = 9;
-                    case 9:
-                        if (!(_i < borders_2.length)) return [3 /*break*/, 15];
-                        border = borders_2[_i];
-                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 13];
-                        legendBounds = side === 0 ? paint.container.legendBounds : undefined;
-                        if (!legendBounds) return [3 /*break*/, 11];
-                        return [4 /*yield*/, _renderFieldsetTopBorder(state, paint, border, legendBounds)];
+                        _a.label = 10;
                     case 10:
+                        if (!(_i < borders_2.length)) return [3 /*break*/, 16];
+                        border = borders_2[_i];
+                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 14];
+                        legendBounds = side === 0 ? paint.container.legendBounds : undefined;
+                        if (!legendBounds) return [3 /*break*/, 12];
+                        return [4 /*yield*/, _renderFieldsetTopBorder(state, paint, border, legendBounds)];
+                    case 11:
                         _a.sent();
-                        return [3 /*break*/, 13];
-                    case 11: return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, paint.curves)];
-                    case 12:
-                        _a.sent();
-                        _a.label = 13;
+                        return [3 /*break*/, 14];
+                    case 12: return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, paint.curves)];
                     case 13:
-                        side++;
+                        _a.sent();
                         _a.label = 14;
                     case 14:
+                        side++;
+                        _a.label = 15;
+                    case 15:
                         _i++;
-                        return [3 /*break*/, 9];
-                    case 15: return [2 /*return*/];
+                        return [3 /*break*/, 10];
+                    case 16: return [2 /*return*/];
                 }
             });
         });
+    }
+    /**
+     * True when all four borders are solid, visible, and share the same colour and
+     * width — the case a browser paints as one continuous ring. Only then is it safe
+     * to replace the four per-side fills with a single ring fill.
+     */
+    function _isUniformSolidBorder(borders) {
+        var top = borders[0], right = borders[1], bottom = borders[2], left = borders[3];
+        return (top.style === 1 /* BORDER_STYLE.SOLID */ &&
+            right.style === 1 /* BORDER_STYLE.SOLID */ &&
+            bottom.style === 1 /* BORDER_STYLE.SOLID */ &&
+            left.style === 1 /* BORDER_STYLE.SOLID */ &&
+            top.width > 0 &&
+            right.width > 0 &&
+            bottom.width > 0 &&
+            left.width > 0 &&
+            !isTransparent(top.color) &&
+            top.color === right.color &&
+            top.color === bottom.color &&
+            top.color === left.color &&
+            top.width === right.width &&
+            top.width === bottom.width &&
+            top.width === left.width);
     }
     // ---------------------------------------------------------------------------
     // Fieldset top-border with legend gap
