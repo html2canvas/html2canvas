@@ -51,6 +51,7 @@ Below is a list of all the supported CSS properties and values.
     - path()
 - content
 - color
+- direction
 - display
 - filter
     - blur()
@@ -129,6 +130,7 @@ Below is a list of all the supported CSS properties and values.
     - skewX()
     - skewY()
     - perspective() (**no-op in 2D**)
+- unicode-bidi (`bidi-override` / `isolate-override` glyph reversal for `<bdo>` and RTL overrides; horizontal text, non-shaping scripts)
 - visibility
 - white-space
 - writing-mode (**Limited support**)

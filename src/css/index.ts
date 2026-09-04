@@ -93,6 +93,7 @@ import { textUnderlineOffset } from './property-descriptors/text-underline-offse
 import { textUnderlinePosition } from './property-descriptors/text-underline-position';
 import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
+import { unicodeBidi } from './property-descriptors/unicode-bidi';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
 import { webkitLineClamp } from './property-descriptors/webkit-line-clamp';
 import { webkitTextStrokeColor } from './property-descriptors/webkit-text-stroke-color';
@@ -217,6 +218,7 @@ export class CSSParsedDeclaration {
     textUnderlinePosition: ReturnType<typeof textUnderlinePosition.parse>;
     transform: ReturnType<typeof transform.parse>;
     transformOrigin: ReturnType<typeof transformOrigin.parse>;
+    unicodeBidi: ReturnType<typeof unicodeBidi.parse>;
     visibility: ReturnType<typeof visibility.parse>;
     webkitLineClamp: ReturnType<typeof webkitLineClamp.parse>;
     webkitTextStrokeColor: Color;
@@ -320,6 +322,7 @@ export class CSSParsedDeclaration {
         this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
         this.transform = parse(context, transform, declaration.transform);
         this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
+        this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
         this.visibility = parse(context, visibility, declaration.visibility);
         this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);

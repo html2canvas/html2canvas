@@ -8,6 +8,7 @@ import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decora
 import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
 import { TextShadow } from '../../css/property-descriptors/text-shadow';
 import { TEXT_UNDERLINE_POSITION } from '../../css/property-descriptors/text-underline-position';
+import { UNICODE_BIDI } from '../../css/property-descriptors/unicode-bidi';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { isDimensionToken } from '../../css/syntax/parser';
 import { asString, isTransparent } from '../../css/types/color';
@@ -30,6 +31,16 @@ const fixIOSSystemFonts = (fontFamilies: string[]): string[] => {
 };
 
 const fontStyleCache = new WeakMap<CSSParsedDeclaration, string[]>();
+
+/**
+ * True when the element forces a directional glyph override (unicode-bidi:
+ * bidi-override / isolate-override), as produced by <bdo>. In that case the
+ * glyph order must follow the resolved `direction` regardless of the text's
+ * intrinsic bidi character types.
+ */
+function isBidiOverride(styles: CSSParsedDeclaration): boolean {
+    return styles.unicodeBidi === UNICODE_BIDI.BIDI_OVERRIDE || styles.unicodeBidi === UNICODE_BIDI.ISOLATE_OVERRIDE;
+}
 
 /**
  * Returns [fontString, fontFamily, fontSize] for use with ctx.font.
@@ -119,7 +130,19 @@ export function renderTextWithLetterSpacing(
     baseline: number,
     writingMode: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB,
     useStroke = false,
+    reverseGraphemes = false,
 ): void {
+    // unicode-bidi: bidi-override forces glyphs to be laid out in the direction's
+    // visual order. The canvas 2d bidi algorithm (ctx.direction) will not reverse
+    // a run of strong-LTR characters (e.g. latin) the way <bdo dir="rtl"> does, so
+    // when an override is in effect we reverse the grapheme order ourselves and
+    // draw the result as a plain run. Only correct for scripts that do not require
+    // contextual shaping (latin, digits); complex-shaping scripts are left as-is.
+    if (reverseGraphemes) {
+        const reversed = segmentGraphemes(text.text).reverse().join('');
+        text = new TextBounds(reversed, text.bounds);
+    }
+
     const isVertical =
         writingMode === WRITING_MODE.VERTICAL_RL ||
         writingMode === WRITING_MODE.VERTICAL_LR ||
@@ -585,11 +608,15 @@ function _renderTextFill(
     isFirstInLine: Set<TextBounds>,
 ): void {
     const textShadows: TextShadow = styles.textShadow;
+    // <bdo dir="rtl"> (bidi-override + RTL) lays glyphs right-to-left; reverse the
+    // grapheme order so a single fillText reproduces it. bidi-override with LTR
+    // keeps logical order, so no reversal is needed there.
+    const reverse = isBidiOverride(styles) && styles.direction === DIRECTION.RTL && !isVertical;
 
     if (textShadows.length && textBound.text.trim().length) {
         _renderTextShadows(state, textBound, styles, baseline, wm, textShadows);
     } else if (!isTransparent(styles.color)) {
-        renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+        renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, false, reverse);
     }
 
     if (styles.textDecorationLine.length) {

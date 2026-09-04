@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+    <head>
+        <title>unicode-bidi / bdo tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Roboto, sans-serif;
+                font-size: 16px;
+            }
+
+            section {
+                margin-bottom: 20px;
+            }
+
+            h2 {
+                font-size: 15px;
+                margin: 8px 0 4px;
+            }
+
+            .box {
+                border: 1px solid #999;
+                padding: 4px 6px;
+                width: 320px;
+                margin-bottom: 6px;
+            }
+
+            label {
+                display: block;
+                font-size: 11px;
+                color: #555;
+                margin-bottom: 2px;
+            }
+        </style>
+    </head>
+    <body>
+
+        <!-- 1. <bdo> reverses glyph order (bidi-override + rtl) -->
+        <section>
+            <h2>1. bdo dir=rtl reverses glyphs</h2>
+            <div class="box">
+                <label>plain</label>
+                plain: <bdo dir="rtl">reversed</bdo>
+            </div>
+            <div class="box">
+                <label>digits + latin</label>
+                digits: <bdo dir="rtl">ABC123</bdo>
+            </div>
+        </section>
+
+        <!-- 2. bidi-override via CSS (not the bdo tag) -->
+        <section>
+            <h2>2. unicode-bidi: bidi-override via CSS</h2>
+            <div class="box">
+                <label>span with direction:rtl; unicode-bidi:bidi-override</label>
+                css: <span style="direction: rtl; unicode-bidi: bidi-override">reversed</span>
+            </div>
+        </section>
+
+        <!-- 3. bdo dir=ltr keeps logical order -->
+        <section>
+            <h2>3. bdo dir=ltr keeps order</h2>
+            <div class="box">
+                <label>ltr override</label>
+                override: <bdo dir="ltr">Normal</bdo>
+            </div>
+        </section>
+
+        <!-- 4. letter-spacing with bdo -->
+        <section>
+            <h2>4. bdo dir=rtl with letter-spacing</h2>
+            <div class="box" style="letter-spacing: 3px">
+                <label>3px</label>
+                spaced: <bdo dir="rtl">reversed</bdo>
+            </div>
+        </section>
+
+        <!-- 5. bdo inside an RTL block, mixed with arabic -->
+        <section>
+            <h2>5. bdo within an rtl block</h2>
+            <div class="box" dir="rtl">
+                <label>rtl block</label>
+                block: <bdo dir="rtl">reversed</bdo> mixed
+            </div>
+        </section>
+
+    </body>
+</html>
