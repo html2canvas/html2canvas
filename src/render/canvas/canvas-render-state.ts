@@ -1,4 +1,5 @@
 import { Context } from '../../core/context';
+import { IMAGE_RENDERING } from '../../css/property-descriptors/image-rendering';
 import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import { FontMetrics } from '../font-metrics';
 import { Path, reversePath } from '../path';
@@ -35,6 +36,47 @@ export interface CanvasRenderState {
      * pattern is bound to the context that created it.
      */
     gradientCanvasCache: Map<string, HTMLCanvasElement>;
+}
+
+// ---------------------------------------------------------------------------
+// Image smoothing resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the effective image-smoothing settings for a given element, applying
+ * the precedence rule:
+ *
+ *   forceImageQuality === true   -> always use the global options (ignore CSS)
+ *   otherwise                    -> the element's CSS `image-rendering` wins when
+ *                                   it is not `auto`; if it is `auto`, fall back
+ *                                   to the global options.
+ *
+ * `pixelated` and `crisp-edges` disable smoothing; `smooth` forces it on (high
+ * quality); `auto` defers to the global default.
+ *
+ * Returns the enabled flag and quality so callers can apply them to whichever
+ * context actually performs the draw/scale (main context or an offscreen resize).
+ */
+export function resolveImageSmoothing(
+    state: CanvasRenderState,
+    imageRendering: IMAGE_RENDERING,
+): { enabled: boolean; quality: ImageSmoothingQuality } {
+    const globalEnabled = state.options.imageSmoothing ?? true;
+    const globalQuality = state.options.imageSmoothingQuality ?? 'low';
+
+    if (state.options.forceImageQuality || imageRendering === IMAGE_RENDERING.AUTO) {
+        return { enabled: globalEnabled, quality: globalQuality };
+    }
+
+    switch (imageRendering) {
+        case IMAGE_RENDERING.PIXELATED:
+        case IMAGE_RENDERING.CRISP_EDGES:
+            return { enabled: false, quality: globalQuality };
+        case IMAGE_RENDERING.SMOOTH:
+            return { enabled: true, quality: 'high' };
+        default:
+            return { enabled: globalEnabled, quality: globalQuality };
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -102,12 +144,16 @@ export function resizeImage(
     image: HTMLImageElement,
     width: number,
     height: number,
+    smoothing?: { enabled: boolean; quality: ImageSmoothingQuality },
 ): HTMLCanvasElement | HTMLImageElement {
     // Note: the "return image unchanged when sizes match" shortcut is deliberately
     // NOT used — it triggers "Operation is insecure" on Safari (see upstream
     // niklasvh/html2canvas#2911). We always draw to a canvas, but memoise the
     // result so identical (source, size) requests reuse it.
-    const key = `${image.src}|${width}|${height}`;
+    // The smoothing mode is part of the cache key so a crisp (pixelated) resize
+    // and a smooth resize of the same source+size don't collide.
+    const smoothingKey = smoothing ? `|${smoothing.enabled ? 's' : 'n'}${smoothing.quality}` : '';
+    const key = `${image.src}|${width}|${height}${smoothingKey}`;
 
     const cached = state.resizeCache.get(key);
     if (cached) {
@@ -121,6 +167,10 @@ export function resizeImage(
     canvas.width = Math.max(1, width);
     canvas.height = Math.max(1, height);
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    if (smoothing) {
+        ctx.imageSmoothingEnabled = smoothing.enabled;
+        ctx.imageSmoothingQuality = smoothing.quality;
+    }
     ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
 
     // Owned by the resize cache — never released to canvasPool.

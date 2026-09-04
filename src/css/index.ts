@@ -63,6 +63,7 @@ import { fontSize } from './property-descriptors/font-size';
 import { fontStyle } from './property-descriptors/font-style';
 import { fontVariant } from './property-descriptors/font-variant';
 import { fontWeight } from './property-descriptors/font-weight';
+import { imageRendering } from './property-descriptors/image-rendering';
 import { letterSpacing } from './property-descriptors/letter-spacing';
 import { lineBreak } from './property-descriptors/line-break';
 import { lineHeight } from './property-descriptors/line-height';
@@ -180,6 +181,7 @@ export class CSSParsedDeclaration {
     fontStyle: ReturnType<typeof fontStyle.parse>;
     fontVariant: ReturnType<typeof fontVariant.parse>;
     fontWeight: ReturnType<typeof fontWeight.parse>;
+    imageRendering: ReturnType<typeof imageRendering.parse>;
     letterSpacing: ReturnType<typeof letterSpacing.parse>;
     lineBreak: ReturnType<typeof lineBreak.parse>;
     lineHeight: CSSValue;
@@ -273,6 +275,7 @@ export class CSSParsedDeclaration {
         this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
         this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
         this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
+        this.imageRendering = parse(context, imageRendering, declaration.imageRendering);
         this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
         this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
         this.lineHeight = parse(context, lineHeight, declaration.lineHeight);

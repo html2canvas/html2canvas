@@ -32,7 +32,7 @@ import { contentBox, paddingBox } from '../box-sizing';
 import { calculateObjectFitBounds } from '../object-fit';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
-import { CanvasRenderState, canvasPath } from './canvas-render-state';
+import { CanvasRenderState, canvasPath, resolveImageSmoothing } from './canvas-render-state';
 import { createFontStyle, drawTextWithLetterSpacing, renderTextWithLetterSpacing } from './canvas-text-renderer';
 
 // ---------------------------------------------------------------------------
@@ -65,6 +65,12 @@ export function renderReplacedElement(
             );
             state.ctx.save();
             state.ctx.clip();
+            // Honour the element's image-rendering (unless forceImageQuality
+            // overrides it). Scoped to this save()/restore() so it does not leak
+            // to sibling elements.
+            const smoothing = resolveImageSmoothing(state, container.styles.imageRendering);
+            state.ctx.imageSmoothingEnabled = smoothing.enabled;
+            state.ctx.imageSmoothingQuality = smoothing.quality;
             if (isContainerWSizes) {
                 state.ctx.drawImage(
                     image,

@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+    <head>
+        <title>image-rendering tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            body {
+                margin: 0;
+                padding: 10px;
+                background: #ffffff;
+                font: 12px sans-serif;
+            }
+            .row {
+                display: flex;
+                align-items: flex-start;
+                gap: 16px;
+                margin-bottom: 12px;
+            }
+            /* A small (49x43) image scaled up ~6x so the smoothing mode is obvious:
+               pixelated/crisp-edges keep hard pixel edges, auto/smooth interpolate. */
+            .up {
+                width: 288px;
+                height: 252px;
+            }
+            .label {
+                width: 90px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="row">
+            <span class="label">auto</span>
+            <img class="up" src="../../assets/small.png" style="image-rendering: auto" />
+        </div>
+        <div class="row">
+            <span class="label">pixelated</span>
+            <img class="up" src="../../assets/small.png" style="image-rendering: pixelated" />
+        </div>
+        <div class="row">
+            <span class="label">crisp-edges</span>
+            <img class="up" src="../../assets/small.png" style="image-rendering: crisp-edges" />
+        </div>
+        <div class="row">
+            <span class="label">smooth</span>
+            <img class="up" src="../../assets/small.png" style="image-rendering: smooth" />
+        </div>
+    </body>
+</html>
