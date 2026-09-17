@@ -735,29 +735,62 @@ function _renderVerticalListMarkerInside(
     state.ctx.restore();
 }
 
+/**
+ * Returns the first text line box (top + height) inside the list item, searching
+ * its own text nodes first, then descendants in tree order, or null when the item
+ * has no text content. Used to align the marker with the first line exactly the
+ * same way the text renderer positions that line.
+ */
+function _firstTextLineBox(container: ElementContainer): { top: number; height: number } | null {
+    let box: { top: number; height: number } | null = null;
+    for (const textNode of container.textNodes) {
+        for (const textBound of textNode.textBounds) {
+            if (textBound.text.trim().length && (box === null || textBound.bounds.top < box.top)) {
+                box = { top: textBound.bounds.top, height: textBound.bounds.height };
+            }
+        }
+    }
+    if (box !== null) return box;
+    for (const child of container.elements) {
+        const childBox = _firstTextLineBox(child);
+        if (childBox !== null && (box === null || childBox.top < box.top)) {
+            box = childBox;
+        }
+    }
+    return box;
+}
+
 function _renderHorizontalListMarker(
     state: CanvasRenderState,
     paint: ElementPaint,
     styles: CSSParsedDeclaration,
 ): void {
     const container = paint.container;
-    state.ctx.textBaseline = 'alphabetic';
 
     const [, fontFamily, fontSize] = createFontStyle(styles);
-    const { baseline } = state.fontMetrics.getRawMetrics(fontFamily, fontSize);
-    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
-    const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
 
-    // Align the marker baseline with the first line of the list item.
-    // Use raw metrics (no browser-specific adjustment) so the marker
-    // sits exactly on the same baseline as the item text on all browsers.
-    const markerY =
-        Math.floor(
-            container.bounds.top +
-                getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
-                leading / 2 +
-                baseline,
-        ) - (state.isFirefox ? 1 : 0);
+    // Align the marker with the first line of the item's text using the exact same
+    // positioning strategy as the text renderer, so there is no vertical drift.
+    // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
+    // textBaseline 'ideographic' and draws at bounds.top + bounds.height; otherwise
+    // it uses 'alphabetic' at bounds.top + baseline. Mirror that here.
+    const useIdeographic = !state.isFirefox;
+    const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
+    const firstLineBox = _firstTextLineBox(container);
+
+    let markerY: number;
+    if (firstLineBox !== null) {
+        markerY = useIdeographic ? firstLineBox.top + firstLineBox.height : firstLineBox.top + baseline;
+    } else {
+        // No text content: reconstruct the first line box from padding + leading.
+        const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+        const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+        const lineTop =
+            container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width) + leading / 2;
+        markerY = useIdeographic ? lineTop + lineHeight - leading / 2 : lineTop + baseline;
+    }
+
+    state.ctx.textBaseline = useIdeographic ? 'ideographic' : 'alphabetic';
 
     if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
         // Inside markers are drawn at the start of the content area, left-aligned
