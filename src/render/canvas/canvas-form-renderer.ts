@@ -9,7 +9,15 @@ import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type'
 import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { asString } from '../../css/types/color';
-import { CSSImageType, CSSURLImage } from '../../css/types/image';
+import { calculateGradientDirection, processColorStops } from '../../css/types/functions/gradient';
+import {
+    CSSImageType,
+    CSSLinearGradientImage,
+    CSSRepeatingLinearGradientImage,
+    CSSURLImage,
+    isLinearGradient,
+    isRepeatingLinearGradient,
+} from '../../css/types/image';
 import { getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
 import { ElementContainer } from '../../dom/element-container';
 import { LIElementContainer } from '../../dom/elements/li-element-container';
@@ -32,7 +40,7 @@ import { contentBox, paddingBox } from '../box-sizing';
 import { calculateObjectFitBounds } from '../object-fit';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
-import { CanvasRenderState, canvasPath, resolveImageSmoothing } from './canvas-render-state';
+import { CanvasRenderState, canvasPath, getLinearGradientCanvas, resolveImageSmoothing } from './canvas-render-state';
 import { createFontStyle, drawTextWithLetterSpacing, renderTextWithLetterSpacing } from './canvas-text-renderer';
 
 // ---------------------------------------------------------------------------
@@ -660,10 +668,12 @@ export async function renderListMarker(
 async function _renderListStyleImage(
     state: CanvasRenderState,
     container: ElementContainer,
-    _styles: CSSParsedDeclaration,
+    styles: CSSParsedDeclaration,
 ): Promise<void> {
     const img = container.styles.listStyleImage;
-    if (img && img.type === CSSImageType.URL) {
+    if (!img) return;
+
+    if (img.type === CSSImageType.URL) {
         const url = (img as CSSURLImage).url;
         try {
             const image = await state.context.cache.match(url);
@@ -671,7 +681,66 @@ async function _renderListStyleImage(
         } catch (e) {
             state.context.error(`Error loading list-style-image ${url}`, e);
         }
+        return;
     }
+
+    if (isLinearGradient(img) || isRepeatingLinearGradient(img)) {
+        _renderListStyleGradientImage(state, container, styles, img);
+    }
+}
+
+// A gradient list-style-image is painted into a small square (~1em) placed like
+// the marker: at the start of the content for `inside`, or to the left of it for
+// `outside`. Only linear gradients are handled; other image types fall back to
+// the normal marker/text rendering.
+const LIST_MARKER_IMAGE_SCALE = 0.44;
+
+function _renderListStyleGradientImage(
+    state: CanvasRenderState,
+    container: ElementContainer,
+    styles: CSSParsedDeclaration,
+    img: CSSLinearGradientImage | CSSRepeatingLinearGradientImage,
+): void {
+    // Chromium draws a gradient list marker in a small square roughly 0.44em wide
+    // (about 7px at a 16px font size), not a full 1em box.
+    const fontSize = getNumber(styles.fontSize);
+    const size = Math.round(fontSize * LIST_MARKER_IMAGE_SCALE);
+    if (size <= 0) return;
+
+    const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(img.angle, size, size);
+    const stops = processColorStops(img.stops, lineLength || 1);
+    const key = `list-lin|${x0},${y0},${x1},${y1}|${stops.map(s => `${s.color}@${s.stop}`).join(',')}|${size}x${size}`;
+    const gradientCanvas = getLinearGradientCanvas(state, key, size, size, (gCtx, w, h) => {
+        const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+        stops.forEach(colorStop =>
+            gradient.addColorStop(Math.max(0, Math.min(1, colorStop.stop)), asString(colorStop.color)),
+        );
+        gCtx.fillStyle = gradient;
+        gCtx.fillRect(0, 0, w, h);
+    });
+
+    // Vertical placement: center the small square on the first text line box.
+    const firstLineBox = _firstTextLineBox(container);
+    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+    const lineTop =
+        firstLineBox !== null
+            ? firstLineBox.top
+            : container.bounds.top +
+              getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+              Math.max(0, lineHeight - fontSize) / 2;
+    const lineBoxHeight = firstLineBox !== null ? firstLineBox.height : fontSize;
+    const boxTop = Math.round(lineTop + (lineBoxHeight - size) / 2);
+
+    let boxLeft: number;
+    if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        const paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        boxLeft = container.bounds.left + paddingLeft;
+    } else {
+        // Outside: to the left of the content box, with a small gap.
+        boxLeft = container.bounds.left - size - Math.round(size * 0.35);
+    }
+
+    state.ctx.drawImage(gradientCanvas, boxLeft, boxTop);
 }
 
 function _renderVerticalListMarkerOutside(
