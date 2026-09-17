@@ -626,19 +626,31 @@ export async function renderListMarker(
         wm === WRITING_MODE.SIDEWAYS_RL ||
         wm === WRITING_MODE.SIDEWAYS_LR;
 
-    // Use ::marker styles (color, font) when available on the LI element.
+    // Use ::marker styles (color, font-family, font-size) when available on the LI.
     const markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
-    state.ctx.font = markerStyles?.['font-family']
+
+    // Effective marker font size: the ::marker font-size overrides the item's.
+    // The cloner serialises it as a resolved (px) value from getComputedStyle.
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    const markerFontFamily = markerStyles?.['font-family']
         ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
         : fontFamily;
+    const markerFontSize = markerStyles?.['font-size'] ?? itemFontSize;
+    // Rebuild the canvas font string with the effective marker size, replacing
+    // the item's size token in the base font string.
+    const markerFont = markerFontFamily.replace(itemFontSize, markerFontSize);
+
+    state.ctx.font = markerFont;
     state.ctx.fillStyle = markerStyles?.['color'] ?? asString(styles.color);
+
+    const markerFontMetrics = { fontFamily: itemFontFamily, fontSize: markerFontSize };
 
     if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.OUTSIDE) {
         _renderVerticalListMarkerOutside(state, paint, styles, wm);
     } else if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
         _renderVerticalListMarkerInside(state, paint, styles, wm);
     } else {
-        _renderHorizontalListMarker(state, paint, styles);
+        _renderHorizontalListMarker(state, paint, styles, markerFontMetrics);
     }
 
     state.ctx.textBaseline = 'bottom';
@@ -764,18 +776,24 @@ function _renderHorizontalListMarker(
     state: CanvasRenderState,
     paint: ElementPaint,
     styles: CSSParsedDeclaration,
+    markerFont: { fontFamily: string; fontSize: string },
 ): void {
     const container = paint.container;
 
-    const [, fontFamily, fontSize] = createFontStyle(styles);
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    // A ::marker font-size that differs from the item's means the marker glyph is
+    // scaled but still sits on the item's first-line baseline. In that case align
+    // by baseline (alphabetic) rather than by the item line-box bottom.
+    const markerHasOwnSize = markerFont.fontSize !== itemFontSize;
 
-    // Align the marker with the first line of the item's text using the exact same
+    // Align the marker with the first line of the item's text using the same
     // positioning strategy as the text renderer, so there is no vertical drift.
     // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
-    // textBaseline 'ideographic' and draws at bounds.top + bounds.height; otherwise
-    // it uses 'alphabetic' at bounds.top + baseline. Mirror that here.
-    const useIdeographic = !state.isFirefox;
-    const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
+    // textBaseline 'ideographic' at bounds.top + bounds.height; otherwise
+    // 'alphabetic' at bounds.top + baseline. A differently-sized marker must use
+    // the baseline path so its larger/smaller glyph grows around the same baseline.
+    const useIdeographic = !state.isFirefox && !markerHasOwnSize;
+    const { baseline } = state.fontMetrics.getMetrics(itemFontFamily, itemFontSize);
     const firstLineBox = _firstTextLineBox(container);
 
     let markerY: number;
