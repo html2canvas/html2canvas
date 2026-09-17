@@ -24,6 +24,7 @@ import {
     isOverflowClipEffect,
     isPath2DClipEffect,
     isTransformEffect,
+    OpacityEffect,
 } from '../effects';
 import { FontMetrics } from '../font-metrics';
 import { Renderer } from '../renderer';
@@ -90,6 +91,16 @@ export interface RenderOptions {
 
 export class CanvasRenderer extends Renderer {
     private readonly _activeEffects: IElementEffect[] = [];
+
+    /**
+     * Group-opacity effects currently applied once at composition time (during
+     * offscreen rendering of opacity stacking contexts). While an effect is in
+     * this set, applyEffect() ignores it so it is not re-applied per descendant
+     * draw (which would double-composite overlapping children, and — for nested
+     * opacity groups — double-apply an ancestor's opacity inside a child's own
+     * offscreen). Nested groups add/remove their own effect around the subtree.
+     */
+    private readonly _suppressedOpacity = new Set<OpacityEffect>();
 
     /**
      * Single shared state object passed to all sub-renderers.
@@ -164,7 +175,11 @@ export class CanvasRenderer extends Renderer {
     applyEffect(effect: IElementEffect): void {
         this.state.ctx.save();
         if (isOpacityEffect(effect)) {
-            this.state.ctx.globalAlpha = effect.opacity;
+            // Skip the group-opacity effect that is applied once at composition
+            // time; applying it here too would double-darken overlapping children.
+            if (!this._suppressedOpacity.has(effect)) {
+                this.state.ctx.globalAlpha = effect.opacity;
+            }
         }
 
         if (isTransformEffect(effect)) {
@@ -219,8 +234,16 @@ export class CanvasRenderer extends Renderer {
         const styles = stack.element.container.styles;
         if (styles.isVisible()) {
             const offscreenFilters = this._getOffscreenFilters(stack);
-            if (offscreenFilters) {
-                await this._renderStackWithOffscreenFilters(stack, offscreenFilters);
+
+            // Group opacity (opacity < 1) must be applied to the flattened subtree,
+            // not to each descendant draw. Applying it per-node via ctx.globalAlpha
+            // double-composites overlapping children (their overlap darkens).
+            // Detect the root opacity effect and, if present, rasterize the whole
+            // subtree offscreen at alpha 1, then composite once with globalAlpha.
+            const rootOpacity = stack.element.effects.find(isOpacityEffect) as OpacityEffect | undefined;
+
+            if (offscreenFilters || rootOpacity) {
+                await this._renderStackOffscreen(stack, offscreenFilters, rootOpacity);
             } else {
                 await this.renderStackContent(stack);
             }
@@ -279,20 +302,36 @@ export class CanvasRenderer extends Renderer {
 
     /**
      * Renders a stacking context into an offscreen canvas, then composites it
-     * onto the main canvas with the CSS filter applied.
+     * onto the main canvas with the CSS filter and/or group opacity applied.
+     *
+     * Group opacity is applied to the flattened subtree (single globalAlpha at
+     * composition) rather than per descendant draw, so overlapping children do
+     * not darken in the overlap region.
      *
      * Note: when clip-path and filter are combined on the same element, the Canvas 2D
      * API applies the clip before the filter (clip → render → filter). The CSS spec
      * order would be render → filter → clip, which is not achievable with Canvas 2D
      * clip primitives alone. This is a known Canvas 2D limitation.
      */
-    private async _renderStackWithOffscreenFilters(stack: StackingContext, filterString: string): Promise<void> {
+    private async _renderStackOffscreen(
+        stack: StackingContext,
+        filterString: string | null,
+        rootOpacity?: OpacityEffect,
+    ): Promise<void> {
         const mainCanvas = this.state.canvas;
         const mainCtx = this.state.ctx;
 
         // Detach active effects so that popEffect() during offscreen rendering
         // doesn't call ctx.restore() on the wrong context.
         const savedActiveEffects = this._activeEffects.splice(0);
+
+        // Suppress the root opacity while rendering the subtree offscreen so it is
+        // not applied per-node (which would double-composite overlaps). It is
+        // instead applied once at composition below. Descendant opacities remain
+        // untouched. Nested opacity groups save/restore this flag recursively.
+        if (rootOpacity) {
+            this._suppressedOpacity.add(rootOpacity);
+        }
 
         // Offscreen canvas — same physical size, same transform as the main canvas.
         const offscreen = this.state.canvasPool.acquire(mainCanvas.width, mainCanvas.height);
@@ -304,12 +343,26 @@ export class CanvasRenderer extends Renderer {
         // Swap to offscreen — mutate in place so sub-renderers see the new target
         this.state.canvas = offscreen;
         this.state.ctx = offCtx;
-        await this.renderStackContent(stack);
+        try {
+            await this.renderStackContent(stack);
+        } finally {
+            // Restore main canvas and stop suppressing this group's opacity, even
+            // if subtree rendering throws.
+            this.state.canvas = mainCanvas;
+            this.state.ctx = mainCtx;
+            if (rootOpacity) {
+                this._suppressedOpacity.delete(rootOpacity);
+            }
+        }
 
-        // Restore main canvas
-        this.state.canvas = mainCanvas;
-        this.state.ctx = mainCtx;
         this._activeEffects.push(...savedActiveEffects);
+
+        // Ancestor clips (overflow / clip-path / clip:rect) that were active when
+        // this stack began must still clip the composited result. Capture them
+        // before unwinding so we can re-apply them in device space below.
+        const ancestorClips = savedActiveEffects.filter(
+            effect => isClipEffect(effect) || isOverflowClipEffect(effect) || isPath2DClipEffect(effect),
+        );
 
         // Pop all active ancestor effects from the main ctx so we can use
         // setTransform(identity) for the drawImage without misaligned clips.
@@ -320,13 +373,64 @@ export class CanvasRenderer extends Renderer {
         }
         this._activeEffects.length = 0;
 
+        // Order of operations must be: filter first, then group opacity — matching
+        // CSS (render → filter → opacity). The Canvas 2D API applies globalAlpha
+        // BEFORE ctx.filter on a single drawImage, so combining both on one draw
+        // filters an already-dimmed source and darkens the result. When both are
+        // present, filter into a second surface at alpha 1, then composite that
+        // surface with globalAlpha.
+        let filtered: HTMLCanvasElement | null = null;
+        if (filterString && rootOpacity) {
+            filtered = this.state.canvasPool.acquire(offscreen.width, offscreen.height);
+            const filteredCtx = filtered.getContext('2d') as CanvasRenderingContext2D;
+            filteredCtx.filter = filterString;
+            filteredCtx.drawImage(offscreen, 0, 0);
+        }
+
         this.state.ctx.save();
-        this.state.ctx.filter = filterString;
+
+        // Re-apply ancestor clips in device space. Their paths are in CSS (world)
+        // coordinates, so lay them down under the base scale/translate transform;
+        // the resulting clip region persists after we switch to identity for the
+        // device-aligned drawImage.
+        if (ancestorClips.length) {
+            this.state.ctx.setTransform(
+                this.options.scale,
+                0,
+                0,
+                this.options.scale,
+                -this.options.x * this.options.scale,
+                -this.options.y * this.options.scale,
+            );
+            for (const clip of ancestorClips) {
+                if (isPath2DClipEffect(clip)) {
+                    this.state.ctx.clip(clip.path2d, clip.fillRule ?? 'nonzero');
+                } else {
+                    canvasPath(this.state, clip.path);
+                    this.state.ctx.clip(isClipEffect(clip) ? clip.fillRule : 'nonzero');
+                }
+            }
+        }
+
+        if (filtered) {
+            // Second pass: opacity only, over the already-filtered surface.
+            this.state.ctx.globalAlpha = rootOpacity ? rootOpacity.opacity : 1;
+        } else {
+            if (filterString) {
+                this.state.ctx.filter = filterString;
+            }
+            if (rootOpacity) {
+                this.state.ctx.globalAlpha = rootOpacity.opacity;
+            }
+        }
         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.state.ctx.drawImage(offscreen, 0, 0);
+        this.state.ctx.drawImage(filtered ?? offscreen, 0, 0);
         this.state.ctx.restore();
 
-        // Return the offscreen canvas to the pool for reuse.
+        // Return the offscreen canvases to the pool for reuse.
+        if (filtered) {
+            this.state.canvasPool.release(filtered);
+        }
         this.state.canvasPool.release(offscreen);
     }
 

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS filter compositing (blur, shadow, opacity)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #ffffff;
+        }
+        .row {
+            margin-bottom: 24px;
+        }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .stage {
+            position: relative;
+            width: 280px;
+            height: 160px;
+            display: inline-block;
+            vertical-align: top;
+            margin-right: 16px;
+        }
+        .piece {
+            position: absolute;
+            top: 50px;
+            width: 100px;
+            height: 60px;
+            background: #176b70;
+        }
+        .piece.second {
+            left: 60px;
+            background: #176b70;
+        }
+        .layer {
+            position: absolute;
+            inset: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="row">
+    <div class="row-title">Overlapping children under one blur</div>
+    <div class="stage">
+        <div class="layer" style="filter: blur(4px)">
+            <div class="piece" style="left: 20px"></div>
+            <div class="piece second"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Parent opacity over overlapping children</div>
+    <!-- The overlap region should not darken: opacity applies to the whole layer -->
+    <div class="stage">
+        <div class="layer" style="opacity: 0.5">
+            <div class="piece" style="left: 20px"></div>
+            <div class="piece second"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Blur + drop-shadow + opacity combined</div>
+    <div class="stage">
+        <div class="layer" style="filter: blur(4px) drop-shadow(12px 8px 8px rgba(0,0,0,0.6)); opacity: 0.5">
+            <div class="piece" style="left: 20px"></div>
+            <div class="piece second"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Drop-shadow extending outside the box</div>
+    <div class="stage">
+        <div class="piece" style="left: 90px; top: 50px; filter: drop-shadow(20px 16px 6px rgba(0,0,0,0.6))"></div>
+    </div>
+</div>
+
+</body>
+</html>
