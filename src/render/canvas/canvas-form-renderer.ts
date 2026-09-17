@@ -9,7 +9,15 @@ import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type'
 import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { asString } from '../../css/types/color';
-import { CSSImageType, CSSURLImage } from '../../css/types/image';
+import { calculateGradientDirection, processColorStops } from '../../css/types/functions/gradient';
+import {
+    CSSImageType,
+    CSSLinearGradientImage,
+    CSSRepeatingLinearGradientImage,
+    CSSURLImage,
+    isLinearGradient,
+    isRepeatingLinearGradient,
+} from '../../css/types/image';
 import { getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
 import { ElementContainer } from '../../dom/element-container';
 import { LIElementContainer } from '../../dom/elements/li-element-container';
@@ -32,7 +40,7 @@ import { contentBox, paddingBox } from '../box-sizing';
 import { calculateObjectFitBounds } from '../object-fit';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
-import { CanvasRenderState, canvasPath, resolveImageSmoothing } from './canvas-render-state';
+import { CanvasRenderState, canvasPath, getLinearGradientCanvas, resolveImageSmoothing } from './canvas-render-state';
 import { createFontStyle, drawTextWithLetterSpacing, renderTextWithLetterSpacing } from './canvas-text-renderer';
 
 // ---------------------------------------------------------------------------
@@ -626,19 +634,31 @@ export async function renderListMarker(
         wm === WRITING_MODE.SIDEWAYS_RL ||
         wm === WRITING_MODE.SIDEWAYS_LR;
 
-    // Use ::marker styles (color, font) when available on the LI element.
+    // Use ::marker styles (color, font-family, font-size) when available on the LI.
     const markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
-    state.ctx.font = markerStyles?.['font-family']
+
+    // Effective marker font size: the ::marker font-size overrides the item's.
+    // The cloner serialises it as a resolved (px) value from getComputedStyle.
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    const markerFontFamily = markerStyles?.['font-family']
         ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
         : fontFamily;
+    const markerFontSize = markerStyles?.['font-size'] ?? itemFontSize;
+    // Rebuild the canvas font string with the effective marker size, replacing
+    // the item's size token in the base font string.
+    const markerFont = markerFontFamily.replace(itemFontSize, markerFontSize);
+
+    state.ctx.font = markerFont;
     state.ctx.fillStyle = markerStyles?.['color'] ?? asString(styles.color);
+
+    const markerFontMetrics = { fontFamily: itemFontFamily, fontSize: markerFontSize };
 
     if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.OUTSIDE) {
         _renderVerticalListMarkerOutside(state, paint, styles, wm);
     } else if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
         _renderVerticalListMarkerInside(state, paint, styles, wm);
     } else {
-        _renderHorizontalListMarker(state, paint, styles);
+        _renderHorizontalListMarker(state, paint, styles, markerFontMetrics);
     }
 
     state.ctx.textBaseline = 'bottom';
@@ -648,10 +668,12 @@ export async function renderListMarker(
 async function _renderListStyleImage(
     state: CanvasRenderState,
     container: ElementContainer,
-    _styles: CSSParsedDeclaration,
+    styles: CSSParsedDeclaration,
 ): Promise<void> {
     const img = container.styles.listStyleImage;
-    if (img && img.type === CSSImageType.URL) {
+    if (!img) return;
+
+    if (img.type === CSSImageType.URL) {
         const url = (img as CSSURLImage).url;
         try {
             const image = await state.context.cache.match(url);
@@ -659,7 +681,66 @@ async function _renderListStyleImage(
         } catch (e) {
             state.context.error(`Error loading list-style-image ${url}`, e);
         }
+        return;
     }
+
+    if (isLinearGradient(img) || isRepeatingLinearGradient(img)) {
+        _renderListStyleGradientImage(state, container, styles, img);
+    }
+}
+
+// A gradient list-style-image is painted into a small square (~1em) placed like
+// the marker: at the start of the content for `inside`, or to the left of it for
+// `outside`. Only linear gradients are handled; other image types fall back to
+// the normal marker/text rendering.
+const LIST_MARKER_IMAGE_SCALE = 0.44;
+
+function _renderListStyleGradientImage(
+    state: CanvasRenderState,
+    container: ElementContainer,
+    styles: CSSParsedDeclaration,
+    img: CSSLinearGradientImage | CSSRepeatingLinearGradientImage,
+): void {
+    // Chromium draws a gradient list marker in a small square roughly 0.44em wide
+    // (about 7px at a 16px font size), not a full 1em box.
+    const fontSize = getNumber(styles.fontSize);
+    const size = Math.round(fontSize * LIST_MARKER_IMAGE_SCALE);
+    if (size <= 0) return;
+
+    const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(img.angle, size, size);
+    const stops = processColorStops(img.stops, lineLength || 1);
+    const key = `list-lin|${x0},${y0},${x1},${y1}|${stops.map(s => `${s.color}@${s.stop}`).join(',')}|${size}x${size}`;
+    const gradientCanvas = getLinearGradientCanvas(state, key, size, size, (gCtx, w, h) => {
+        const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+        stops.forEach(colorStop =>
+            gradient.addColorStop(Math.max(0, Math.min(1, colorStop.stop)), asString(colorStop.color)),
+        );
+        gCtx.fillStyle = gradient;
+        gCtx.fillRect(0, 0, w, h);
+    });
+
+    // Vertical placement: center the small square on the first text line box.
+    const firstLineBox = _firstTextLineBox(container);
+    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+    const lineTop =
+        firstLineBox !== null
+            ? firstLineBox.top
+            : container.bounds.top +
+              getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+              Math.max(0, lineHeight - fontSize) / 2;
+    const lineBoxHeight = firstLineBox !== null ? firstLineBox.height : fontSize;
+    const boxTop = Math.round(lineTop + (lineBoxHeight - size) / 2);
+
+    let boxLeft: number;
+    if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        const paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        boxLeft = container.bounds.left + paddingLeft;
+    } else {
+        // Outside: to the left of the content box, with a small gap.
+        boxLeft = container.bounds.left - size - Math.round(size * 0.35);
+    }
+
+    state.ctx.drawImage(gradientCanvas, boxLeft, boxTop);
 }
 
 function _renderVerticalListMarkerOutside(
@@ -735,29 +816,68 @@ function _renderVerticalListMarkerInside(
     state.ctx.restore();
 }
 
+/**
+ * Returns the first text line box (top + height) inside the list item, searching
+ * its own text nodes first, then descendants in tree order, or null when the item
+ * has no text content. Used to align the marker with the first line exactly the
+ * same way the text renderer positions that line.
+ */
+function _firstTextLineBox(container: ElementContainer): { top: number; height: number } | null {
+    let box: { top: number; height: number } | null = null;
+    for (const textNode of container.textNodes) {
+        for (const textBound of textNode.textBounds) {
+            if (textBound.text.trim().length && (box === null || textBound.bounds.top < box.top)) {
+                box = { top: textBound.bounds.top, height: textBound.bounds.height };
+            }
+        }
+    }
+    if (box !== null) return box;
+    for (const child of container.elements) {
+        const childBox = _firstTextLineBox(child);
+        if (childBox !== null && (box === null || childBox.top < box.top)) {
+            box = childBox;
+        }
+    }
+    return box;
+}
+
 function _renderHorizontalListMarker(
     state: CanvasRenderState,
     paint: ElementPaint,
     styles: CSSParsedDeclaration,
+    markerFont: { fontFamily: string; fontSize: string },
 ): void {
     const container = paint.container;
-    state.ctx.textBaseline = 'alphabetic';
 
-    const [, fontFamily, fontSize] = createFontStyle(styles);
-    const { baseline } = state.fontMetrics.getRawMetrics(fontFamily, fontSize);
-    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
-    const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    // A ::marker font-size that differs from the item's means the marker glyph is
+    // scaled but still sits on the item's first-line baseline. In that case align
+    // by baseline (alphabetic) rather than by the item line-box bottom.
+    const markerHasOwnSize = markerFont.fontSize !== itemFontSize;
 
-    // Align the marker baseline with the first line of the list item.
-    // Use raw metrics (no browser-specific adjustment) so the marker
-    // sits exactly on the same baseline as the item text on all browsers.
-    const markerY =
-        Math.floor(
-            container.bounds.top +
-                getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
-                leading / 2 +
-                baseline,
-        ) - (state.isFirefox ? 1 : 0);
+    // Align the marker with the first line of the item's text using the same
+    // positioning strategy as the text renderer, so there is no vertical drift.
+    // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
+    // textBaseline 'ideographic' at bounds.top + bounds.height; otherwise
+    // 'alphabetic' at bounds.top + baseline. A differently-sized marker must use
+    // the baseline path so its larger/smaller glyph grows around the same baseline.
+    const useIdeographic = !state.isFirefox && !markerHasOwnSize;
+    const { baseline } = state.fontMetrics.getMetrics(itemFontFamily, itemFontSize);
+    const firstLineBox = _firstTextLineBox(container);
+
+    let markerY: number;
+    if (firstLineBox !== null) {
+        markerY = useIdeographic ? firstLineBox.top + firstLineBox.height : firstLineBox.top + baseline;
+    } else {
+        // No text content: reconstruct the first line box from padding + leading.
+        const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+        const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+        const lineTop =
+            container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width) + leading / 2;
+        markerY = useIdeographic ? lineTop + lineHeight - leading / 2 : lineTop + baseline;
+    }
+
+    state.ctx.textBaseline = useIdeographic ? 'ideographic' : 'alphabetic';
 
     if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
         // Inside markers are drawn at the start of the content area, left-aligned

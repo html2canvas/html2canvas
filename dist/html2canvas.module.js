@@ -12225,26 +12225,26 @@ function _renderListBoxSelect(state, container, styles, bounds, baseline) {
 // ---------------------------------------------------------------------------
 function renderListMarker(state, paint, styles) {
     return __awaiter(this, void 0, void 0, function () {
-        var container, fontFamily, wm, isVerticalList, markerStyles;
-        var _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var container, fontFamily, wm, isVerticalList, markerStyles, _a, itemFontFamily, itemFontSize, markerFontFamily, markerFontSize, markerFont, markerFontMetrics;
+        var _b, _c;
+        return __generator(this, function (_d) {
+            switch (_d.label) {
                 case 0:
                     container = paint.container;
                     if (!contains(container.styles.display, 2048 /* DISPLAY.LIST_ITEM */))
                         return [2 /*return*/];
                     if (!(!paint.listValue || container.styles.listStyleType === -1 /* LIST_STYLE_TYPE.NONE */)) return [3 /*break*/, 3];
                     if (!(container.styles.listStyleImage !== null)) return [3 /*break*/, 2];
-                    return [4 /*yield*/, _renderListStyleImage(state, container)];
+                    return [4 /*yield*/, _renderListStyleImage(state, container, styles)];
                 case 1:
-                    _b.sent();
-                    _b.label = 2;
+                    _d.sent();
+                    _d.label = 2;
                 case 2: return [2 /*return*/];
                 case 3:
                     if (!(container.styles.listStyleImage !== null)) return [3 /*break*/, 5];
-                    return [4 /*yield*/, _renderListStyleImage(state, container)];
+                    return [4 /*yield*/, _renderListStyleImage(state, container, styles)];
                 case 4:
-                    _b.sent();
+                    _d.sent();
                     return [2 /*return*/];
                 case 5:
                     fontFamily = createFontStyle(styles)[0];
@@ -12254,10 +12254,15 @@ function renderListMarker(state, paint, styles) {
                         wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
                         wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
                     markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
-                    state.ctx.font = (markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['font-family'])
+                    _a = createFontStyle(styles), itemFontFamily = _a[1], itemFontSize = _a[2];
+                    markerFontFamily = (markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['font-family'])
                         ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
                         : fontFamily;
-                    state.ctx.fillStyle = (_a = markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['color']) !== null && _a !== void 0 ? _a : asString(styles.color);
+                    markerFontSize = (_b = markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['font-size']) !== null && _b !== void 0 ? _b : itemFontSize;
+                    markerFont = markerFontFamily.replace(itemFontSize, markerFontSize);
+                    state.ctx.font = markerFont;
+                    state.ctx.fillStyle = (_c = markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['color']) !== null && _c !== void 0 ? _c : asString(styles.color);
+                    markerFontMetrics = { fontFamily: itemFontFamily, fontSize: markerFontSize };
                     if (isVerticalList && container.styles.listStylePosition === 1 /* LIST_STYLE_POSITION.OUTSIDE */) {
                         _renderVerticalListMarkerOutside(state, paint, styles, wm);
                     }
@@ -12265,7 +12270,7 @@ function renderListMarker(state, paint, styles) {
                         _renderVerticalListMarkerInside(state, paint, styles, wm);
                     }
                     else {
-                        _renderHorizontalListMarker(state, paint, styles);
+                        _renderHorizontalListMarker(state, paint, styles, markerFontMetrics);
                     }
                     state.ctx.textBaseline = 'bottom';
                     state.ctx.textAlign = 'left';
@@ -12274,14 +12279,16 @@ function renderListMarker(state, paint, styles) {
         });
     });
 }
-function _renderListStyleImage(state, container, _styles) {
+function _renderListStyleImage(state, container, styles) {
     return __awaiter(this, void 0, void 0, function () {
         var img, url, image, e_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     img = container.styles.listStyleImage;
-                    if (!(img && img.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 4];
+                    if (!img)
+                        return [2 /*return*/];
+                    if (!(img.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
                     url = img.url;
                     _a.label = 1;
                 case 1:
@@ -12296,9 +12303,58 @@ function _renderListStyleImage(state, container, _styles) {
                     state.context.error("Error loading list-style-image ".concat(url), e_1);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
+                case 5:
+                    if (isLinearGradient(img) || isRepeatingLinearGradient(img)) {
+                        _renderListStyleGradientImage(state, container, styles, img);
+                    }
+                    return [2 /*return*/];
             }
         });
     });
+}
+// A gradient list-style-image is painted into a small square (~1em) placed like
+// the marker: at the start of the content for `inside`, or to the left of it for
+// `outside`. Only linear gradients are handled; other image types fall back to
+// the normal marker/text rendering.
+var LIST_MARKER_IMAGE_SCALE = 0.44;
+function _renderListStyleGradientImage(state, container, styles, img) {
+    // Chromium draws a gradient list marker in a small square roughly 0.44em wide
+    // (about 7px at a 16px font size), not a full 1em box.
+    var fontSize = getNumber(styles.fontSize);
+    var size = Math.round(fontSize * LIST_MARKER_IMAGE_SCALE);
+    if (size <= 0)
+        return;
+    var _a = calculateGradientDirection(img.angle, size, size), lineLength = _a[0], x0 = _a[1], x1 = _a[2], y0 = _a[3], y1 = _a[4];
+    var stops = processColorStops(img.stops, lineLength || 1);
+    var key = "list-lin|".concat(x0, ",").concat(y0, ",").concat(x1, ",").concat(y1, "|").concat(stops.map(function (s) { return "".concat(s.color, "@").concat(s.stop); }).join(','), "|").concat(size, "x").concat(size);
+    var gradientCanvas = getLinearGradientCanvas(state, key, size, size, function (gCtx, w, h) {
+        var gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+        stops.forEach(function (colorStop) {
+            return gradient.addColorStop(Math.max(0, Math.min(1, colorStop.stop)), asString(colorStop.color));
+        });
+        gCtx.fillStyle = gradient;
+        gCtx.fillRect(0, 0, w, h);
+    });
+    // Vertical placement: center the small square on the first text line box.
+    var firstLineBox = _firstTextLineBox(container);
+    var lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+    var lineTop = firstLineBox !== null
+        ? firstLineBox.top
+        : container.bounds.top +
+            getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+            Math.max(0, lineHeight - fontSize) / 2;
+    var lineBoxHeight = firstLineBox !== null ? firstLineBox.height : fontSize;
+    var boxTop = Math.round(lineTop + (lineBoxHeight - size) / 2);
+    var boxLeft;
+    if (container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
+        var paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        boxLeft = container.bounds.left + paddingLeft;
+    }
+    else {
+        // Outside: to the left of the content box, with a small gap.
+        boxLeft = container.bounds.left - size - Math.round(size * 0.35);
+    }
+    state.ctx.drawImage(gradientCanvas, boxLeft, boxTop);
 }
 function _renderVerticalListMarkerOutside(state, paint, styles, wm) {
     var container = paint.container;
@@ -12355,20 +12411,62 @@ function _renderVerticalListMarkerInside(state, paint, styles, wm) {
     state.ctx.fillText(paint.listValue, 0, 0);
     state.ctx.restore();
 }
-function _renderHorizontalListMarker(state, paint, styles) {
+/**
+ * Returns the first text line box (top + height) inside the list item, searching
+ * its own text nodes first, then descendants in tree order, or null when the item
+ * has no text content. Used to align the marker with the first line exactly the
+ * same way the text renderer positions that line.
+ */
+function _firstTextLineBox(container) {
+    var box = null;
+    for (var _i = 0, _a = container.textNodes; _i < _a.length; _i++) {
+        var textNode = _a[_i];
+        for (var _b = 0, _c = textNode.textBounds; _b < _c.length; _b++) {
+            var textBound = _c[_b];
+            if (textBound.text.trim().length && (box === null || textBound.bounds.top < box.top)) {
+                box = { top: textBound.bounds.top, height: textBound.bounds.height };
+            }
+        }
+    }
+    if (box !== null)
+        return box;
+    for (var _d = 0, _e = container.elements; _d < _e.length; _d++) {
+        var child = _e[_d];
+        var childBox = _firstTextLineBox(child);
+        if (childBox !== null && (box === null || childBox.top < box.top)) {
+            box = childBox;
+        }
+    }
+    return box;
+}
+function _renderHorizontalListMarker(state, paint, styles, markerFont) {
     var container = paint.container;
-    state.ctx.textBaseline = 'alphabetic';
-    var _a = createFontStyle(styles), fontFamily = _a[1], fontSize = _a[2];
-    var baseline = state.fontMetrics.getRawMetrics(fontFamily, fontSize).baseline;
-    var lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
-    var leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
-    // Align the marker baseline with the first line of the list item.
-    // Use raw metrics (no browser-specific adjustment) so the marker
-    // sits exactly on the same baseline as the item text on all browsers.
-    var markerY = Math.floor(container.bounds.top +
-        getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
-        leading / 2 +
-        baseline) - (state.isFirefox ? 1 : 0);
+    var _a = createFontStyle(styles), itemFontFamily = _a[1], itemFontSize = _a[2];
+    // A ::marker font-size that differs from the item's means the marker glyph is
+    // scaled but still sits on the item's first-line baseline. In that case align
+    // by baseline (alphabetic) rather than by the item line-box bottom.
+    var markerHasOwnSize = markerFont.fontSize !== itemFontSize;
+    // Align the marker with the first line of the item's text using the same
+    // positioning strategy as the text renderer, so there is no vertical drift.
+    // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
+    // textBaseline 'ideographic' at bounds.top + bounds.height; otherwise
+    // 'alphabetic' at bounds.top + baseline. A differently-sized marker must use
+    // the baseline path so its larger/smaller glyph grows around the same baseline.
+    var useIdeographic = !state.isFirefox && !markerHasOwnSize;
+    var baseline = state.fontMetrics.getMetrics(itemFontFamily, itemFontSize).baseline;
+    var firstLineBox = _firstTextLineBox(container);
+    var markerY;
+    if (firstLineBox !== null) {
+        markerY = useIdeographic ? firstLineBox.top + firstLineBox.height : firstLineBox.top + baseline;
+    }
+    else {
+        // No text content: reconstruct the first line box from padding + leading.
+        var lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+        var leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+        var lineTop = container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width) + leading / 2;
+        markerY = useIdeographic ? lineTop + lineHeight - leading / 2 : lineTop + baseline;
+    }
+    state.ctx.textBaseline = useIdeographic ? 'ideographic' : 'alphabetic';
     if (container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
         // Inside markers are drawn at the start of the content area, left-aligned
         var paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
@@ -12470,6 +12568,15 @@ var CanvasRenderer = /** @class */ (function (_super) {
         var _a, _b, _c;
         var _this = _super.call(this, context, options) || this;
         _this._activeEffects = [];
+        /**
+         * Group-opacity effects currently applied once at composition time (during
+         * offscreen rendering of opacity stacking contexts). While an effect is in
+         * this set, applyEffect() ignores it so it is not re-applied per descendant
+         * draw (which would double-composite overlapping children, and — for nested
+         * opacity groups — double-apply an ancestor's opacity inside a child's own
+         * offscreen). Nested groups add/remove their own effect around the subtree.
+         */
+        _this._suppressedOpacity = new Set();
         var canvas = options.canvas ? options.canvas : document.createElement('canvas');
         var ctx = canvas.getContext('2d');
         if (!options.canvas) {
@@ -12534,7 +12641,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
         var _a;
         this.state.ctx.save();
         if (isOpacityEffect(effect)) {
-            this.state.ctx.globalAlpha = effect.opacity;
+            // Skip the group-opacity effect that is applied once at composition
+            // time; applying it here too would double-darken overlapping children.
+            if (!this._suppressedOpacity.has(effect)) {
+                this.state.ctx.globalAlpha = effect.opacity;
+            }
         }
         if (isTransformEffect(effect)) {
             this.state.ctx.translate(effect.offsetX, effect.offsetY);
@@ -12567,15 +12678,16 @@ var CanvasRenderer = /** @class */ (function (_super) {
     // -------------------------------------------------------------------------
     CanvasRenderer.prototype.renderStack = function (stack) {
         return __awaiter(this, void 0, void 0, function () {
-            var styles, offscreenFilters;
+            var styles, offscreenFilters, rootOpacity;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         styles = stack.element.container.styles;
                         if (!styles.isVisible()) return [3 /*break*/, 4];
                         offscreenFilters = this._getOffscreenFilters(stack);
-                        if (!offscreenFilters) return [3 /*break*/, 2];
-                        return [4 /*yield*/, this._renderStackWithOffscreenFilters(stack, offscreenFilters)];
+                        rootOpacity = stack.element.effects.find(isOpacityEffect);
+                        if (!(offscreenFilters || rootOpacity)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this._renderStackOffscreen(stack, offscreenFilters, rootOpacity)];
                     case 1:
                         _a.sent();
                         return [3 /*break*/, 4];
@@ -12639,23 +12751,35 @@ var CanvasRenderer = /** @class */ (function (_super) {
     };
     /**
      * Renders a stacking context into an offscreen canvas, then composites it
-     * onto the main canvas with the CSS filter applied.
+     * onto the main canvas with the CSS filter and/or group opacity applied.
+     *
+     * Group opacity is applied to the flattened subtree (single globalAlpha at
+     * composition) rather than per descendant draw, so overlapping children do
+     * not darken in the overlap region.
      *
      * Note: when clip-path and filter are combined on the same element, the Canvas 2D
      * API applies the clip before the filter (clip → render → filter). The CSS spec
      * order would be render → filter → clip, which is not achievable with Canvas 2D
      * clip primitives alone. This is a known Canvas 2D limitation.
      */
-    CanvasRenderer.prototype._renderStackWithOffscreenFilters = function (stack, filterString) {
+    CanvasRenderer.prototype._renderStackOffscreen = function (stack, filterString, rootOpacity) {
         return __awaiter(this, void 0, void 0, function () {
-            var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, activeCount, i;
+            var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, ancestorClips, activeCount, i, filtered, filteredCtx, _i, ancestorClips_1, clip;
             var _a;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var _b;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         mainCanvas = this.state.canvas;
                         mainCtx = this.state.ctx;
                         savedActiveEffects = this._activeEffects.splice(0);
+                        // Suppress the root opacity while rendering the subtree offscreen so it is
+                        // not applied per-node (which would double-composite overlaps). It is
+                        // instead applied once at composition below. Descendant opacities remain
+                        // untouched. Nested opacity groups save/restore this flag recursively.
+                        if (rootOpacity) {
+                            this._suppressedOpacity.add(rootOpacity);
+                        }
                         offscreen = this.state.canvasPool.acquire(mainCanvas.width, mainCanvas.height);
                         offCtx = offscreen.getContext('2d');
                         offCtx.scale(this.options.scale, this.options.scale);
@@ -12664,24 +12788,74 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         // Swap to offscreen — mutate in place so sub-renderers see the new target
                         this.state.canvas = offscreen;
                         this.state.ctx = offCtx;
-                        return [4 /*yield*/, this.renderStackContent(stack)];
+                        _c.label = 1;
                     case 1:
-                        _b.sent();
-                        // Restore main canvas
+                        _c.trys.push([1, , 3, 4]);
+                        return [4 /*yield*/, this.renderStackContent(stack)];
+                    case 2:
+                        _c.sent();
+                        return [3 /*break*/, 4];
+                    case 3:
+                        // Restore main canvas and stop suppressing this group's opacity, even
+                        // if subtree rendering throws.
                         this.state.canvas = mainCanvas;
                         this.state.ctx = mainCtx;
+                        if (rootOpacity) {
+                            this._suppressedOpacity.delete(rootOpacity);
+                        }
+                        return [7 /*endfinally*/];
+                    case 4:
                         (_a = this._activeEffects).push.apply(_a, savedActiveEffects);
+                        ancestorClips = savedActiveEffects.filter(function (effect) { return isClipEffect(effect) || isOverflowClipEffect(effect) || isPath2DClipEffect(effect); });
                         activeCount = this._activeEffects.length;
                         for (i = 0; i < activeCount; i++) {
                             this.state.ctx.restore();
                         }
                         this._activeEffects.length = 0;
+                        filtered = null;
+                        if (filterString && rootOpacity) {
+                            filtered = this.state.canvasPool.acquire(offscreen.width, offscreen.height);
+                            filteredCtx = filtered.getContext('2d');
+                            filteredCtx.filter = filterString;
+                            filteredCtx.drawImage(offscreen, 0, 0);
+                        }
                         this.state.ctx.save();
-                        this.state.ctx.filter = filterString;
+                        // Re-apply ancestor clips in device space. Their paths are in CSS (world)
+                        // coordinates, so lay them down under the base scale/translate transform;
+                        // the resulting clip region persists after we switch to identity for the
+                        // device-aligned drawImage.
+                        if (ancestorClips.length) {
+                            this.state.ctx.setTransform(this.options.scale, 0, 0, this.options.scale, -this.options.x * this.options.scale, -this.options.y * this.options.scale);
+                            for (_i = 0, ancestorClips_1 = ancestorClips; _i < ancestorClips_1.length; _i++) {
+                                clip = ancestorClips_1[_i];
+                                if (isPath2DClipEffect(clip)) {
+                                    this.state.ctx.clip(clip.path2d, (_b = clip.fillRule) !== null && _b !== void 0 ? _b : 'nonzero');
+                                }
+                                else {
+                                    canvasPath(this.state, clip.path);
+                                    this.state.ctx.clip(isClipEffect(clip) ? clip.fillRule : 'nonzero');
+                                }
+                            }
+                        }
+                        if (filtered) {
+                            // Second pass: opacity only, over the already-filtered surface.
+                            this.state.ctx.globalAlpha = rootOpacity ? rootOpacity.opacity : 1;
+                        }
+                        else {
+                            if (filterString) {
+                                this.state.ctx.filter = filterString;
+                            }
+                            if (rootOpacity) {
+                                this.state.ctx.globalAlpha = rootOpacity.opacity;
+                            }
+                        }
                         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
-                        this.state.ctx.drawImage(offscreen, 0, 0);
+                        this.state.ctx.drawImage(filtered !== null && filtered !== void 0 ? filtered : offscreen, 0, 0);
                         this.state.ctx.restore();
-                        // Return the offscreen canvas to the pool for reuse.
+                        // Return the offscreen canvases to the pool for reuse.
+                        if (filtered) {
+                            this.state.canvasPool.release(filtered);
+                        }
                         this.state.canvasPool.release(offscreen);
                         return [2 /*return*/];
                 }

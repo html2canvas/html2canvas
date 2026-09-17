@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS filter nesting and clipping</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #ffffff;
+        }
+        .row {
+            margin-bottom: 24px;
+        }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .stage {
+            position: relative;
+            width: 280px;
+            height: 200px;
+            display: inline-block;
+            vertical-align: top;
+            margin-right: 16px;
+        }
+        .subject {
+            position: absolute;
+            left: 60px;
+            top: 60px;
+            width: 100px;
+            height: 60px;
+        }
+        .fill {
+            width: 100px;
+            height: 60px;
+            background: #176b70;
+        }
+        .clip {
+            position: absolute;
+            left: 60px;
+            top: 60px;
+            width: 100px;
+            height: 80px;
+            overflow: hidden;
+        }
+        .clip .subject {
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="row">
+    <div class="row-title">Nested opacity and filters</div>
+    <!-- Nested 0.5 * 0.5 opacity: center should be roughly 25% alpha -->
+    <div class="stage">
+        <div class="subject" style="opacity: 0.5; filter: blur(2px)">
+            <div class="fill" style="opacity: 0.5; filter: drop-shadow(12px 8px 4px black)"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Ancestor clips the completed shadow</div>
+    <div class="stage">
+        <div class="clip">
+            <div class="subject" style="filter: drop-shadow(20px 20px 8px black)">
+                <div class="fill"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Own overflow clips the source before filtering</div>
+    <div class="stage">
+        <div class="subject" style="overflow: hidden; filter: blur(4px)">
+            <div class="fill" style="width: 160px"></div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

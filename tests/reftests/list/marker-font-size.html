@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+    <head>
+        <title>::marker font-size</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Roboto, sans-serif;
+            }
+            ol {
+                font-size: 20px;
+                line-height: 40px;
+            }
+            ol li::marker {
+                font-size: 1.4em;
+                color: #b8532f;
+            }
+            #small li::marker {
+                font-size: 0.6em;
+                color: #176b70;
+            }
+            li {
+                width: 200px;
+            }
+        </style>
+    </head>
+    <body>
+        <ol id="large">
+            <li>Item one</li>
+            <li>Item two</li>
+            <li>Item three</li>
+        </ol>
+        <ol id="small">
+            <li>Alpha</li>
+            <li>Beta</li>
+            <li>Gamma</li>
+        </ol>
+    </body>
+</html>
