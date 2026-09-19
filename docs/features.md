@@ -24,6 +24,8 @@ Below is a list of all the supported CSS properties and values.
         - repeating-radial-gradient()
         - conic-gradient()
         - repeating-conic-gradient()
+        - multiple layers supported for every gradient type
+        - double-position color stops (e.g. `red 0% 25%`)
     - background-origin
     - background-position
     - background-size
