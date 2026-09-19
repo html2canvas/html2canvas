@@ -82,6 +82,74 @@
       .conicGradient8 {
         background: conic-gradient(rgba(255, 0, 0, 0.9), rgba(0, 255, 0, 0.6), rgba(0, 0, 255, 0.9));
       }
+
+      /* ── New examples ─────────────────────────────────────── */
+
+      /* Double-position hard stops (CSS Images Level 4 shorthand)
+         #ccc 0% 25%  ≡  #ccc 0%, #ccc 25% */
+      .conicGradient9 {
+        background: conic-gradient(#e74c3c 0% 25%, #3498db 25% 50%, #2ecc71 50% 75%, #f39c12 75% 100%);
+      }
+
+      /* Double-position — two colors, sharp checkerboard-like split */
+      .conicGradient10 {
+        background: conic-gradient(#222 0% 50%, #eee 50% 100%);
+      }
+
+      /* Stops in turns instead of degrees */
+      .conicGradient11 {
+        background: conic-gradient(red 0turn, yellow 0.25turn, green 0.5turn, blue 0.75turn, red 1turn);
+      }
+
+      /* Stops mixing deg and % */
+      .conicGradient12 {
+        background: conic-gradient(#f06 0deg, #f06 90deg, #aef 90deg, #aef 180deg, #f39c12 50%, #9b59b6 100%);
+      }
+
+      /* from + at + double-position */
+      .conicGradient13 {
+        background: conic-gradient(from 30deg at 70% 30%, #e74c3c 0% 33%, #3498db 33% 66%, #2ecc71 66% 100%);
+      }
+
+      /* oklch color stops */
+      .conicGradient14 {
+        background: conic-gradient(oklch(62% 0.25 29), oklch(72% 0.2 145), oklch(65% 0.22 260), oklch(62% 0.25 29));
+      }
+
+      /* background-size + background-repeat: tile the gradient */
+      .conicGradient15 {
+        background: conic-gradient(#e74c3c 0% 25%, #fff 25% 50%, #e74c3c 50% 75%, #fff 75% 100%);
+        background-size: 50px 50px;
+      }
+
+      /* background-position off-center */
+      .conicGradient16 {
+        background: conic-gradient(from 0deg at 80% 20%, #f39c12, #9b59b6, #f39c12);
+      }
+
+      /* Stacked background layers: conic on top of a flat color */
+      .conicGradient17 {
+        background: conic-gradient(rgba(255, 255, 255, 0.6) 0% 25%, transparent 25%), #3498db;
+      }
+
+      /* Many stops — smooth color wheel (12 sectors) */
+      .conicGradient18 {
+        background: conic-gradient(
+          hsl(0, 100%, 50%),
+          hsl(30, 100%, 50%),
+          hsl(60, 100%, 50%),
+          hsl(90, 100%, 50%),
+          hsl(120, 100%, 50%),
+          hsl(150, 100%, 50%),
+          hsl(180, 100%, 50%),
+          hsl(210, 100%, 50%),
+          hsl(240, 100%, 50%),
+          hsl(270, 100%, 50%),
+          hsl(300, 100%, 50%),
+          hsl(330, 100%, 50%),
+          hsl(360, 100%, 50%)
+        );
+      }
     </style>
   </head>
   <body>
@@ -94,6 +162,25 @@
       <div class="conicGradient6">&nbsp;</div>
       <div class="conicGradient7">&nbsp;</div>
       <div class="conicGradient8">&nbsp;</div>
+    </div>
+    <div class="small">
+      <h3>double-position hard stops</h3>
+      <div class="conicGradient9">&nbsp;</div>
+      <div class="conicGradient10">&nbsp;</div>
+    </div>
+    <div class="small">
+      <h3>turns, mixed units, from+at+double-pos, oklch</h3>
+      <div class="conicGradient11">&nbsp;</div>
+      <div class="conicGradient12">&nbsp;</div>
+      <div class="conicGradient13">&nbsp;</div>
+      <div class="conicGradient14">&nbsp;</div>
+    </div>
+    <div class="small">
+      <h3>background-size tiling, off-center, stacked layers, smooth wheel</h3>
+      <div class="conicGradient15">&nbsp;</div>
+      <div class="conicGradient16">&nbsp;</div>
+      <div class="conicGradient17">&nbsp;</div>
+      <div class="conicGradient18">&nbsp;</div>
     </div>
   </body>
 </html>

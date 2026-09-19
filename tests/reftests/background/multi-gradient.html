@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Background multiple gradient layers tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      html {
+        background-color: red;
+      }
+      .small div {
+        width: 100px;
+        height: 100px;
+        float: left;
+        margin: 10px;
+        border: 1px solid #000;
+      }
+      .small {
+        clear: both;
+      }
+      div {
+        display: block;
+      }
+
+      /* conic gradient with a transparent wedge over a solid color (shorthand).
+         The 0-25% wedge is semi-transparent white; the rest lets the blue show. */
+      .multi1 {
+        background: conic-gradient(rgba(255, 255, 255, 0.6) 0% 25%, transparent 25%), #3498db;
+      }
+
+      /* Two stacked conic gradients: an opaque red wedge over a full blue conic. */
+      .multi2 {
+        background: conic-gradient(red 0% 25%, transparent 25%), conic-gradient(blue 0% 100%);
+      }
+
+      /* Radial gradient over a conic gradient. */
+      .multi3 {
+        background:
+          radial-gradient(circle 25px at 50% 50%, lime 0% 40%, transparent 100%),
+          conic-gradient(#e74c3c 0% 50%, #3498db 50% 100%);
+      }
+
+      /* Linear gradient with a hard stop over a solid color (shorthand). */
+      .multi4 {
+        background: linear-gradient(to right, rgba(255, 0, 0, 0.5) 0% 50%, transparent 50%), #00ff00;
+      }
+
+      /* repeating-conic-gradient over a solid white background. */
+      .multi5 {
+        background: repeating-conic-gradient(rgba(0, 0, 0, 0.5) 0deg 30deg, transparent 30deg 60deg), #fff;
+      }
+
+      /* Three stacked layers: conic wedge + (empty) linear + solid color. */
+      .multi6 {
+        background:
+          conic-gradient(rgba(255, 255, 0, 0.8) 0% 20%, transparent 20%),
+          linear-gradient(transparent 0% 100%),
+          #333;
+      }
+
+      /* Linear over radial over solid. */
+      .multi7 {
+        background:
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0% 50%, transparent 50%),
+          radial-gradient(circle at 50% 50%, #f39c12 0% 40%, transparent 60%),
+          #2ecc71;
+      }
+
+      /* conic + solid using explicit background-image / background-color. */
+      .multi8 {
+        background-image: conic-gradient(rgba(255, 255, 255, 0.6) 0% 25%, transparent 25%);
+        background-color: #9b59b6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="small">
+      <div class="multi1">&nbsp;</div>
+      <div class="multi2">&nbsp;</div>
+      <div class="multi3">&nbsp;</div>
+      <div class="multi4">&nbsp;</div>
+      <div class="multi5">&nbsp;</div>
+      <div class="multi6">&nbsp;</div>
+      <div class="multi7">&nbsp;</div>
+      <div class="multi8">&nbsp;</div>
+    </div>
+  </body>
+</html>
