@@ -1,7 +1,9 @@
+import { Context } from '../../../core/context';
 import { CSSValue, isIdentToken, parseFunctionArgs } from '../../syntax/parser';
 import { TokenType } from '../../syntax/tokenizer';
-import { isAngle, angle as angleType } from '../angle';
+import { angle as angleType, isAngle } from '../angle';
 import { CSSConicGradientImage, CSSImageType, UnprocessedGradientColorStop } from '../image';
+import { isLength } from '../length';
 import {
     FIFTY_PERCENT,
     HUNDRED_PERCENT,
@@ -9,9 +11,7 @@ import {
     LengthPercentage,
     ZERO_LENGTH,
 } from '../length-percentage';
-import { isLength } from '../length';
-import { parseColorStop } from './gradient';
-import { Context } from '../../../core/context';
+import { parseColorStops } from './gradient';
 
 export const conicGradient = (context: Context, tokens: CSSValue[]): CSSConicGradientImage => {
     let startAngle = 0;
@@ -57,13 +57,13 @@ export const conicGradient = (context: Context, tokens: CSSValue[]): CSSConicGra
                     }
                 } else {
                     // No recognised keyword — treat whole first arg as a color stop
-                    stops.push(parseColorStop(context, arg));
+                    stops.push(...parseColorStops(context, arg));
                     return;
                 }
             }
             return;
         }
-        stops.push(parseColorStop(context, arg));
+        stops.push(...parseColorStops(context, arg));
     });
 
     return { startAngle, stops, position, type: CSSImageType.CONIC_GRADIENT };

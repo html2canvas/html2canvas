@@ -18,6 +18,35 @@ export const parseColorStop = (context: Context, args: CSSValue[]): UnprocessedG
     return stop && isLengthPercentage(stop) ? { color, stop } : { color, stop: null };
 };
 
+/**
+ * Parses a color stop argument that may carry one *or two* position hints
+ * (the "double-position" shorthand defined in CSS Images Level 4).
+ *
+ *   #ccc 0% 25%   →  [{ color: #ccc, stop: 0% }, { color: #ccc, stop: 25% }]
+ *   #fff 25%      →  [{ color: #fff, stop: 25% }]
+ *   red           →  [{ color: red,  stop: null }]
+ *
+ * This is the spec-compliant form needed to render hard-stop patterns such as
+ *   repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%)
+ * which is the standard CSS checkerboard pattern.
+ */
+export const parseColorStops = (context: Context, args: CSSValue[]): UnprocessedGradientColorStop[] => {
+    const color = colorType.parse(context, args[0]);
+    const stop1 = args[1];
+    const stop2 = args[2];
+    if (stop1 && isLengthPercentage(stop1)) {
+        if (stop2 && isLengthPercentage(stop2)) {
+            // Double-position: expand into two stops with the same color.
+            return [
+                { color, stop: stop1 },
+                { color, stop: stop2 },
+            ];
+        }
+        return [{ color, stop: stop1 }];
+    }
+    return [{ color, stop: null }];
+};
+
 export const processColorStops = (stops: UnprocessedGradientColorStop[], lineLength: number): GradientColorStop[] => {
     // Work on a shallow copy to avoid mutating the original stop objects
     const stops_ = stops.map(s => ({ ...s }));
