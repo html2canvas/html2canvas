@@ -12,6 +12,7 @@ import { calculateGradientDirection, calculateRadius, processColorStops } from '
 import {
     CSSImageType,
     CSSURLImage,
+    GradientColorStop,
     ICSSImage,
     isConicGradient,
     isLinearGradient,
@@ -52,12 +53,146 @@ import {
 import { createFontStyle, drawTextWithLetterSpacing } from './canvas-text-renderer';
 
 /**
- * Builds a stable cache key fragment from processed gradient stops.
- * Colours are packed numbers and stops are normalised numbers, so a simple
- * join uniquely identifies the gradient's appearance.
+ * Stable cache key fragment from processed gradient stops.
  */
 const gradientStopsKey = (stops: ReadonlyArray<{ color: number; stop: number }>): string =>
     stops.map(s => `${s.color}@${s.stop}`).join(',');
+
+// Colours are packed as 0xRRGGBBAA (see css/types/color.ts).
+const packedAlpha = (color: number): number => color & 0xff;
+const packedRgb = (color: number): number => color & 0xffffff00;
+
+/**
+ * Fixes the "transparent goes through black" artefact.
+ *
+ * The CSS keyword `transparent` is `rgba(0,0,0,0)`. Canvas gradients interpolate
+ * colour channels in non-premultiplied space, so a stop from an opaque colour to
+ * `transparent` fades its RGB towards black while the alpha drops — producing a
+ * dark halo instead of a clean fade-out.
+ *
+ * Per the CSS spec, interpolation happens in premultiplied space, which is
+ * equivalent to giving a fully-transparent stop the RGB of its opaque neighbour.
+ * We rewrite every fully-transparent stop (alpha === 0) to carry the RGB of the
+ * nearest non-transparent stop (previous first, otherwise next), keeping alpha 0.
+ */
+const fixTransparentStops = (stops: GradientColorStop[]): GradientColorStop[] => {
+    if (stops.length < 2) return stops;
+    const result = stops.map(s => ({ ...s }));
+
+    for (let i = 0; i < result.length; i++) {
+        if (packedAlpha(result[i].color) !== 0) continue;
+
+        // Look for the nearest neighbour with a non-zero alpha to borrow its hue.
+        let donor = -1;
+        for (let j = i - 1; j >= 0; j--) {
+            if (packedAlpha(result[j].color) !== 0) {
+                donor = j;
+                break;
+            }
+        }
+        if (donor === -1) {
+            for (let j = i + 1; j < result.length; j++) {
+                if (packedAlpha(result[j].color) !== 0) {
+                    donor = j;
+                    break;
+                }
+            }
+        }
+        if (donor !== -1) {
+            // Keep alpha 0, adopt the donor's RGB (packed value with alpha byte cleared).
+            result[i].color = packedRgb(result[donor].color) >>> 0;
+        }
+    }
+    return result;
+};
+
+/**
+ * Prepares stops for the Canvas gradient API.
+ *
+ * The only transformation needed is the transparency fix: two stops at the same
+ * position (hard stops) are handled natively by the browser's gradient engine,
+ * so no epsilon nudging is required — and doing so would paint a thin sliver of
+ * the wrong colour at every hard-stop boundary.
+ */
+const prepareStops = (stops: GradientColorStop[]): GradientColorStop[] => fixTransparentStops(stops);
+
+/**
+ * Expands the one-tile stop list of a `repeating-conic-gradient` /
+ * `repeating-*-gradient` (already normalised to [0,1] by processColorStops)
+ * into a full [0,1] list by repeating the tile forwards and backwards.
+ *
+ * The Canvas gradient APIs don't repeat on their own, so we materialise every
+ * repetition. The result is sorted and clamped to [0,1] and always covers both
+ * endpoints, guaranteeing strictly usable (monotonic) stops for addColorStop.
+ */
+const tileRepeatingStops = (processedStops: GradientColorStop[]): GradientColorStop[] => {
+    const tileStart = processedStops[0].stop;
+    const tileEnd = processedStops[processedStops.length - 1].stop;
+    const tileSize = tileEnd - tileStart;
+
+    // Degenerate tile (all stops at one position): nothing to repeat.
+    if (tileSize <= 0) {
+        return processedStops;
+    }
+
+    // Positions of each stop *relative to the tile origin*, in [0, tileSize].
+    // Using relative positions keeps the per-tile stop order intact and avoids
+    // floating-point drift between "end of tile k" and "start of tile k+1"
+    // (which are the same coordinate and must not be reordered).
+    const rel = processedStops.map(s => ({ color: s.color, offset: s.stop - tileStart }));
+
+    const MAX_TILES = 4096;
+    // First tile index whose content can reach >= 0, and last that can reach <= 1.
+    const firstTile = Math.max(-MAX_TILES, Math.floor((0 - tileEnd) / tileSize) - 1);
+    const lastTile = Math.min(MAX_TILES, Math.ceil((1 - tileStart) / tileSize) + 1);
+
+    // Build strictly in ascending tile order so shared boundaries keep the
+    // correct "previous tile end, then next tile start" ordering.
+    // We keep every stop whose position lands inside [0,1] (inclusive of the
+    // exact endpoints) plus the first stop just outside each edge, so the
+    // interpolation entering 0 and leaving 1 uses the real neighbouring colour.
+    const EPS = 1e-9;
+    const raw: GradientColorStop[] = [];
+    for (let k = firstTile; k <= lastTile; k++) {
+        const base = tileStart + k * tileSize;
+        for (const s of rel) {
+            const pos = base + s.offset;
+            raw.push({ color: s.color, stop: pos });
+        }
+    }
+
+    // Interpolates the repeating pattern at an out-of-range / boundary position
+    // by finding the segment [prev, next] in `raw` that surrounds `target`.
+    const sampleAt = (target: number): GradientColorStop['color'] => {
+        for (let i = 0; i < raw.length - 1; i++) {
+            const a = raw[i];
+            const b = raw[i + 1];
+            if (target >= a.stop - EPS && target <= b.stop + EPS) {
+                if (b.stop - a.stop < EPS) return b.color; // hard stop
+                // Nearest-ish: for endpoints we only need a sensible colour; the
+                // real gradient stops around it carry the interpolation. Pick the
+                // stop whose position is closest to target.
+                return target - a.stop <= b.stop - target ? a.color : b.color;
+            }
+        }
+        return raw[raw.length - 1].color;
+    };
+
+    // Collect the stops strictly inside (0,1)…
+    const inside = raw.filter(s => s.stop > EPS && s.stop < 1 - EPS);
+
+    // …and build the final list, ensuring 0 and 1 are present exactly once.
+    // At each endpoint, reuse a real stop that sits on the boundary if there is
+    // one (preserving hard-stop pairs); otherwise synthesise the interpolated
+    // colour so the pattern continues seamlessly across the edge.
+    const atStart = raw.filter(s => Math.abs(s.stop) < EPS).map(s => ({ color: s.color, stop: 0 }));
+    const atEnd = raw.filter(s => Math.abs(s.stop - 1) < EPS).map(s => ({ color: s.color, stop: 1 }));
+
+    const head: GradientColorStop[] = atStart.length ? atStart : [{ color: sampleAt(0), stop: 0 }];
+    const tail: GradientColorStop[] = atEnd.length ? atEnd : [{ color: sampleAt(1), stop: 1 }];
+
+    return [...head, ...inside, ...tail];
+};
 
 // ---------------------------------------------------------------------------
 // Inline fragment bounds (for box-decoration-break)
@@ -222,6 +357,28 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             state.ctx.globalCompositeOperation = blendMode;
         }
 
+        await renderSingleBackgroundImageLayer(state, container, backgroundImage, index);
+
+        index--;
+        if (blendMode !== 'source-over') {
+            state.ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Renders a single background-image layer (one gradient or url) at the given
+// layer index. Shared by renderBackgroundImage (single clip) and
+// renderBackgroundImagePerLayer (multiple clips), so every gradient type is
+// handled identically regardless of the clipping path.
+// ---------------------------------------------------------------------------
+async function renderSingleBackgroundImageLayer(
+    state: CanvasRenderState,
+    container: ElementContainer,
+    backgroundImage: ICSSImage,
+    index: number,
+): Promise<void> {
+    {
         if (backgroundImage.type === CSSImageType.URL) {
             let image;
             const url = (backgroundImage as CSSURLImage).url;
@@ -258,7 +415,9 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
                 const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
                     const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
-                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
+                    prepareStops(stops).forEach(colorStop =>
+                        gradient.addColorStop(colorStop.stop, asString(colorStop.color)),
+                    );
                     gCtx.fillStyle = gradient;
                     gCtx.fillRect(0, 0, w, h);
                 });
@@ -322,7 +481,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 const key = `rlin|${x0},${y0},${x1},${y1}|${gradientStopsKey(finalStops)}|${width}x${height}`;
                 const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
                     const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
-                    finalStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+                    prepareStops(finalStops).forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
                     gCtx.fillStyle = gradient;
                     gCtx.fillRect(0, 0, w, h);
                 });
@@ -344,7 +503,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
             if (rx > 0 && ry > 0) {
                 const radialGradient = state.ctx.createRadialGradient(left + x, top + y, 0, left + x, top + y, rx);
 
-                processColorStops(backgroundImage.stops, rx * 2).forEach(colorStop =>
+                prepareStops(processColorStops(backgroundImage.stops, rx * 2)).forEach(colorStop =>
                     radialGradient.addColorStop(colorStop.stop, asString(colorStop.color)),
                 );
 
@@ -425,7 +584,7 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                 }
 
                 const radialGradient = state.ctx.createRadialGradient(cx, cy, 0, cx, cy, drawRadius);
-                allStops.forEach(s => radialGradient.addColorStop(s.stop, asString(s.color)));
+                prepareStops(allStops).forEach(s => radialGradient.addColorStop(s.stop, asString(s.color)));
 
                 canvasPath(state, path);
                 state.ctx.fillStyle = radialGradient;
@@ -455,19 +614,32 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     [null, null, null],
                     state.context.windowBounds,
                 );
-                const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                const cx = left + getAbsoluteValue(position[0], width);
-                const cy = top + getAbsoluteValue(position[position.length - 1], height);
 
-                // CSS conic starts at top (12 o'clock); Canvas starts at right (3 o'clock). Subtract π/2.
-                const conicGrad = state.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
-                processColorStops(backgroundImage.stops, 360).forEach(colorStop =>
-                    conicGrad.addColorStop(colorStop.stop, asString(colorStop.color)),
-                );
+                if (width > 0 && height > 0) {
+                    const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                    // Centre relative to the tile (background-size box), not to the page.
+                    const tileCx = getAbsoluteValue(position[0], width);
+                    const tileCy = getAbsoluteValue(position[position.length - 1], height);
 
-                canvasPath(state, path);
-                state.ctx.fillStyle = conicGrad;
-                state.ctx.fill();
+                    // Render the gradient into an offscreen canvas at the tile size so that
+                    // background-size and background-repeat are handled correctly via createPattern.
+                    const key = `conic|${backgroundImage.startAngle}|${tileCx},${tileCy}|${gradientStopsKey(processColorStops(backgroundImage.stops, 360))}|${width}x${height}`;
+                    const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                        // CSS conic starts at top (12 o'clock); Canvas starts at right (3 o'clock). Subtract π/2.
+                        const conicGrad = gCtx.createConicGradient(
+                            backgroundImage.startAngle - Math.PI / 2,
+                            tileCx,
+                            tileCy,
+                        );
+                        prepareStops(processColorStops(backgroundImage.stops, 360)).forEach(colorStop =>
+                            conicGrad.addColorStop(colorStop.stop, asString(colorStop.color)),
+                        );
+                        gCtx.fillStyle = conicGrad;
+                        gCtx.fillRect(0, 0, w, h);
+                    });
+                    const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
+                    renderRepeat(state, path, pattern, left, top);
+                }
             } else {
                 state.context.logger.error('conic-gradient is not supported in this browser');
             }
@@ -482,67 +654,32 @@ export async function renderBackgroundImage(state: CanvasRenderState, container:
                     [null, null, null],
                     state.context.windowBounds,
                 );
-                const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                const cx = left + getAbsoluteValue(position[0], width);
-                const cy = top + getAbsoluteValue(position[position.length - 1], height);
 
-                const processedStops = processColorStops(backgroundImage.stops, 360);
-                const tileStart = processedStops[0].stop;
-                const tileEnd = processedStops[processedStops.length - 1].stop;
-                const tileSize = tileEnd - tileStart;
+                if (width > 0 && height > 0) {
+                    const position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                    const tileCx = getAbsoluteValue(position[0], width);
+                    const tileCy = getAbsoluteValue(position[position.length - 1], height);
 
-                const conicGrad = state.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
-                if (tileSize > 0) {
-                    const MAX_ITER = 512;
-                    const allStops: Array<{ stop: number; color: (typeof processedStops)[0]['color'] }> = [];
+                    const processedStops = processColorStops(backgroundImage.stops, 360);
+                    const allStops = tileRepeatingStops(processedStops);
 
-                    for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
-                        const offset = iter * tileSize;
-                        processedStops.forEach(s => {
-                            allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color });
-                        });
-                        if (tileStart - offset <= 0) break;
-                    }
-                    processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
-                    for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
-                        const offset = iter * tileSize;
-                        processedStops.forEach(s => {
-                            allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color });
-                        });
-                        const tilePos = 1 - processedStops[0].stop - offset;
-                        if (tilePos >= 0 && tilePos <= tileSize) {
-                            for (let si = processedStops.length - 1; si >= 0; si--) {
-                                if (processedStops[si].stop + offset <= 1) {
-                                    allStops.push({ stop: 1, color: processedStops[si].color });
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (allStops[0].stop > 0) {
-                        allStops.unshift({ stop: 0, color: allStops[0].color });
-                    }
-                    if (allStops[allStops.length - 1].stop < 1) {
-                        allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
-                    }
-
-                    allStops.forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
-                } else {
-                    processedStops.forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
+                    const key = `rconic|${backgroundImage.startAngle}|${tileCx},${tileCy}|${gradientStopsKey(allStops)}|${width}x${height}`;
+                    const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
+                        const conicGrad = gCtx.createConicGradient(
+                            backgroundImage.startAngle - Math.PI / 2,
+                            tileCx,
+                            tileCy,
+                        );
+                        prepareStops(allStops).forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
+                        gCtx.fillStyle = conicGrad;
+                        gCtx.fillRect(0, 0, w, h);
+                    });
+                    const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
+                    renderRepeat(state, path, pattern, left, top);
                 }
-
-                canvasPath(state, path);
-                state.ctx.fillStyle = conicGrad;
-                state.ctx.fill();
             } else {
                 state.context.logger.error('repeating-conic-gradient is not supported in this browser');
             }
-        }
-
-        index--;
-        if (blendMode !== 'source-over') {
-            state.ctx.globalCompositeOperation = 'source-over';
         }
     }
 }
@@ -571,52 +708,9 @@ async function renderBackgroundImagePerLayer(
             state.ctx.globalCompositeOperation = blendMode;
         }
 
-        if (backgroundImage.type === CSSImageType.URL) {
-            let image;
-            const url = (backgroundImage as CSSURLImage).url;
-            try {
-                image = await state.context.cache.match(url);
-            } catch (e) {
-                state.context.error(`Error loading background-image ${url}`, e);
-            }
-
-            if (image && image.width > 0 && image.height > 0) {
-                const [path, x, y, width, height] = calculateBackgroundRendering(
-                    container,
-                    index,
-                    [image.width, image.height, image.width / image.height],
-                    state.context.windowBounds,
-                );
-                const pattern = state.ctx.createPattern(
-                    resizeImage(state, image, width, height),
-                    'repeat',
-                ) as CanvasPattern;
-                renderRepeat(state, path, pattern, x, y);
-            }
-        } else if (isLinearGradient(backgroundImage)) {
-            const [path, x, y, width, height] = calculateBackgroundRendering(
-                container,
-                index,
-                [null, null, null],
-                state.context.windowBounds,
-            );
-            const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(backgroundImage.angle, width, height);
-            const stops = processColorStops(backgroundImage.stops, lineLength || 1);
-
-            if (width > 0 && height > 0) {
-                const key = `lin|${x0},${y0},${x1},${y1}|${gradientStopsKey(stops)}|${width}x${height}`;
-                const canvas = getLinearGradientCanvas(state, key, width, height, (gCtx, w, h) => {
-                    const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
-                    stops.forEach(colorStop => gradient.addColorStop(colorStop.stop, asString(colorStop.color)));
-                    gCtx.fillStyle = gradient;
-                    gCtx.fillRect(0, 0, w, h);
-                });
-                const pattern = state.ctx.createPattern(canvas, 'repeat') as CanvasPattern;
-                renderRepeat(state, path, pattern, x, y);
-            }
-        }
-        // For simplicity, other gradient types fall through to renderBackgroundImage
-        // TODO: handle all gradient types per-layer if needed
+        // Delegate to the shared single-layer renderer so every gradient type
+        // (linear, radial, conic and their repeating variants) is supported.
+        await renderSingleBackgroundImageLayer(state, container, backgroundImage, index);
 
         if (blendMode !== 'source-over') {
             state.ctx.globalCompositeOperation = 'source-over';
@@ -1465,7 +1559,7 @@ async function _resolveBorderImageSource(
         if (isRepeatingLinearGradient(source)) {
             _applyRepeatingLinearStops(gradient, source.stops, lineLength || 1);
         } else {
-            processColorStops(source.stops, lineLength || 1).forEach(cs =>
+            prepareStops(processColorStops(source.stops, lineLength || 1)).forEach(cs =>
                 gradient.addColorStop(cs.stop, asString(cs.color)),
             );
         }
@@ -1479,7 +1573,9 @@ async function _resolveBorderImageSource(
         const [rx, ry] = calculateRadius(source, x, y, width, height);
         if (rx > 0 && ry > 0) {
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, rx);
-            processColorStops(source.stops, rx * 2).forEach(cs => gradient.addColorStop(cs.stop, asString(cs.color)));
+            prepareStops(processColorStops(source.stops, rx * 2)).forEach(cs =>
+                gradient.addColorStop(cs.stop, asString(cs.color)),
+            );
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
         }
@@ -1492,7 +1588,9 @@ async function _resolveBorderImageSource(
             const cx = getAbsoluteValue(position[0], width);
             const cy = getAbsoluteValue(position[position.length - 1], height);
             const conicGrad = ctx.createConicGradient(source.startAngle - Math.PI / 2, cx, cy);
-            processColorStops(source.stops, 360).forEach(cs => conicGrad.addColorStop(cs.stop, asString(cs.color)));
+            prepareStops(processColorStops(source.stops, 360)).forEach(cs =>
+                conicGrad.addColorStop(cs.stop, asString(cs.color)),
+            );
             ctx.fillStyle = conicGrad;
             ctx.fillRect(0, 0, width, height);
         }
