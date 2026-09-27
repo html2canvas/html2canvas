@@ -16,6 +16,16 @@ jobs:
             contents: write
         steps:
             - uses: actions/checkout@v4
+              with:
+                  # Full history AND all tags are required so that
+                  # @release-it/conventional-changelog can find the previous
+                  # tag and generate the correct vPREV...vNEW changelog range.
+                  # The default shallow clone (fetch-depth: 1) fetches no tags,
+                  # which makes every release recompute from an old fixed tag.
+                  fetch-depth: 0
+                  # Stay on the master branch (not a detached HEAD) so the
+                  # release commit and tag land on master and get pushed back.
+                  ref: master
             - uses: actions/setup-node@v4
               with:
                   node-version: 22
@@ -26,7 +36,10 @@ jobs:
                   git config user.name "CI"
                   git config user.email "zefling@ikilote.net"
             - name: Create release
-              run: npm run release -- --preset eslint --release-as ${{ github.event.inputs.version }}
+              # release-it uses the config from .release-it.json (preset
+              # "conventionalcommits"). Pass the increment type directly;
+              # release-it has no --release-as/--preset flags.
+              run: npm run release -- --increment ${{ github.event.inputs.version }} --ci
             - name: Print details
               run: |
                   cat package.json

@@ -15,7 +15,7 @@
       "default": "./dist/html2canvas.esm.js"
     }
   },
-  "version": "1.12.0",
+  "version": "1.13.0",
   "keywords": [
     "typescript",
     "html",
@@ -120,6 +120,8 @@
     "build:reftest-preview": "node -e \"const fs=require('fs');const f='www/src/results.json';if(!fs.existsSync(f))fs.writeFileSync(f,'{}');\" && webpack --config www/webpack.config.cjs",
     "release": "npm run build && release-it",
     "publish": "npm publish --access public",
+    "publish:npm": "npm run build && npm publish --access public --provenance",
+    "publish:dry": "npm run build && npm publish --access public --dry-run",
     "format": "prettier --write \"{src,www/src,tests,scripts}/**/*.ts\"",
     "lint": "eslint --max-warnings 0",
     "test": "npm run lint && npm run unittest && npm run karma",
