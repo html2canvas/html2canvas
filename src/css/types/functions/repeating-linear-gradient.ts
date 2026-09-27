@@ -3,7 +3,7 @@ import { CSSValue, parseFunctionArgs } from '../../syntax/parser';
 import { TokenType } from '../../syntax/tokenizer';
 import { angle as angleType, deg, isAngle, parseNamedSide } from '../angle';
 import { CSSImageType, CSSRepeatingLinearGradientImage, GradientCorner, UnprocessedGradientColorStop } from '../image';
-import { parseColorStop } from './gradient';
+import { parseColorStops } from './gradient';
 
 export const repeatingLinearGradient = (context: Context, tokens: CSSValue[]): CSSRepeatingLinearGradientImage => {
     let angle: number | GradientCorner = deg(180);
@@ -20,8 +20,8 @@ export const repeatingLinearGradient = (context: Context, tokens: CSSValue[]): C
                 return;
             }
         }
-        const colorStop = parseColorStop(context, arg);
-        stops.push(colorStop);
+        const colorStop = parseColorStops(context, arg);
+        stops.push(...colorStop);
     });
 
     return { angle, stops, type: CSSImageType.REPEATING_LINEAR_GRADIENT };

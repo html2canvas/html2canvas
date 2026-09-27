@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Details/Summary rendering tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        margin: 10px;
+        font-family: sans-serif;
+        font-size: 14px;
+      }
+      .label {
+        margin: 8px 0 4px;
+        color: #333;
+        font-size: 12px;
+      }
+      details {
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        padding: 4px 8px;
+        margin-bottom: 8px;
+        width: 300px;
+      }
+      summary {
+        font-weight: bold;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="label">1. details[open] - should show content</div>
+    <details open>
+      <summary>Open section</summary>
+      <p>This content should be visible because the details element has the open attribute.</p>
+    </details>
+
+    <div class="label">2. details (closed) - should hide content</div>
+    <details>
+      <summary>Closed section</summary>
+      <p>This content should NOT be visible because the details element is closed.</p>
+    </details>
+
+    <div class="label">3. details[open] with styled summary</div>
+    <details open style="background: #f0f0f0">
+      <summary style="color: #d32f2f">Red styled summary</summary>
+      <p>Content with a <strong>bold word</strong> and normal text.</p>
+    </details>
+
+    <div class="label">4. Multiple details, first open, second closed</div>
+    <details open>
+      <summary>First (open)</summary>
+      <p>Visible content of the first details.</p>
+    </details>
+    <details>
+      <summary>Second (closed)</summary>
+      <p>Hidden content of the second details.</p>
+    </details>
+
+    <div class="label">5. figure / figcaption</div>
+    <figure style="border: 1px solid #ccc; padding: 8px; margin: 0; width: 300px">
+      <div style="width: 100%; height: 60px; background: linear-gradient(to right, #4caf50, #2196f3)"></div>
+      <figcaption style="text-align: center; font-style: italic; margin-top: 4px">A gradient figure caption</figcaption>
+    </figure>
+  </body>
+</html>

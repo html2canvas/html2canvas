@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+    <head>
+        <title>text-underline-offset tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Roboto, sans-serif;
+                font-size: 20px;
+                line-height: 2.5;
+            }
+            .default {
+                text-decoration: underline;
+            }
+            .offset-2 {
+                text-decoration: underline;
+                text-underline-offset: 2px;
+            }
+            .offset-5 {
+                text-decoration: underline;
+                text-underline-offset: 5px;
+            }
+            .offset-8 {
+                text-decoration: underline;
+                text-underline-offset: 8px;
+            }
+            .offset-negative {
+                text-decoration: underline;
+                text-underline-offset: -2px;
+            }
+            .offset-wavy {
+                text-decoration: underline;
+                text-decoration-style: wavy;
+                text-decoration-color: red;
+                text-underline-offset: 4px;
+            }
+            .offset-thick {
+                text-decoration: underline;
+                text-decoration-thickness: 3px;
+                text-underline-offset: 6px;
+                text-decoration-color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="default">Default offset (auto)</div>
+        <div class="offset-2">Offset: 2px</div>
+        <div class="offset-5">Offset: 5px</div>
+        <div class="offset-8">Offset: 8px</div>
+        <div class="offset-negative">Offset: -2px (moves up)</div>
+        <div class="offset-wavy">Wavy + offset: 4px (red)</div>
+        <div class="offset-thick">Thick 3px + offset: 6px (green)</div>
+    </body>
+</html>

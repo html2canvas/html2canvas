@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+    <head>
+        <title>3D border styles: groove, ridge, inset, outset</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                background: #3a84c3;
+            }
+            div {
+                width: 120px;
+                height: 80px;
+                display: inline-block;
+                margin: 10px;
+                background: #6f428c;
+                border-width: 20px;
+            }
+
+            /* groove */
+            .groove1 {
+                border-style: groove;
+                border-color: #c0c0c0;
+            }
+            .groove2 {
+                border-style: groove;
+                border-color: #d38f2a;
+                border-width: 12px;
+            }
+
+            /* ridge */
+            .ridge1 {
+                border-style: ridge;
+                border-color: #c0c0c0;
+            }
+            .ridge2 {
+                border-style: ridge;
+                border-color: #4caf50;
+                border-width: 12px;
+            }
+
+            /* inset */
+            .inset1 {
+                border-style: inset;
+                border-color: #c0c0c0;
+            }
+            .inset2 {
+                border-style: inset;
+                border-color: #e05252;
+                border-width: 12px;
+            }
+
+            /* outset */
+            .outset1 {
+                border-style: outset;
+                border-color: #c0c0c0;
+            }
+            .outset2 {
+                border-style: outset;
+                border-color: #3f8fd0;
+                border-width: 12px;
+            }
+
+            /* thin (1px fallback to flat shade) */
+            .thin {
+                border-style: groove;
+                border-color: #c0c0c0;
+                border-width: 1px;
+            }
+
+            /* rounded corners + groove */
+            .rounded {
+                border-style: ridge;
+                border-color: #c0c0c0;
+                border-width: 16px;
+                border-radius: 20px;
+            }
+
+            /* mixed per-side widths with outset */
+            .mixed {
+                border-style: outset;
+                border-color: #c0c0c0;
+                border-top-width: 8px;
+                border-right-width: 16px;
+                border-bottom-width: 24px;
+                border-left-width: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="groove1">&nbsp;</div>
+        <div class="groove2">&nbsp;</div>
+        <div class="ridge1">&nbsp;</div>
+        <div class="ridge2">&nbsp;</div>
+        <div class="inset1">&nbsp;</div>
+        <div class="inset2">&nbsp;</div>
+        <div class="outset1">&nbsp;</div>
+        <div class="outset2">&nbsp;</div>
+        <div class="thin">&nbsp;</div>
+        <div class="rounded">&nbsp;</div>
+        <div class="mixed">&nbsp;</div>
+    </body>
+</html>

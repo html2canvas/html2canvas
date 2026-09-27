@@ -7,13 +7,11 @@ export const calculateObjectFitBounds = (
     naturalHeight: number,
     clientWidth: number,
     clientHeight: number,
+    objectPositionX = 0.5,
+    objectPositionY = 0.5,
 ): { src: Bounds; dest: Bounds } => {
     const naturalRatio = naturalWidth / naturalHeight;
     const clientRatio = clientWidth / clientHeight;
-
-    // 'object-position' is not currently supported, so use default value of 50% 50%.
-    const objectPositionX = 0.5;
-    const objectPositionY = 0.5;
 
     let srcX: number,
         srcY: number,

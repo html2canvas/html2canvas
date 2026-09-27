@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+    <head>
+        <title>object-position tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                font: 10px/1 Verdana, sans-serif;
+                background-color: blue;
+                color: white;
+            }
+
+            body {
+                margin: 1.5em;
+                border: 0.5em solid black;
+                padding: 0;
+                width: 52em;
+                background-color: white;
+            }
+
+            .wrap {
+                display: flex;
+                align-items: center;
+                padding: 4px 0;
+            }
+
+            .label {
+                color: red;
+                width: 120px;
+                flex-shrink: 0;
+                padding-left: 4px;
+            }
+
+            .img {
+                width: 100px;
+                height: 100px;
+                margin: 2px;
+                border: 1px solid #ccc;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- object-position with object-fit: contain -->
+        <div class="wrap" style="background-color: bisque">
+            <div class="label">contain default</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain" />
+            <img class="img" src="../../assets/small.png" style="object-fit: contain" />
+        </div>
+        <div class="wrap" style="background-color: bisque">
+            <div class="label">contain 0 0</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 0 0" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 0 0" />
+            <img class="img" src="../../assets/small.png" style="object-fit: contain; object-position: 0 0" />
+        </div>
+        <div class="wrap" style="background-color: bisque">
+            <div class="label">contain 100% 100%</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 100% 100%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 100% 100%" />
+            <img class="img" src="../../assets/small.png" style="object-fit: contain; object-position: 100% 100%" />
+        </div>
+        <div class="wrap" style="background-color: bisque">
+            <div class="label">contain 20px 10px</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 20px 10px" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 20px 10px" />
+            <img class="img" src="../../assets/small.png" style="object-fit: contain; object-position: 20px 10px" />
+        </div>
+
+        <!-- object-position with object-fit: cover -->
+        <div class="wrap" style="background-color: blueviolet">
+            <div class="label">cover default</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: cover" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: cover" />
+            <img class="img" src="../../assets/small.png" style="object-fit: cover" />
+        </div>
+        <div class="wrap" style="background-color: blueviolet">
+            <div class="label">cover 0 0</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: cover; object-position: 0 0" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: cover; object-position: 0 0" />
+            <img class="img" src="../../assets/small.png" style="object-fit: cover; object-position: 0 0" />
+        </div>
+        <div class="wrap" style="background-color: blueviolet">
+            <div class="label">cover 100% 100%</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: cover; object-position: 100% 100%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: cover; object-position: 100% 100%" />
+            <img class="img" src="../../assets/small.png" style="object-fit: cover; object-position: 100% 100%" />
+        </div>
+
+        <!-- object-position with object-fit: none -->
+        <div class="wrap" style="background-color: brown">
+            <div class="label">none default</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: none" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: none" />
+            <img class="img" src="../../assets/small.png" style="object-fit: none" />
+        </div>
+        <div class="wrap" style="background-color: brown">
+            <div class="label">none 0 0</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: none; object-position: 0 0" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: none; object-position: 0 0" />
+            <img class="img" src="../../assets/small.png" style="object-fit: none; object-position: 0 0" />
+        </div>
+        <div class="wrap" style="background-color: brown">
+            <div class="label">none 100% 100%</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: none; object-position: 100% 100%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: none; object-position: 100% 100%" />
+            <img class="img" src="../../assets/small.png" style="object-fit: none; object-position: 100% 100%" />
+        </div>
+
+        <!-- object-position with object-fit: scale-down -->
+        <div class="wrap" style="background-color: chartreuse">
+            <div class="label">scale-down default</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: scale-down" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: scale-down" />
+            <img class="img" src="../../assets/small.png" style="object-fit: scale-down" />
+        </div>
+        <div class="wrap" style="background-color: chartreuse">
+            <div class="label">scale-down 0 0</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: scale-down; object-position: 0 0" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: scale-down; object-position: 0 0" />
+            <img class="img" src="../../assets/small.png" style="object-fit: scale-down; object-position: 0 0" />
+        </div>
+
+        <!-- object-position with default object-fit (fill) — no visible effect -->
+        <div class="wrap" style="background-color: aqua">
+            <div class="label">fill (no effect)</div>
+            <img class="img" src="../../assets/long_height.png" style="object-position: 20px 20px" />
+            <img class="img" src="../../assets/long_width.png" style="object-position: 20px 20px" />
+            <img class="img" src="../../assets/small.png" style="object-position: 20px 20px" />
+        </div>
+
+        <!-- object-position with left/right/center keywords via percentage equivalents -->
+        <div class="wrap" style="background-color: coral">
+            <div class="label">contain left top</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 0% 0%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 0% 0%" />
+        </div>
+        <div class="wrap" style="background-color: coral">
+            <div class="label">contain right bottom</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 100% 100%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 100% 100%" />
+        </div>
+        <div class="wrap" style="background-color: coral">
+            <div class="label">contain center</div>
+            <img class="img" src="../../assets/long_height.png" style="object-fit: contain; object-position: 50% 50%" />
+            <img class="img" src="../../assets/long_width.png" style="object-fit: contain; object-position: 50% 50%" />
+        </div>
+    </body>
+</html>

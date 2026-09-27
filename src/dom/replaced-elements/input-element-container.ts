@@ -5,6 +5,7 @@ import { BACKGROUND_ORIGIN } from '../../css/property-descriptors/background-ori
 import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
 import { TokenType } from '../../css/syntax/tokenizer';
 import { LengthPercentageTuple } from '../../css/types/length-percentage';
+import { DATA_ATTR_PLACEHOLDER } from '../clone-attributes';
 import { ElementContainer } from '../element-container';
 
 const CHECKBOX_BORDER_RADIUS: LengthPercentageTuple = [
@@ -52,12 +53,19 @@ export class InputElementContainer extends ElementContainer {
     readonly min: number;
     readonly max: number;
     readonly valueAsNumber: number;
+    /** True when the displayed text is the placeholder, not user input. */
+    readonly isPlaceholder: boolean;
+    /** Serialised ::placeholder styles (JSON delta), or null if default. */
+    readonly placeholderStyles: Record<string, string> | null;
 
     constructor(context: Context, input: HTMLInputElement) {
         super(context, input);
         this.type = input.type.toLowerCase();
         this.checked = input.checked;
         this.value = getInputValue(input);
+        this.isPlaceholder = input.value.length === 0 && (input.placeholder || '').length > 0;
+        const phAttr = input.getAttribute(DATA_ATTR_PLACEHOLDER);
+        this.placeholderStyles = phAttr ? JSON.parse(phAttr) : null;
         this.min = parseFloat(input.min) || 0;
         this.max = parseFloat(input.max) || 100;
         this.valueAsNumber = isNaN(input.valueAsNumber) ? (this.min + this.max) / 2 : input.valueAsNumber;

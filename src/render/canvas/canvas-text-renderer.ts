@@ -1,0 +1,846 @@
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { TextBounds, segmentGraphemes } from '../../css/layout/text';
+import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
+import { DIRECTION } from '../../css/property-descriptors/direction';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
+import { RUBY_ALIGN } from '../../css/property-descriptors/ruby-align';
+import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
+import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
+import { TextShadow } from '../../css/property-descriptors/text-shadow';
+import { TEXT_UNDERLINE_POSITION } from '../../css/property-descriptors/text-underline-position';
+import { UNICODE_BIDI } from '../../css/property-descriptors/unicode-bidi';
+import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
+import { isDimensionToken } from '../../css/syntax/parser';
+import { asString, isTransparent } from '../../css/types/color';
+import { getNumber } from '../../css/types/length-percentage';
+import { TextContainer } from '../../dom/text-container';
+import { getBackgroundValueForIndex } from '../background';
+import { CanvasRenderState } from './canvas-render-state';
+
+// ---------------------------------------------------------------------------
+// Font style cache (per CSSParsedDeclaration instance)
+// ---------------------------------------------------------------------------
+
+// see https://github.com/niklasvh/html2canvas/pull/2645
+const iOSBrokenFonts = ['-apple-system', 'system-ui'];
+
+const fixIOSSystemFonts = (fontFamilies: string[]): string[] => {
+    return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)
+        ? fontFamilies.filter(fontFamily => iOSBrokenFonts.indexOf(fontFamily) === -1)
+        : fontFamilies;
+};
+
+const fontStyleCache = new WeakMap<CSSParsedDeclaration, string[]>();
+
+/**
+ * True when the element forces a directional glyph override (unicode-bidi:
+ * bidi-override / isolate-override), as produced by <bdo>. In that case the
+ * glyph order must follow the resolved `direction` regardless of the text's
+ * intrinsic bidi character types.
+ */
+function isBidiOverride(styles: CSSParsedDeclaration): boolean {
+    return styles.unicodeBidi === UNICODE_BIDI.BIDI_OVERRIDE || styles.unicodeBidi === UNICODE_BIDI.ISOLATE_OVERRIDE;
+}
+
+/**
+ * Align ruby annotation segments within their measured boxes.
+ *
+ * For `<rt>` (display: ruby-text) the DOM Range of the annotation text reports
+ * the full ruby-column width (matching the base), while the browser paints the
+ * shorter annotation text within that column according to `ruby-align`. Since
+ * the renderer draws at bounds.left with textAlign='left', we shift each segment
+ * so it lands where the browser places it:
+ *   - `start`: keep bounds.left (left edge of the column).
+ *   - everything else (`center` / `space-around` / `space-between`): centre the
+ *     text within the measured column box. `space-*` distribute glyphs, but that
+ *     layout is not exposed reliably via getClientRects, so we approximate with
+ *     centering, which matches the common default (`space-around`) visually.
+ * `ctx.font` must already be set to the annotation's font before calling this.
+ */
+function alignRubyText(ctx: CanvasRenderingContext2D, bounds: TextBounds[], align: RUBY_ALIGN): TextBounds[] {
+    if (align === RUBY_ALIGN.START) {
+        return bounds;
+    }
+    return bounds.map(tb => {
+        const textWidth = ctx.measureText(tb.text).width;
+        const slack = tb.bounds.width - textWidth;
+        // Only shift when the measured box is wider than the text (the ruby
+        // column case); never shift when the box is already tight.
+        if (slack <= 0.5) {
+            return tb;
+        }
+        const centeredLeft = tb.bounds.left + slack / 2;
+        return new TextBounds(tb.text, new Bounds(centeredLeft, tb.bounds.top, textWidth, tb.bounds.height));
+    });
+}
+
+/**
+ * Returns [fontString, fontFamily, fontSize] for use with ctx.font.
+ * Results are cached per CSSParsedDeclaration instance.
+ */
+export function createFontStyle(styles: CSSParsedDeclaration): string[] {
+    const cached = fontStyleCache.get(styles);
+    if (cached) {
+        return cached;
+    }
+    const fontVariant = styles.fontVariant.filter(variant => variant === 'normal' || variant === 'small-caps').join('');
+    const fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
+    const fontSize = isDimensionToken(styles.fontSize)
+        ? `${getNumber(styles.fontSize)}${styles.fontSize.unit}`
+        : `${getNumber(styles.fontSize)}px`;
+
+    const result = [
+        [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
+        fontFamily,
+        fontSize,
+    ];
+    fontStyleCache.set(styles, result);
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Text with letter-spacing
+// ---------------------------------------------------------------------------
+
+/**
+ * Draws a run of text at (x, y) applying `letterSpacing` (in px).
+ *
+ * When the native `ctx.letterSpacing` property is available (Chrome 94+,
+ * Firefox 115+, Safari 16.4+) the whole run is drawn with a single
+ * fill/strokeText call. Otherwise it falls back to drawing one grapheme at a
+ * time, advancing by the measured width plus the spacing. The `- 1` in the
+ * fallback matches html2canvas' historical per-character spacing compensation.
+ *
+ * The caller is responsible for baseline/alignment and for any rotation used
+ * by vertical writing modes; this helper only handles horizontal advance.
+ */
+export function drawTextWithLetterSpacing(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    letterSpacing: number,
+    useStroke = false,
+): void {
+    const draw = useStroke
+        ? (t: string, dx: number, dy: number) => ctx.strokeText(t, dx, dy)
+        : (t: string, dx: number, dy: number) => ctx.fillText(t, dx, dy);
+
+    if (letterSpacing === 0) {
+        draw(text, x, y);
+        return;
+    }
+
+    // TS lib types don't declare letterSpacing on CanvasRenderingContext2D yet,
+    // so read/write it through a typed view without narrowing `ctx` itself.
+    const spacingCtx = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+    if (typeof spacingCtx.letterSpacing === 'string') {
+        // Native path: one draw call for the whole run.
+        const previous = spacingCtx.letterSpacing;
+        spacingCtx.letterSpacing = `${letterSpacing}px`;
+        draw(text, x, y);
+        spacingCtx.letterSpacing = previous;
+        return;
+    }
+
+    // Fallback: draw each grapheme and advance manually.
+    const letters = segmentGraphemes(text);
+    letters.reduce((left, letter, index) => {
+        draw(letter, left, y);
+        const isLast = index === letters.length - 1;
+        return left + ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
+    }, x);
+}
+
+/**
+ * Draws a single text segment, handling vertical writing modes and letter-spacing.
+ */
+export function renderTextWithLetterSpacing(
+    state: CanvasRenderState,
+    text: TextBounds,
+    letterSpacing: number,
+    baseline: number,
+    writingMode: WRITING_MODE = WRITING_MODE.HORIZONTAL_TB,
+    useStroke = false,
+    reverseGraphemes = false,
+): void {
+    // unicode-bidi: bidi-override forces glyphs to be laid out in the direction's
+    // visual order. The canvas 2d bidi algorithm (ctx.direction) will not reverse
+    // a run of strong-LTR characters (e.g. latin) the way <bdo dir="rtl"> does, so
+    // when an override is in effect we reverse the grapheme order ourselves and
+    // draw the result as a plain run. Only correct for scripts that do not require
+    // contextual shaping (latin, digits); complex-shaping scripts are left as-is.
+    if (reverseGraphemes) {
+        const reversed = segmentGraphemes(text.text).reverse().join('');
+        text = new TextBounds(reversed, text.bounds);
+    }
+
+    const isVertical =
+        writingMode === WRITING_MODE.VERTICAL_RL ||
+        writingMode === WRITING_MODE.VERTICAL_LR ||
+        writingMode === WRITING_MODE.SIDEWAYS_RL ||
+        writingMode === WRITING_MODE.SIDEWAYS_LR;
+
+    const drawText = useStroke
+        ? (t: string, x: number, y: number) => state.ctx.strokeText(t, x, y)
+        : (t: string, x: number, y: number) => state.ctx.fillText(t, x, y);
+
+    if (isVertical) {
+        // For vertical writing modes the browser already positions the text bounds correctly.
+        // We rotate the canvas ±90° around the centre of the text bounds so that fillText
+        // draws along the right axis, then restore.
+        const isSidewaysLR = writingMode === WRITING_MODE.SIDEWAYS_LR;
+        // sideways-lr rotates -90°; all other vertical modes rotate +90°
+        const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+        const cx = text.bounds.left + text.bounds.width / 2;
+        const cy = text.bounds.top + text.bounds.height / 2;
+
+        state.ctx.save();
+        state.ctx.translate(cx, cy);
+        state.ctx.rotate(angle);
+        state.ctx.translate(-cx, -cy);
+
+        // After rotation the "visual" width and height swap, so we need to
+        // paint as if the text was horizontal with swapped bounds.
+        const rotatedBounds = new Bounds(
+            cx - text.bounds.height / 2,
+            cy - text.bounds.width / 2,
+            text.bounds.height,
+            text.bounds.width,
+        );
+        const rotatedText = new TextBounds(text.text, rotatedBounds);
+
+        if (letterSpacing === 0 && !state.isFirefox) {
+            state.ctx.textBaseline = 'ideographic';
+            drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
+        } else {
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = rotatedText.bounds.top + baseline;
+            drawTextWithLetterSpacing(
+                state.ctx,
+                rotatedText.text,
+                rotatedText.bounds.left,
+                drawY,
+                letterSpacing,
+                useStroke,
+            );
+        }
+
+        state.ctx.restore();
+    } else {
+        if (letterSpacing === 0 && !state.isFirefox) {
+            // Fixed an issue with characters moving up in non-Firefox.
+            // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
+            state.ctx.textBaseline = 'ideographic';
+            drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+        } else {
+            // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+            const drawY = text.bounds.top + baseline;
+            drawTextWithLetterSpacing(state.ctx, text.text, text.bounds.left, drawY, letterSpacing, useStroke);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Decoration lines
+// ---------------------------------------------------------------------------
+
+/**
+ * Draws a single text-decoration line segment using the given style.
+ * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
+ * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
+ */
+export function renderDecorationLine(
+    state: CanvasRenderState,
+    style: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    isVertical: boolean,
+    textDecorationLine: TEXT_DECORATION_LINE,
+    lineStart?: number,
+    _fontSizePx?: number,
+): void {
+    switch (style) {
+        case TEXT_DECORATION_STYLE.DOUBLE: {
+            // For double, `h` (or `w` in vertical) is the thickness of each individual line.
+            // Gap between the two lines = max(1, round(thickness / 2)).
+            if (isVertical) {
+                const lineW = Math.max(1, w);
+                const gap = Math.max(1, Math.round(w / 2));
+                state.ctx.fillRect(x, y, lineW, h);
+                if (textDecorationLine === TEXT_DECORATION_LINE.OVERLINE) {
+                    state.ctx.fillRect(x - lineW - gap, y, lineW, h);
+                } else {
+                    state.ctx.fillRect(x + lineW + gap, y, lineW, h);
+                }
+            } else {
+                const lineH = Math.max(1, h);
+                const gap = Math.max(1, Math.trunc(h / 2));
+                state.ctx.fillRect(x, y, w, lineH);
+                if (textDecorationLine === TEXT_DECORATION_LINE.OVERLINE) {
+                    state.ctx.fillRect(x, y - lineH - gap, w, lineH);
+                } else {
+                    state.ctx.fillRect(x, y + lineH + gap, w, lineH);
+                }
+            }
+            break;
+        }
+        case TEXT_DECORATION_STYLE.DOTTED: {
+            // Dots (squares) with diameter = thickness, spaced by one dot width.
+            const dotSize = isVertical ? w : h;
+            const length = isVertical ? h : w;
+            const step = dotSize * 2;
+            for (let pos = 0; pos < length; pos += step) {
+                if (isVertical) {
+                    state.ctx.fillRect(x, y + pos, w, Math.min(dotSize, length - pos));
+                } else {
+                    state.ctx.fillRect(x + pos, y, Math.min(dotSize, length - pos), h);
+                }
+            }
+            break;
+        }
+        case TEXT_DECORATION_STYLE.DASHED: {
+            // Dashes 3× the thickness long, with a gap equal to the dash length.
+            const thickness = isVertical ? w : h;
+            const dashLen = thickness * 3;
+            const length = isVertical ? h : w;
+            const step = dashLen * 2;
+            for (let pos = 0; pos < length; pos += step) {
+                if (isVertical) {
+                    state.ctx.fillRect(x, y + pos, w, Math.min(dashLen, length - pos));
+                } else {
+                    state.ctx.fillRect(x + pos, y, Math.min(dashLen, length - pos), h);
+                }
+            }
+            break;
+        }
+        case TEXT_DECORATION_STYLE.WAVY: {
+            // Wavy line using quadratic Bezier curves (one per half-wavelength).
+            // Quadratic curves are required (not cubic) so that the tangent at each
+            // midline crossing is horizontal, giving a smooth continuous wave when
+            // segments are chained.
+            //
+            // Sizing from Chromium's MakeWave() (thickness-based):
+            //   clamped         = max(1, thickness)
+            //   wavelength      = 1 + 2 * round(2 * clamped + 0.5)
+            //   amplitude       = 0.5 + round(3 * clamped + 0.5)   (= cpDist)
+            //
+            // Phase continuity across word/space segments is maintained by aligning
+            // the half-wave grid to `lineStart` (the absolute start of the decoration line).
+            const length = isVertical ? h : w;
+            const thickness2 = isVertical ? w : h;
+            const clamped = Math.max(1, thickness2);
+            const wavelength = 1 + 2 * Math.round(2 * clamped + 0.5);
+            const amplitude = Math.max(3, thickness2 * 1.5);
+            const halfWave = wavelength / 2;
+
+            state.ctx.save();
+            state.ctx.beginPath();
+
+            if (isVertical) {
+                const ref = lineStart ?? y;
+                const midX = x + w / 2;
+                // Align to half-wave grid from ref.
+                const phaseOffset = (((y - ref) % halfWave) + halfWave) % halfWave;
+                const halfWaveOrigin = y - phaseOffset;
+                // Count half-waves elapsed to determine initial direction.
+                const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                let direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+
+                state.ctx.moveTo(midX, y);
+                let pos = halfWaveOrigin;
+                while (pos < y + length) {
+                    const nextPos = pos + halfWave;
+                    const controlPos = (pos + nextPos) / 2;
+                    state.ctx.quadraticCurveTo(
+                        midX + amplitude * direction,
+                        controlPos,
+                        midX,
+                        Math.min(nextPos, y + length),
+                    );
+                    pos = nextPos;
+                    direction *= -1;
+                }
+            } else {
+                const ref = lineStart ?? x;
+                // midY is set so the top of the wave starts at y (top of the decoration band).
+                const midY = y + amplitude;
+                // Align to half-wave grid from ref.
+                const phaseOffset = (((x - ref) % halfWave) + halfWave) % halfWave;
+                const halfWaveOrigin = x - phaseOffset;
+                const halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                let direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+
+                state.ctx.moveTo(x, midY);
+                let pos = halfWaveOrigin;
+                while (pos < x + length) {
+                    const nextPos = pos + halfWave;
+                    const controlPos = (pos + nextPos) / 2;
+                    state.ctx.quadraticCurveTo(
+                        controlPos,
+                        midY + amplitude * direction,
+                        Math.min(nextPos, x + length),
+                        midY,
+                    );
+                    pos = nextPos;
+                    direction *= -1;
+                }
+            }
+
+            state.ctx.strokeStyle = state.ctx.fillStyle;
+            state.ctx.lineWidth = thickness2 + 1;
+            state.ctx.stroke();
+            state.ctx.restore();
+            break;
+        }
+        case TEXT_DECORATION_STYLE.SOLID:
+        default:
+            state.ctx.fillRect(x, y, w, h);
+            break;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Full text node rendering
+// ---------------------------------------------------------------------------
+
+export async function renderTextNode(
+    state: CanvasRenderState,
+    text: TextContainer,
+    styles: CSSParsedDeclaration,
+    firstLineStyles?: CSSParsedDeclaration,
+): Promise<void> {
+    const [font, fontFamily, fontSize] = createFontStyle(styles);
+    // Numeric font-size in px, used for WAVY decoration sizing.
+    const fontSizePx = getNumber(styles.fontSize);
+
+    // Identify the top coordinate of the first visual line so we can apply
+    // ::first-line styles selectively. We use a 1px tolerance to absorb
+    // sub-pixel differences between adjacent segments on the same line.
+    const FIRST_LINE_TOLERANCE = 1;
+    let firstLineTop: number | null = null;
+    if (firstLineStyles && text.textBounds.length > 0) {
+        firstLineTop = text.textBounds.reduce((min, tb) => Math.min(min, tb.bounds.top), Infinity);
+    }
+
+    state.ctx.font = font;
+    state.ctx.direction = styles.direction === DIRECTION.RTL ? 'rtl' : 'ltr';
+    state.ctx.textAlign = 'left';
+    state.ctx.textBaseline = 'alphabetic';
+
+    // Ruby text (both the annotation <rt>/ruby-text and the base directly under
+    // <ruby>/ruby-base) is positioned within its shared column by the browser per
+    // `ruby-align`. getClientRects() on the text node returns the full ruby-column
+    // box (as wide as the widest of base/annotation), not the tight text rect, so
+    // drawing at bounds.left with textAlign='left' would always left-align it.
+    // alignRubyText places the text per ruby-align — this also centers a short
+    // base under a wider annotation (and vice-versa).
+    const RUBY_TEXT_MASK = DISPLAY.RUBY_TEXT | DISPLAY.RUBY_BASE | DISPLAY.RUBY;
+    const renderTextBounds =
+        (styles.display & RUBY_TEXT_MASK) !== 0
+            ? alignRubyText(state.ctx, text.textBounds, styles.rubyAlign)
+            : text.textBounds;
+
+    const paintOrder = styles.paintOrder;
+    const wm = styles.writingMode;
+    const isVertical =
+        wm === WRITING_MODE.VERTICAL_RL ||
+        wm === WRITING_MODE.VERTICAL_LR ||
+        wm === WRITING_MODE.SIDEWAYS_RL ||
+        wm === WRITING_MODE.SIDEWAYS_LR;
+
+    const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
+
+    // Pre-compute per-segment line metadata used for decoration rendering.
+    //
+    // For horizontal text we group by bounds.top (rounded to 1px to absorb
+    // sub-pixel jitter); for vertical text we group by bounds.left.
+    //
+    // Instead of drawing one decoration rect per word/segment, we gather the
+    // full extent of each visual line so we can draw the decoration in a
+    // single call per line (covering all segments at once).
+    //
+    //   lineStartMap  – absolute start coordinate of the full decoration span
+    //                   (used by WAVY to keep phase continuous, and as origin
+    //                    for the merged single-draw optimisation)
+    //   lineEndMap    – absolute end coordinate of the full decoration span
+    //   isFirstInLine – true for the first segment on each visual line;
+    //                   decoration is drawn only here (one draw per line)
+    const lineStartMap = new Map<TextBounds, number>();
+    const lineEndMap = new Map<TextBounds, number>();
+    const isFirstInLine = new Set<TextBounds>();
+    if (styles.textDecorationLine.length) {
+        // Group bounds by line key, tracking min start / max end and the
+        // corresponding first/last segment on that line.
+        const lineMin = new Map<number, { val: number; tb: TextBounds }>();
+        const lineMax = new Map<number, { val: number; tb: TextBounds }>();
+        for (const tb of renderTextBounds) {
+            const lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
+            const start = isVertical ? tb.bounds.top : tb.bounds.left;
+            const end = isVertical ? tb.bounds.top + tb.bounds.height : tb.bounds.left + tb.bounds.width;
+            const minEntry = lineMin.get(lineKey);
+            if (minEntry === undefined || start < minEntry.val) {
+                lineMin.set(lineKey, { val: start, tb });
+            }
+            const maxEntry = lineMax.get(lineKey);
+            if (maxEntry === undefined || end > maxEntry.val) {
+                lineMax.set(lineKey, { val: end, tb });
+            }
+        }
+        // Mark only the first segment of each line; store start/end on it.
+        lineMin.forEach(({ val: startVal, tb: firstTb }) => {
+            isFirstInLine.add(firstTb);
+            lineStartMap.set(firstTb, startVal);
+        });
+        // Attach lineEnd to each line's first TextBounds.
+        lineMin.forEach(({ tb: firstTb }, lineKey) => {
+            lineEndMap.set(firstTb, lineMax.get(lineKey)!.val);
+        });
+    }
+
+    // -webkit-line-clamp: keep only the first N visual lines and mark where the
+    // trailing ellipsis must be drawn. Only applied to horizontal text (the
+    // property is meaningless for vertical writing modes). See computeLineClamp.
+    const clamp =
+        !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(renderTextBounds, styles.webkitLineClamp) : null;
+
+    renderTextBounds.forEach(textBound => {
+        // Skip segments on lines beyond the clamp limit.
+        if (clamp && !clamp.kept.has(textBound)) {
+            return;
+        }
+        // Determine whether this segment is on the first visual line.
+        // If so, use firstLineStyles (overriding color, font, etc.) for rendering.
+        const isOnFirstLine =
+            firstLineTop !== null &&
+            firstLineStyles !== undefined &&
+            Math.abs(textBound.bounds.top - firstLineTop) <= FIRST_LINE_TOLERANCE;
+        const activeStyles = isOnFirstLine ? firstLineStyles! : styles;
+        const activeFont = isOnFirstLine ? createFontStyle(activeStyles)[0] : font;
+        const activeBaseline = isOnFirstLine
+            ? state.fontMetrics.getMetrics(createFontStyle(activeStyles)[1], createFontStyle(activeStyles)[2]).baseline
+            : baseline;
+
+        paintOrder.forEach(paintOrderLayer => {
+            switch (paintOrderLayer) {
+                case PAINT_ORDER_LAYER.FILL:
+                    // When background-clip: text is active, the text fill is handled
+                    // by the background compositing — skip normal text rendering.
+                    if (getBackgroundValueForIndex(styles.backgroundClip, 0) === BACKGROUND_CLIP.TEXT) {
+                        break;
+                    }
+                    state.ctx.font = activeFont;
+                    state.ctx.fillStyle = asString(activeStyles.color);
+                    _renderTextFill(
+                        state,
+                        textBound,
+                        activeStyles,
+                        activeBaseline,
+                        wm,
+                        fontSizePx,
+                        isVertical,
+                        lineStartMap,
+                        lineEndMap,
+                        isFirstInLine,
+                    );
+                    // Restore the base font for subsequent segments.
+                    state.ctx.font = font;
+                    break;
+
+                case PAINT_ORDER_LAYER.STROKE:
+                    if (styles.webkitTextStrokeWidth && textBound.text.trim().length) {
+                        state.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
+                        state.ctx.lineWidth = styles.webkitTextStrokeWidth;
+                        state.ctx.lineJoin = state.isChrome ? 'miter' : 'round';
+                        renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, true);
+                    }
+                    state.ctx.strokeStyle = '';
+                    state.ctx.lineWidth = 0;
+                    state.ctx.lineJoin = 'miter';
+                    break;
+            }
+        });
+    });
+
+    // Draw the clamp ellipsis after the last kept line, unless the text fill is
+    // handled elsewhere (background-clip: text) or the colour is transparent.
+    if (
+        clamp &&
+        clamp.ellipsisAnchor &&
+        getBackgroundValueForIndex(styles.backgroundClip, 0) !== BACKGROUND_CLIP.TEXT &&
+        !isTransparent(styles.color)
+    ) {
+        const anchor = clamp.ellipsisAnchor;
+        state.ctx.font = font;
+        state.ctx.fillStyle = asString(styles.color);
+        state.ctx.textBaseline = 'alphabetic';
+        state.ctx.fillText(ELLIPSIS, anchor.bounds.left + anchor.bounds.width, anchor.bounds.top + baseline);
+    }
+}
+
+const ELLIPSIS = '\u2026';
+
+/**
+ * Computes which text segments survive a `-webkit-line-clamp: maxLines` limit.
+ *
+ * Segments are grouped into visual lines by their rounded top coordinate. The
+ * first `maxLines` distinct lines are kept; the rest are dropped. The rightmost
+ * segment of the last kept line is returned as the ellipsis anchor so the caller
+ * can draw a trailing "…" right after it.
+ *
+ * Returns null when the text already fits within `maxLines` (no clamping needed).
+ */
+export function computeLineClamp(
+    textBounds: TextBounds[],
+    maxLines: number,
+): { kept: Set<TextBounds>; ellipsisAnchor: TextBounds | null } | null {
+    // Distinct line tops in visual order.
+    const lineTops: number[] = [];
+    const seen = new Set<number>();
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!seen.has(key)) {
+            seen.add(key);
+            lineTops.push(key);
+        }
+    }
+
+    // Nothing to clamp if the content already fits.
+    if (lineTops.length <= maxLines) {
+        return null;
+    }
+
+    const keptTops = new Set(lineTops.slice(0, maxLines).map(t => t));
+    const lastKeptTop = lineTops[maxLines - 1];
+
+    const kept = new Set<TextBounds>();
+    let ellipsisAnchor: TextBounds | null = null;
+    for (const tb of textBounds) {
+        const key = Math.round(tb.bounds.top);
+        if (!keptTops.has(key)) {
+            continue;
+        }
+        kept.add(tb);
+        // Track the rightmost segment of the last kept line for the ellipsis.
+        if (
+            key === lastKeptTop &&
+            (ellipsisAnchor === null ||
+                tb.bounds.left + tb.bounds.width > ellipsisAnchor.bounds.left + ellipsisAnchor.bounds.width)
+        ) {
+            ellipsisAnchor = tb;
+        }
+    }
+
+    return { kept, ellipsisAnchor };
+}
+
+// ---------------------------------------------------------------------------
+// Internal helper for FILL paint order layer
+// ---------------------------------------------------------------------------
+
+function _renderTextFill(
+    state: CanvasRenderState,
+    textBound: TextBounds,
+    styles: CSSParsedDeclaration,
+    baseline: number,
+    wm: WRITING_MODE,
+    fontSizePx: number,
+    isVertical: boolean,
+    lineStartMap: Map<TextBounds, number>,
+    lineEndMap: Map<TextBounds, number>,
+    isFirstInLine: Set<TextBounds>,
+): void {
+    const textShadows: TextShadow = styles.textShadow;
+    // <bdo dir="rtl"> (bidi-override + RTL) lays glyphs right-to-left; reverse the
+    // grapheme order so a single fillText reproduces it. bidi-override with LTR
+    // keeps logical order, so no reversal is needed there.
+    const reverse = isBidiOverride(styles) && styles.direction === DIRECTION.RTL && !isVertical;
+
+    if (textShadows.length && textBound.text.trim().length) {
+        _renderTextShadows(state, textBound, styles, baseline, wm, textShadows);
+    } else if (!isTransparent(styles.color)) {
+        renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, false, reverse);
+    }
+
+    if (styles.textDecorationLine.length) {
+        _renderTextDecorations(
+            state,
+            textBound,
+            styles,
+            baseline,
+            wm,
+            isVertical,
+            fontSizePx,
+            lineStartMap,
+            lineEndMap,
+            isFirstInLine,
+        );
+    }
+}
+
+function _renderTextShadows(
+    state: CanvasRenderState,
+    textBound: TextBounds,
+    styles: CSSParsedDeclaration,
+    baseline: number,
+    wm: WRITING_MODE,
+    textShadows: TextShadow,
+): void {
+    const w = state.canvas.width;
+    const h = state.canvas.height;
+    const scale = state.options.scale;
+    const ox = state.options.x;
+    const oy = state.options.y;
+
+    textShadows
+        .slice(0)
+        .reverse()
+        .forEach(textShadow => {
+            const shadowCanvas = state.canvasPool.acquire(w, h);
+            const shadowCtx = shadowCanvas.getContext('2d') as CanvasRenderingContext2D;
+            shadowCtx.scale(scale, scale);
+            // Incorporate the shadow offset into the translate so the
+            // text is drawn at the correct position on the offscreen.
+            shadowCtx.translate(-ox + textShadow.offsetX.number, -oy + textShadow.offsetY.number);
+            shadowCtx.font = state.ctx.font;
+            shadowCtx.direction = state.ctx.direction;
+            shadowCtx.textAlign = state.ctx.textAlign;
+            shadowCtx.textBaseline = state.ctx.textBaseline;
+            shadowCtx.fillStyle = asString(textShadow.color);
+
+            const mainCtx = state.ctx;
+            state.ctx = shadowCtx;
+            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+            state.ctx = mainCtx;
+
+            if (textShadow.blur.number > 0) {
+                state.ctx.save();
+                // Apply blur via ctx.filter on the main canvas drawImage call.
+                state.ctx.filter = `blur(${textShadow.blur.number / 2}px)`;
+            }
+            state.ctx.drawImage(shadowCanvas, 0, 0, w, h, ox, oy, w / scale, h / scale);
+            if (textShadow.blur.number > 0) {
+                state.ctx.restore();
+            }
+
+            // Return the shadow canvas to the pool for reuse.
+            state.canvasPool.release(shadowCanvas);
+        });
+
+    // Draw the real text on top of all shadows.
+    // Skipped for transparent text — shadows are the only visual.
+    if (!isTransparent(styles.color)) {
+        state.ctx.save();
+        state.ctx.fillStyle = asString(styles.color);
+        renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+        state.ctx.restore();
+    }
+}
+
+function _renderTextDecorations(
+    state: CanvasRenderState,
+    textBound: TextBounds,
+    styles: CSSParsedDeclaration,
+    baseline: number,
+    wm: WRITING_MODE,
+    isVertical: boolean,
+    fontSizePx: number,
+    lineStartMap: Map<TextBounds, number>,
+    lineEndMap: Map<TextBounds, number>,
+    isFirstInLine: Set<TextBounds>,
+): void {
+    // Decoration is drawn once per visual line, using the full span from
+    // lineStart to lineEnd.  Skip all non-first segments — nothing to draw.
+    if (!isFirstInLine.has(textBound)) {
+        return;
+    }
+
+    state.ctx.fillStyle = asString(
+        isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor,
+    );
+    // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
+    const thickness = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
+    const underlineOffset = styles.textUnderlineOffset ? styles.textUnderlineOffset - 2 : 0;
+    const inset = styles.textDecorationInset;
+
+    // Full extent of the decoration span across all words on this line.
+    const lineStart = lineStartMap.get(textBound)!;
+    const lineEnd = lineEndMap.get(textBound)!;
+
+    styles.textDecorationLine.forEach(textDecorationLine => {
+        if (isVertical) {
+            const underlineOnLeft = wm === WRITING_MODE.VERTICAL_LR || wm === WRITING_MODE.VERTICAL_RL;
+            let lineX: number;
+            switch (textDecorationLine) {
+                case TEXT_DECORATION_LINE.UNDERLINE:
+                    lineX = underlineOnLeft
+                        ? textBound.bounds.left
+                        : textBound.bounds.left + textBound.bounds.width - thickness;
+                    break;
+                case TEXT_DECORATION_LINE.OVERLINE:
+                    lineX = underlineOnLeft
+                        ? textBound.bounds.left + textBound.bounds.width - thickness
+                        : textBound.bounds.left;
+                    break;
+                case TEXT_DECORATION_LINE.LINE_THROUGH:
+                default:
+                    lineX = textBound.bounds.left + textBound.bounds.width / 2 - thickness / 2;
+                    break;
+            }
+            // Draw the full vertical span in one call, applying insets at both ends.
+            const insetY = lineStart + inset.start;
+            const insetH = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
+            renderDecorationLine(
+                state,
+                styles.textDecorationStyle,
+                lineX,
+                insetY,
+                thickness,
+                insetH,
+                true,
+                textDecorationLine,
+                lineStart,
+                fontSizePx,
+            );
+        } else {
+            const baselineY = textBound.bounds.top + baseline;
+            let lineY: number;
+            switch (textDecorationLine) {
+                case TEXT_DECORATION_LINE.UNDERLINE:
+                    if (styles.textUnderlinePosition === TEXT_UNDERLINE_POSITION.UNDER) {
+                        lineY = textBound.bounds.top + textBound.bounds.height;
+                    } else {
+                        lineY = baselineY + 2;
+                    }
+                    lineY += underlineOffset;
+                    break;
+                case TEXT_DECORATION_LINE.OVERLINE:
+                    lineY = Math.round(textBound.bounds.top + (textBound.bounds.height - baseline) * 0.1);
+                    break;
+                case TEXT_DECORATION_LINE.LINE_THROUGH:
+                default:
+                    lineY = Math.round(baselineY - baseline * 0.4) + 2;
+                    break;
+            }
+            // Draw the full horizontal span in one call, applying insets at both ends.
+            const insetX = lineStart + inset.start;
+            const insetW = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
+            renderDecorationLine(
+                state,
+                styles.textDecorationStyle,
+                insetX,
+                lineY,
+                insetW,
+                thickness,
+                false,
+                textDecorationLine,
+                lineStart,
+                fontSizePx,
+            );
+        }
+    });
+}

@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <title>::marker pseudo-element tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        background: #fff;
+        margin: 20px;
+      }
+
+      .label {
+        display: block;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      section {
+        margin: 16px 0;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      /* red markers */
+      .red-marker li::marker {
+        color: red;
+      }
+
+      /* blue markers with different size */
+      .blue-marker li::marker {
+        color: blue;
+        font-size: 1.4em;
+      }
+
+      /* green markers */
+      .green-marker li::marker {
+        color: green;
+      }
+
+      /* mixed: each item different */
+      .mixed .item-a::marker {
+        color: red;
+      }
+      .mixed .item-b::marker {
+        color: blue;
+      }
+      .mixed .item-c::marker {
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Unordered list with red markers -->
+    <section>
+      <span class="label">ul — red ::marker</span>
+      <ul class="red-marker">
+        <li>Item one with red bullet</li>
+        <li>Item two with red bullet</li>
+        <li>Item three with red bullet</li>
+      </ul>
+    </section>
+
+    <!-- Ordered list with blue markers -->
+    <section>
+      <span class="label">ol — blue ::marker, font-size 1.4em</span>
+      <ol class="blue-marker">
+        <li>First item with blue number</li>
+        <li>Second item with blue number</li>
+        <li>Third item with blue number</li>
+      </ol>
+    </section>
+
+    <!-- Ordered list with green markers -->
+    <section>
+      <span class="label">ol — green ::marker</span>
+      <ol class="green-marker">
+        <li>Item A</li>
+        <li>Item B</li>
+        <li>Item C</li>
+      </ol>
+    </section>
+
+    <!-- Default list (no ::marker styling) -->
+    <section>
+      <span class="label">ul — default (no ::marker)</span>
+      <ul>
+        <li>Default bullet color</li>
+        <li>Should match text color</li>
+      </ul>
+    </section>
+
+    <!-- Mixed per-item markers -->
+    <section>
+      <span class="label">ol — mixed per-item ::marker colors</span>
+      <ol class="mixed">
+        <li class="item-a">Red marker</li>
+        <li class="item-b">Blue marker</li>
+        <li class="item-c">Green marker</li>
+      </ol>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,892 @@
+import { contains } from '../../core/bitwise';
+import { CSSParsedDeclaration } from '../../css';
+import { Bounds } from '../../css/layout/bounds';
+import { TextBounds, segmentGraphemes } from '../../css/layout/text';
+import { DISPLAY } from '../../css/property-descriptors/display';
+import { computeLineHeight } from '../../css/property-descriptors/line-height';
+import { LIST_STYLE_POSITION } from '../../css/property-descriptors/list-style-position';
+import { LIST_STYLE_TYPE } from '../../css/property-descriptors/list-style-type';
+import { TEXT_ALIGN } from '../../css/property-descriptors/text-align';
+import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
+import { asString } from '../../css/types/color';
+import { calculateGradientDirection, processColorStops } from '../../css/types/functions/gradient';
+import {
+    CSSImageType,
+    CSSLinearGradientImage,
+    CSSRepeatingLinearGradientImage,
+    CSSURLImage,
+    isLinearGradient,
+    isRepeatingLinearGradient,
+} from '../../css/types/image';
+import { getAbsoluteValue, getNumber } from '../../css/types/length-percentage';
+import { ElementContainer } from '../../dom/element-container';
+import { LIElementContainer } from '../../dom/elements/li-element-container';
+import { SelectElementContainer } from '../../dom/elements/select-element-container';
+import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
+import { ReplacedElementContainer } from '../../dom/replaced-elements';
+import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
+import {
+    CHECKBOX,
+    INPUT_COLOR,
+    InputElementContainer,
+    RADIO,
+    RANGE,
+} from '../../dom/replaced-elements/input-element-container';
+import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
+import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
+import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
+import { BoundCurves, calculatePaddingBoxPath } from '../bound-curves';
+import { contentBox, paddingBox } from '../box-sizing';
+import { calculateObjectFitBounds } from '../object-fit';
+import { ElementPaint } from '../stacking-context';
+import { Vector } from '../vector';
+import { CanvasRenderState, canvasPath, getLinearGradientCanvas, resolveImageSmoothing } from './canvas-render-state';
+import { createFontStyle, drawTextWithLetterSpacing, renderTextWithLetterSpacing } from './canvas-text-renderer';
+
+// ---------------------------------------------------------------------------
+// Replaced elements (img, canvas, svg, iframe handled separately in orchestrator)
+// ---------------------------------------------------------------------------
+
+export function renderReplacedElement(
+    state: CanvasRenderState,
+    container: ReplacedElementContainer,
+    curves: BoundCurves,
+    image: HTMLImageElement | HTMLCanvasElement,
+): void {
+    if (image) {
+        const isContainerWSizes = container.intrinsicWidth > 0 && container.intrinsicHeight > 0;
+        const isSVGContainer =
+            container instanceof SVGElementContainer || (container instanceof ImageElementContainer && container.isSVG);
+        if (isContainerWSizes || isSVGContainer) {
+            const box = contentBox(container);
+            const path = calculatePaddingBoxPath(curves);
+            canvasPath(state, path);
+            const { src, dest } = calculateObjectFitBounds(
+                container.styles.objectFit,
+                container.intrinsicWidth,
+                container.intrinsicHeight,
+                box.width,
+                box.height,
+                getAbsoluteValue(container.styles.objectPosition[0], box.width) / box.width,
+                getAbsoluteValue(container.styles.objectPosition[1] ?? container.styles.objectPosition[0], box.height) /
+                    box.height,
+            );
+            state.ctx.save();
+            state.ctx.clip();
+            // Honour the element's image-rendering (unless forceImageQuality
+            // overrides it). Scoped to this save()/restore() so it does not leak
+            // to sibling elements.
+            const smoothing = resolveImageSmoothing(state, container.styles.imageRendering);
+            state.ctx.imageSmoothingEnabled = smoothing.enabled;
+            state.ctx.imageSmoothingQuality = smoothing.quality;
+            if (isContainerWSizes) {
+                state.ctx.drawImage(
+                    image,
+                    src.left,
+                    src.top,
+                    src.width,
+                    src.height,
+                    box.left + dest.left,
+                    box.top + dest.top,
+                    dest.width,
+                    dest.height,
+                );
+            } else {
+                // As usual it won't work in FF. https://bugzilla.mozilla.org/show_bug.cgi?id=700533
+                state.ctx.drawImage(image, box.left, box.top, box.width, box.height);
+            }
+            state.ctx.restore();
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Checkbox / Radio / Range
+// ---------------------------------------------------------------------------
+
+export function renderCheckbox(state: CanvasRenderState, container: InputElementContainer): void {
+    if (!container.checked) return;
+    const { bounds } = container;
+    const size = Math.min(bounds.width, bounds.height);
+    state.ctx.save();
+    canvasPath(state, [
+        new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
+        new Vector(bounds.left + size * 0.16, bounds.top + size * 0.5549),
+        new Vector(bounds.left + size * 0.27347, bounds.top + size * 0.44071),
+        new Vector(bounds.left + size * 0.39694, bounds.top + size * 0.5649),
+        new Vector(bounds.left + size * 0.72983, bounds.top + size * 0.23),
+        new Vector(bounds.left + size * 0.84, bounds.top + size * 0.34085),
+        new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
+    ]);
+    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fill();
+    state.ctx.restore();
+}
+
+export function renderRadio(state: CanvasRenderState, container: InputElementContainer): void {
+    if (!container.checked) return;
+    const { bounds } = container;
+    const size = Math.min(bounds.width, bounds.height);
+    state.ctx.save();
+    state.ctx.beginPath();
+    state.ctx.arc(bounds.left + size / 2, bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
+    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fill();
+    state.ctx.restore();
+}
+
+export function renderRange(state: CanvasRenderState, container: InputElementContainer): void {
+    const bounds = container.bounds;
+    const ratio =
+        container.max > container.min ? (container.valueAsNumber - container.min) / (container.max - container.min) : 0;
+    const isHorizontal = bounds.width >= bounds.height;
+    const trackThickness = 4;
+    const thumbRadius = Math.min(bounds.width, bounds.height) * 0.35;
+
+    state.ctx.save();
+    if (isHorizontal) {
+        // Track
+        const trackY = bounds.top + bounds.height / 2 - trackThickness / 2;
+        const trackLeft = bounds.left + thumbRadius;
+        const trackWidth = bounds.width - thumbRadius * 2;
+        state.ctx.fillStyle = '#c0c0c0';
+        state.ctx.fillRect(trackLeft, trackY, trackWidth, trackThickness);
+        // Filled portion
+        state.ctx.fillStyle = '#0075ff';
+        state.ctx.fillRect(trackLeft, trackY, trackWidth * ratio, trackThickness);
+        // Thumb
+        const thumbX = trackLeft + trackWidth * ratio;
+        const thumbY = bounds.top + bounds.height / 2;
+        state.ctx.beginPath();
+        state.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+        state.ctx.fillStyle = '#ffffff';
+        state.ctx.fill();
+        state.ctx.strokeStyle = '#0075ff';
+        state.ctx.lineWidth = 2;
+        state.ctx.stroke();
+    } else {
+        // Vertical track
+        const trackX = bounds.left + bounds.width / 2 - trackThickness / 2;
+        const trackTop = bounds.top + thumbRadius;
+        const trackHeight = bounds.height - thumbRadius * 2;
+        state.ctx.fillStyle = '#c0c0c0';
+        state.ctx.fillRect(trackX, trackTop, trackThickness, trackHeight);
+        // Filled portion (bottom to value)
+        const filledHeight = trackHeight * ratio;
+        state.ctx.fillStyle = '#0075ff';
+        state.ctx.fillRect(trackX, trackTop + trackHeight - filledHeight, trackThickness, filledHeight);
+        // Thumb
+        const thumbX = bounds.left + bounds.width / 2;
+        const thumbY = trackTop + trackHeight * (1 - ratio);
+        state.ctx.beginPath();
+        state.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+        state.ctx.fillStyle = '#ffffff';
+        state.ctx.fill();
+        state.ctx.strokeStyle = '#0075ff';
+        state.ctx.lineWidth = 2;
+        state.ctx.stroke();
+    }
+    state.ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Progress / Meter
+// ---------------------------------------------------------------------------
+
+export function renderProgress(state: CanvasRenderState, container: ProgressElementContainer): void {
+    const bounds = container.bounds;
+    const ratio = container.ratio;
+    const borderRadius = Math.min(bounds.height / 2, 4);
+
+    state.ctx.save();
+    state.ctx.beginPath();
+    state.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+    state.ctx.fillStyle = '#e6e6e6';
+    state.ctx.fill();
+    if (ratio > 0) {
+        const fillWidth = bounds.width * ratio;
+        state.ctx.beginPath();
+        state.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+        state.ctx.fillStyle = '#0075ff';
+        state.ctx.fill();
+    }
+    state.ctx.restore();
+}
+
+export function renderMeter(state: CanvasRenderState, container: MeterElementContainer): void {
+    const bounds = container.bounds;
+    const ratio = container.ratio;
+    const state2 = container.state;
+    const borderRadius = Math.min(bounds.height / 2, 4);
+
+    let fillColor: string;
+    switch (state2) {
+        case METER_STATE.OPTIMUM:
+            fillColor = '#30b030';
+            break;
+        case METER_STATE.SUBOPTIMUM:
+            fillColor = '#daa520';
+            break;
+        case METER_STATE.CRITICAL:
+        default:
+            fillColor = '#e04040';
+            break;
+    }
+
+    state.ctx.save();
+    state.ctx.beginPath();
+    state.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+    state.ctx.fillStyle = '#e6e6e6';
+    state.ctx.fill();
+    if (ratio > 0) {
+        const fillWidth = bounds.width * ratio;
+        state.ctx.beginPath();
+        state.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+        state.ctx.fillStyle = fillColor;
+        state.ctx.fill();
+    }
+    state.ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Text input elements (input, textarea, select)
+// ---------------------------------------------------------------------------
+
+const canvasTextAlign = (textAlign: TEXT_ALIGN): CanvasTextAlign => {
+    switch (textAlign) {
+        case TEXT_ALIGN.CENTER:
+            return 'center';
+        case TEXT_ALIGN.RIGHT:
+            return 'right';
+        case TEXT_ALIGN.LEFT:
+        default:
+            return 'left';
+    }
+};
+
+export const isTextInputElement = (
+    container: ElementContainer,
+): container is InputElementContainer | TextareaElementContainer | SelectElementContainer => {
+    if (container instanceof TextareaElementContainer) {
+        return true;
+    } else if (container instanceof SelectElementContainer) {
+        return true;
+    } else if (
+        container instanceof InputElementContainer &&
+        container.type !== RADIO &&
+        container.type !== CHECKBOX &&
+        container.type !== RANGE
+    ) {
+        return true;
+    }
+    return false;
+};
+
+export async function renderTextInputElement(
+    state: CanvasRenderState,
+    container: InputElementContainer | TextareaElementContainer | SelectElementContainer,
+    styles: CSSParsedDeclaration,
+): Promise<void> {
+    const [font, fontFamily, fontSize] = createFontStyle(styles);
+    const { baseline } = state.fontMetrics.getMetrics(fontFamily, fontSize);
+
+    state.ctx.font = font;
+
+    // Apply ::placeholder styles when the displayed text is the placeholder.
+    const isPlaceholder =
+        (container instanceof InputElementContainer || container instanceof TextareaElementContainer) &&
+        container.isPlaceholder;
+    const phStyles: Record<string, string> | null = isPlaceholder
+        ? (container as InputElementContainer | TextareaElementContainer).placeholderStyles
+        : null;
+
+    if (phStyles) {
+        // Color
+        state.ctx.fillStyle = phStyles['color'] ?? asString(styles.color);
+        // Opacity
+        if (phStyles['opacity']) {
+            state.ctx.globalAlpha = parseFloat(phStyles['opacity']);
+        }
+        // Font-weight / font-style: rebuild font string with overrides
+        if (phStyles['font-weight'] || phStyles['font-style']) {
+            const parts = font.split(' ');
+            // font string format: "style variant weight size family"
+            if (phStyles['font-style']) parts[0] = phStyles['font-style'];
+            if (phStyles['font-weight']) parts[2] = phStyles['font-weight'];
+            state.ctx.font = parts.join(' ');
+        }
+    } else {
+        state.ctx.fillStyle = asString(styles.color);
+    }
+
+    state.ctx.textBaseline = 'alphabetic';
+    state.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
+
+    const bounds = contentBox(container);
+
+    // Draw placeholder background-color behind the text area if specified.
+    if (phStyles?.['background-color'] && phStyles['background-color'] !== 'rgba(0, 0, 0, 0)') {
+        state.ctx.save();
+        state.ctx.fillStyle = phStyles['background-color'];
+        state.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+        state.ctx.restore();
+        // Restore text fillStyle after drawing background.
+        state.ctx.fillStyle = phStyles['color'] ?? asString(styles.color);
+    }
+
+    state.ctx.save();
+    canvasPath(state, [
+        new Vector(bounds.left, bounds.top),
+        new Vector(bounds.left + bounds.width, bounds.top),
+        new Vector(bounds.left + bounds.width, bounds.top + bounds.height),
+        new Vector(bounds.left, bounds.top + bounds.height),
+    ]);
+    state.ctx.clip();
+
+    if (container instanceof TextareaElementContainer) {
+        await _renderTextarea(state, container, styles, bounds, baseline, fontFamily, fontSize);
+    } else if (container instanceof SelectElementContainer && container.isListBox) {
+        // The parser no longer descends into <option> children (see parseNodeTree),
+        // so the list-box content is drawn solely here, consistently across engines.
+        _renderListBoxSelect(state, container, styles, bounds, baseline);
+    } else {
+        _renderSingleLineInput(state, container, styles, bounds, baseline);
+    }
+
+    state.ctx.restore();
+    state.ctx.textBaseline = 'alphabetic';
+    state.ctx.textAlign = 'left';
+
+    // Restore globalAlpha if it was changed for ::placeholder opacity.
+    if (phStyles?.['opacity']) {
+        state.ctx.globalAlpha = 1;
+    }
+}
+
+async function _renderTextarea(
+    state: CanvasRenderState,
+    container: TextareaElementContainer,
+    styles: CSSParsedDeclaration,
+    bounds: Bounds,
+    baseline: number,
+    _fontFamily: string,
+    _fontSize: string,
+): Promise<void> {
+    const fontSizeNumber = getNumber(styles.fontSize);
+    const lineHeight = computeLineHeight(styles.lineHeight, fontSizeNumber);
+    const scrollTop = container.scrollTop ?? 0;
+
+    let xOffset = 0;
+    switch (container.styles.textAlign) {
+        case TEXT_ALIGN.CENTER:
+            xOffset = bounds.width / 2;
+            break;
+        case TEXT_ALIGN.RIGHT:
+            xOffset = bounds.width;
+            break;
+    }
+    const originX = bounds.left + xOffset;
+
+    const letterSpacing = styles.letterSpacing;
+    // Measure the rendered width of a string in CSS pixels.
+    //
+    // ctx has an active scale transform, so measureText returns widths in
+    // physical pixels — divide by scale to get CSS pixels comparable to
+    // bounds.width.
+    //
+    // When letterSpacing !== 0, renderTextWithLetterSpacing draws each
+    // grapheme individually and advances by ctx.measureText(g).width +
+    // letterSpacing per grapheme.  We mirror that here so the wrap budget
+    // matches the actual painted width.  The division by scale applies only
+    // to the measureText part; letterSpacing is already in CSS pixels.
+    const measureWidth = (text: string): number => {
+        if (letterSpacing !== 0 && text.length > 0) {
+            const graphemeCount = segmentGraphemes(text).length;
+            // Measure the full string at once so that kerning between
+            // character pairs is accounted for (ctx.measureText on a single
+            // glyph misses kerning with its neighbours).  Then add
+            // letter-spacing gaps: (n-1) gaps because the browser does not
+            // count trailing letter-spacing in the wrap budget.
+            const glyphsWidth = state.ctx.measureText(text).width / state.options.scale;
+            return glyphsWidth + (letterSpacing - 1) * (graphemeCount - 1);
+        }
+        return state.ctx.measureText(text).width / state.options.scale;
+    };
+
+    const wrapParagraph = (paragraph: string, maxWidth: number): string[] => {
+        const lines: string[] = [];
+
+        // Helper: break a single unsplittable chunk character-by-character.
+        const breakChunk = (chunk: string): void => {
+            const graphemes = segmentGraphemes(chunk);
+            let current = '';
+            for (const g of graphemes) {
+                const candidate = current + g;
+                if (current.length > 0 && measureWidth(candidate) > maxWidth) {
+                    lines.push(current);
+                    current = g;
+                } else {
+                    current = candidate;
+                }
+            }
+            if (current.length > 0) {
+                lines.push(current);
+            }
+        };
+
+        // Tokenise on whitespace AND after hyphens so that hyphenated
+        // compounds ("many-manymany") can break after the dash, matching
+        // the browser's default line-breaking behaviour for textareas.
+        const tokens = paragraph.split(/(\s+|(?<=-+))/);
+        let currentLine = '';
+        for (const token of tokens) {
+            if (token === '') continue;
+            const candidate = currentLine + token;
+            if (currentLine.length > 0 && measureWidth(candidate) > maxWidth) {
+                lines.push(currentLine);
+                const trimmed = token.trimStart();
+                if (trimmed.length > 0 && measureWidth(trimmed) > maxWidth) {
+                    breakChunk(trimmed);
+                    currentLine = lines.pop() ?? '';
+                } else {
+                    currentLine = trimmed;
+                }
+            } else {
+                if (currentLine.length === 0 && measureWidth(token.trimStart()) > maxWidth) {
+                    const trimmed = token.trimStart();
+                    breakChunk(trimmed);
+                    currentLine = lines.pop() ?? '';
+                } else {
+                    currentLine = candidate;
+                }
+            }
+        }
+        if (currentLine.length > 0) {
+            lines.push(currentLine);
+        }
+        return lines;
+    };
+
+    const paragraphs = container.value.split('\n');
+    const wrappedLines: string[] = [];
+    for (const paragraph of paragraphs) {
+        if (paragraph.length === 0) {
+            // Preserve blank lines produced by consecutive newlines.
+            wrappedLines.push('');
+            continue;
+        }
+        for (const line of wrapParagraph(paragraph, bounds.width)) {
+            wrappedLines.push(line);
+        }
+    }
+
+    wrappedLines.forEach((line, index) => {
+        const lineTop = index * lineHeight - scrollTop;
+        // Skip lines that are completely outside the content box.
+        if (lineTop + lineHeight < 0 || lineTop > bounds.height) {
+            return;
+        }
+        const lineBounds = new Bounds(originX, bounds.top + lineTop, bounds.width, lineHeight);
+        renderTextWithLetterSpacing(state, new TextBounds(line, lineBounds), styles.letterSpacing, baseline);
+    });
+}
+
+function _renderSingleLineInput(
+    state: CanvasRenderState,
+    container: InputElementContainer | SelectElementContainer,
+    styles: CSSParsedDeclaration,
+    bounds: Bounds,
+    _baseline: number,
+): void {
+    let x = 0;
+    switch (container.styles.textAlign) {
+        case TEXT_ALIGN.CENTER:
+            x += bounds.width / 2;
+            break;
+        case TEXT_ALIGN.RIGHT:
+            x += bounds.width;
+            break;
+    }
+    // Draw text using textBaseline='middle' centred in the padding-box.
+    // We bypass renderTextWithLetterSpacing because its 'ideographic' baseline
+    // mode (Chromium) positions the text too high in small input elements,
+    // causing the ascenders to be clipped by the overflow:hidden clip that
+    // Chromium applies to <input> elements by default.
+    const pBounds = paddingBox(container);
+    state.ctx.textBaseline = 'middle';
+    const midY = pBounds.top + pBounds.height / 2 + 1;
+    const startX = bounds.left + x;
+
+    drawTextWithLetterSpacing(state.ctx, container.value, startX, midY, styles.letterSpacing);
+}
+
+/**
+ * Renders a multi-line list-box `<select>` (i.e. `multiple` or `size > 1`):
+ * one option per line, with selected options drawn on a highlight background.
+ *
+ * The highlight colour approximates the browser default selection colour; the
+ * text colour on a selected row switches to white for contrast, matching how
+ * browsers paint selected list-box rows.
+ */
+function _renderListBoxSelect(
+    state: CanvasRenderState,
+    container: SelectElementContainer,
+    styles: CSSParsedDeclaration,
+    bounds: Bounds,
+    baseline: number,
+): void {
+    const textColor = asString(styles.color);
+
+    // Default browser highlight for selected list-box rows (Chromium's is a blue
+    // similar to #0069d9 / rgb(0,105,217)); white text keeps contrast.
+    const HIGHLIGHT_BG = 'rgb(0, 105, 217)';
+    const HIGHLIGHT_TEXT = 'rgb(255, 255, 255)';
+
+    let xOffset = 0;
+    switch (container.styles.textAlign) {
+        case TEXT_ALIGN.CENTER:
+            xOffset = bounds.width / 2;
+            break;
+        case TEXT_ALIGN.RIGHT:
+            xOffset = bounds.width;
+            break;
+    }
+    const originX = bounds.left + xOffset;
+
+    // The browser auto-scrolls the list so the selected option is visible; apply
+    // the same offset so we render the same visible slice of options.
+    const scrollTop = container.scrollTop ?? 0;
+
+    // Position rows relative to the FIRST option rather than using each option's
+    // absolute offsetTop added to the border box. offsetTop is measured from the
+    // select's border box and includes an internal UA gap (~10px on Chromium)
+    // that the browser absorbs when laying out the visible rows, so adding it to
+    // the border-box top pushes every row down by that gap and overflows the box.
+    // Anchoring the first option to the content-box top and spacing subsequent
+    // rows by their offsetTop delta reproduces the native layout on both engines.
+    const firstOffsetTop = container.options.length > 0 ? container.options[0].offsetTop : 0;
+    const rowsOrigin = bounds.top;
+    const clipTop = bounds.top;
+    const clipBottom = bounds.top + bounds.height;
+
+    // Draw option text with textBaseline='middle' centred in each row. This
+    // bypasses renderTextWithLetterSpacing's engine-specific baseline handling
+    // (ideographic on Chromium, measured baseline on Firefox) which caused the
+    // text to drift relative to the row in Firefox. Centering on the row's
+    // vertical middle places the text correctly on both engines.
+    const startX = originX;
+    const previousBaseline = state.ctx.textBaseline;
+
+    container.options.forEach(option => {
+        const rowTop = rowsOrigin + (option.offsetTop - firstOffsetTop) - scrollTop;
+        const rowHeight = option.offsetHeight;
+        // Skip rows fully outside the content box.
+        if (rowTop + rowHeight < clipTop || rowTop > clipBottom) {
+            return;
+        }
+
+        if (option.selected) {
+            state.ctx.save();
+            state.ctx.fillStyle = HIGHLIGHT_BG;
+            state.ctx.fillRect(bounds.left, rowTop, bounds.width, rowHeight);
+            state.ctx.restore();
+        }
+
+        state.ctx.fillStyle = option.selected ? HIGHLIGHT_TEXT : textColor;
+        state.ctx.textBaseline = 'middle';
+        const midY = rowTop + rowHeight / 2 + 1;
+        drawTextWithLetterSpacing(state.ctx, option.text, startX, midY, styles.letterSpacing);
+    });
+
+    state.ctx.textBaseline = previousBaseline;
+    // baseline retained in signature for consistency with other row renderers.
+    void baseline;
+}
+
+// ---------------------------------------------------------------------------
+// List markers
+// ---------------------------------------------------------------------------
+
+export async function renderListMarker(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    styles: CSSParsedDeclaration,
+): Promise<void> {
+    const container = paint.container;
+    if (!contains(container.styles.display, DISPLAY.LIST_ITEM)) return;
+    if (!paint.listValue || container.styles.listStyleType === LIST_STYLE_TYPE.NONE) {
+        if (container.styles.listStyleImage !== null) {
+            await _renderListStyleImage(state, container, styles);
+        }
+        return;
+    }
+
+    if (container.styles.listStyleImage !== null) {
+        await _renderListStyleImage(state, container, styles);
+        return;
+    }
+
+    const [fontFamily] = createFontStyle(styles);
+    const wm = styles.writingMode;
+    const isVerticalList =
+        wm === WRITING_MODE.VERTICAL_RL ||
+        wm === WRITING_MODE.VERTICAL_LR ||
+        wm === WRITING_MODE.SIDEWAYS_RL ||
+        wm === WRITING_MODE.SIDEWAYS_LR;
+
+    // Use ::marker styles (color, font-family, font-size) when available on the LI.
+    const markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
+
+    // Effective marker font size: the ::marker font-size overrides the item's.
+    // The cloner serialises it as a resolved (px) value from getComputedStyle.
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    const markerFontFamily = markerStyles?.['font-family']
+        ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
+        : fontFamily;
+    const markerFontSize = markerStyles?.['font-size'] ?? itemFontSize;
+    // Rebuild the canvas font string with the effective marker size, replacing
+    // the item's size token in the base font string.
+    const markerFont = markerFontFamily.replace(itemFontSize, markerFontSize);
+
+    state.ctx.font = markerFont;
+    state.ctx.fillStyle = markerStyles?.['color'] ?? asString(styles.color);
+
+    const markerFontMetrics = { fontFamily: itemFontFamily, fontSize: markerFontSize };
+
+    if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.OUTSIDE) {
+        _renderVerticalListMarkerOutside(state, paint, styles, wm);
+    } else if (isVerticalList && container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        _renderVerticalListMarkerInside(state, paint, styles, wm);
+    } else {
+        _renderHorizontalListMarker(state, paint, styles, markerFontMetrics);
+    }
+
+    state.ctx.textBaseline = 'bottom';
+    state.ctx.textAlign = 'left';
+}
+
+async function _renderListStyleImage(
+    state: CanvasRenderState,
+    container: ElementContainer,
+    styles: CSSParsedDeclaration,
+): Promise<void> {
+    const img = container.styles.listStyleImage;
+    if (!img) return;
+
+    if (img.type === CSSImageType.URL) {
+        const url = (img as CSSURLImage).url;
+        try {
+            const image = await state.context.cache.match(url);
+            state.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
+        } catch (e) {
+            state.context.error(`Error loading list-style-image ${url}`, e);
+        }
+        return;
+    }
+
+    if (isLinearGradient(img) || isRepeatingLinearGradient(img)) {
+        _renderListStyleGradientImage(state, container, styles, img);
+    }
+}
+
+// A gradient list-style-image is painted into a small square (~1em) placed like
+// the marker: at the start of the content for `inside`, or to the left of it for
+// `outside`. Only linear gradients are handled; other image types fall back to
+// the normal marker/text rendering.
+const LIST_MARKER_IMAGE_SCALE = 0.44;
+
+function _renderListStyleGradientImage(
+    state: CanvasRenderState,
+    container: ElementContainer,
+    styles: CSSParsedDeclaration,
+    img: CSSLinearGradientImage | CSSRepeatingLinearGradientImage,
+): void {
+    // Chromium draws a gradient list marker in a small square roughly 0.44em wide
+    // (about 7px at a 16px font size), not a full 1em box.
+    const fontSize = getNumber(styles.fontSize);
+    const size = Math.round(fontSize * LIST_MARKER_IMAGE_SCALE);
+    if (size <= 0) return;
+
+    const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(img.angle, size, size);
+    const stops = processColorStops(img.stops, lineLength || 1);
+    const key = `list-lin|${x0},${y0},${x1},${y1}|${stops.map(s => `${s.color}@${s.stop}`).join(',')}|${size}x${size}`;
+    const gradientCanvas = getLinearGradientCanvas(state, key, size, size, (gCtx, w, h) => {
+        const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+        stops.forEach(colorStop =>
+            gradient.addColorStop(Math.max(0, Math.min(1, colorStop.stop)), asString(colorStop.color)),
+        );
+        gCtx.fillStyle = gradient;
+        gCtx.fillRect(0, 0, w, h);
+    });
+
+    // Vertical placement: center the small square on the first text line box.
+    const firstLineBox = _firstTextLineBox(container);
+    const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+    const lineTop =
+        firstLineBox !== null
+            ? firstLineBox.top
+            : container.bounds.top +
+              getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+              Math.max(0, lineHeight - fontSize) / 2;
+    const lineBoxHeight = firstLineBox !== null ? firstLineBox.height : fontSize;
+    const boxTop = Math.round(lineTop + (lineBoxHeight - size) / 2);
+
+    let boxLeft: number;
+    if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        const paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        boxLeft = container.bounds.left + paddingLeft;
+    } else {
+        // Outside: to the left of the content box, with a small gap.
+        boxLeft = container.bounds.left - size - Math.round(size * 0.35);
+    }
+
+    state.ctx.drawImage(gradientCanvas, boxLeft, boxTop);
+}
+
+function _renderVerticalListMarkerOutside(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    styles: CSSParsedDeclaration,
+    wm: WRITING_MODE,
+): void {
+    const container = paint.container;
+    const fontSize = getNumber(styles.fontSize);
+    const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+    const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+
+    // First column center x = container.left + paddingLeft + fontSize/2
+    const markerX =
+        container.bounds.left + getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) + fontSize / 2;
+
+    // Inline-start differs by writing mode:
+    //   sideways-lr: inline-start is bottom → marker below content
+    //   vertical-rl/lr, sideways-rl: inline-start is top → marker above content
+    let markerY: number;
+    if (isSidewaysLR) {
+        markerY = container.bounds.top + container.bounds.height + fontSize;
+    } else {
+        markerY = container.bounds.top - fontSize / 2;
+    }
+
+    state.ctx.save();
+    state.ctx.translate(markerX, markerY);
+    state.ctx.rotate(angle);
+    state.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+    state.ctx.textAlign = 'center';
+    state.ctx.fillText(paint.listValue!, 0, 0);
+    state.ctx.restore();
+}
+
+function _renderVerticalListMarkerInside(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    styles: CSSParsedDeclaration,
+    wm: WRITING_MODE,
+): void {
+    const container = paint.container;
+    const fontSize = getNumber(styles.fontSize);
+    const isSidewaysLR = wm === WRITING_MODE.SIDEWAYS_LR;
+    const angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+
+    const markerX =
+        container.bounds.left + getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) + fontSize / 2;
+
+    let markerY: number;
+    if (isSidewaysLR) {
+        // sideways-lr: text goes bottom→top, so inline-start = bottom of content
+        markerY =
+            container.bounds.top +
+            container.bounds.height -
+            getAbsoluteValue(container.styles.paddingBottom, container.bounds.height) -
+            fontSize / 2;
+    } else {
+        // vertical-rl/lr: text goes top→bottom, so inline-start = top of content
+        markerY =
+            container.bounds.top +
+            getAbsoluteValue(container.styles.paddingTop, container.bounds.height) +
+            fontSize / 2;
+    }
+
+    state.ctx.save();
+    state.ctx.translate(markerX, markerY);
+    state.ctx.rotate(angle);
+    state.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+    state.ctx.textAlign = 'right';
+    state.ctx.fillText(paint.listValue!, 0, 0);
+    state.ctx.restore();
+}
+
+/**
+ * Returns the first text line box (top + height) inside the list item, searching
+ * its own text nodes first, then descendants in tree order, or null when the item
+ * has no text content. Used to align the marker with the first line exactly the
+ * same way the text renderer positions that line.
+ */
+function _firstTextLineBox(container: ElementContainer): { top: number; height: number } | null {
+    let box: { top: number; height: number } | null = null;
+    for (const textNode of container.textNodes) {
+        for (const textBound of textNode.textBounds) {
+            if (textBound.text.trim().length && (box === null || textBound.bounds.top < box.top)) {
+                box = { top: textBound.bounds.top, height: textBound.bounds.height };
+            }
+        }
+    }
+    if (box !== null) return box;
+    for (const child of container.elements) {
+        const childBox = _firstTextLineBox(child);
+        if (childBox !== null && (box === null || childBox.top < box.top)) {
+            box = childBox;
+        }
+    }
+    return box;
+}
+
+function _renderHorizontalListMarker(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    styles: CSSParsedDeclaration,
+    markerFont: { fontFamily: string; fontSize: string },
+): void {
+    const container = paint.container;
+
+    const [, itemFontFamily, itemFontSize] = createFontStyle(styles);
+    // A ::marker font-size that differs from the item's means the marker glyph is
+    // scaled but still sits on the item's first-line baseline. In that case align
+    // by baseline (alphabetic) rather than by the item line-box bottom.
+    const markerHasOwnSize = markerFont.fontSize !== itemFontSize;
+
+    // Align the marker with the first line of the item's text using the same
+    // positioning strategy as the text renderer, so there is no vertical drift.
+    // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
+    // textBaseline 'ideographic' at bounds.top + bounds.height; otherwise
+    // 'alphabetic' at bounds.top + baseline. A differently-sized marker must use
+    // the baseline path so its larger/smaller glyph grows around the same baseline.
+    const useIdeographic = !state.isFirefox && !markerHasOwnSize;
+    const { baseline } = state.fontMetrics.getMetrics(itemFontFamily, itemFontSize);
+    const firstLineBox = _firstTextLineBox(container);
+
+    let markerY: number;
+    if (firstLineBox !== null) {
+        markerY = useIdeographic ? firstLineBox.top + firstLineBox.height : firstLineBox.top + baseline;
+    } else {
+        // No text content: reconstruct the first line box from padding + leading.
+        const lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+        const leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+        const lineTop =
+            container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width) + leading / 2;
+        markerY = useIdeographic ? lineTop + lineHeight - leading / 2 : lineTop + baseline;
+    }
+
+    state.ctx.textBaseline = useIdeographic ? 'ideographic' : 'alphabetic';
+
+    if (container.styles.listStylePosition === LIST_STYLE_POSITION.INSIDE) {
+        // Inside markers are drawn at the start of the content area, left-aligned
+        const paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+        state.ctx.textAlign = 'left';
+        state.ctx.fillText(paint.listValue!, container.bounds.left + paddingLeft, markerY);
+    } else {
+        // Outside markers are drawn to the left of the content area, right-aligned
+        state.ctx.textAlign = 'right';
+        state.ctx.fillText(paint.listValue!, container.bounds.left, markerY);
+    }
+}

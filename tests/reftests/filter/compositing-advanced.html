@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS filter/opacity compositing (advanced cases)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #ffffff;
+        }
+        .row {
+            margin-bottom: 24px;
+        }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .stage {
+            position: relative;
+            width: 280px;
+            height: 200px;
+            display: inline-block;
+            vertical-align: top;
+            margin-right: 16px;
+        }
+        .fill {
+            width: 100px;
+            height: 60px;
+            background: #176b70;
+        }
+        .piece {
+            position: absolute;
+            top: 70px;
+            width: 90px;
+            height: 60px;
+            background: #176b70;
+        }
+        .piece.b {
+            left: 60px;
+            background: #b8532f;
+        }
+        .cta {
+            width: 140px;
+            height: 60px;
+            background: #176b70;
+            color: #fff;
+            font: bold 16px Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="row">
+    <div class="row-title">Triple nested opacity (0.5 x 0.5 x 0.5)</div>
+    <div class="stage">
+        <div style="position:absolute; left:60px; top:60px; opacity:0.5">
+            <div style="opacity:0.5">
+                <div style="opacity:0.5"><div class="fill"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Opacity group with a rotate transform</div>
+    <div class="stage">
+        <div style="position:absolute; left:80px; top:70px; opacity:0.5; transform: rotate(15deg)">
+            <div class="piece" style="position:static"></div>
+            <div class="piece" style="position:absolute; left:40px; top:20px; background:#b8532f"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Opacity group preserving z-index order</div>
+    <div class="stage">
+        <div style="position:absolute; inset:0; opacity:0.5">
+            <div class="piece" style="left:40px; z-index:2; background:#176b70"></div>
+            <div class="piece b" style="left:80px; z-index:1"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">clip-path inset on an opacity group</div>
+    <div class="stage">
+        <div style="position:absolute; left:60px; top:60px; opacity:0.5; clip-path: inset(10px 20px)">
+            <div class="fill" style="width:140px; height:90px"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Parent blur over semi-transparent children</div>
+    <div class="stage">
+        <div style="position:absolute; inset:0; filter: blur(3px)">
+            <div class="piece" style="left:40px; opacity:0.6"></div>
+            <div class="piece b" style="left:80px; opacity:0.6"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Opacity group with text content</div>
+    <div class="stage">
+        <div style="position:absolute; left:60px; top:70px; opacity:0.5">
+            <div class="cta">Button</div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="row-title">Negative-offset drop-shadow with opacity</div>
+    <div class="stage">
+        <div style="position:absolute; left:120px; top:90px; opacity:0.5; filter: drop-shadow(-18px -14px 6px rgba(0,0,0,0.6))">
+            <div class="fill"></div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

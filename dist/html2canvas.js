@@ -1,5 +1,5 @@
 /*!
- * html2canvas 1.9.0 <>
+ * html2canvas 1.13.0 <>
  * Copyright (c) 2026 Niklas von Hertzen <https://hertzen.com>
  * Released under MIT License
  */
@@ -808,27 +808,6 @@
         };
     };
 
-    var elementDebuggerAttribute = 'data-html2canvas-debug';
-    var getElementDebugType = function (element) {
-        var attribute = element.getAttribute(elementDebuggerAttribute);
-        switch (attribute) {
-            case 'all':
-                return 1 /* DebuggerType.ALL */;
-            case 'clone':
-                return 2 /* DebuggerType.CLONE */;
-            case 'parse':
-                return 3 /* DebuggerType.PARSE */;
-            case 'render':
-                return 4 /* DebuggerType.RENDER */;
-            default:
-                return 0 /* DebuggerType.NONE */;
-        }
-    };
-    var isDebugging = function (element, type) {
-        var elementType = getElementDebugType(element);
-        return elementType === 1 /* DebuggerType.ALL */ || type === elementType;
-    };
-
     var contains = function (bit, value) { return (bit & value) !== 0; };
 
     // https://www.w3.org/TR/css-syntax-3
@@ -1601,6 +1580,25 @@
             return true;
         }
         return type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */ && token.type === 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */;
+    };
+
+    var backgroundAttachment = {
+        name: 'background-attachment',
+        initialValue: 'scroll',
+        prefix: false,
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        parse: function (_context, tokens) {
+            return tokens.filter(isIdentToken).map(function (token) {
+                switch (token.value) {
+                    case 'fixed':
+                        return 1 /* BACKGROUND_ATTACHMENT.FIXED */;
+                    case 'local':
+                        return 2 /* BACKGROUND_ATTACHMENT.LOCAL */;
+                    default:
+                        return 0 /* BACKGROUND_ATTACHMENT.SCROLL */;
+                }
+            });
+        },
     };
 
     var parseBlendMode = function (value) {
@@ -8996,10 +8994,33 @@
         YELLOWGREEN: 0x9acd32ff,
     };
 
-    var parseColorStop = function (context, args) {
+    /**
+     * Parses a color stop argument that may carry one *or two* position hints
+     * (the "double-position" shorthand defined in CSS Images Level 4).
+     *
+     *   #ccc 0% 25%   →  [{ color: #ccc, stop: 0% }, { color: #ccc, stop: 25% }]
+     *   #fff 25%      →  [{ color: #fff, stop: 25% }]
+     *   red           →  [{ color: red,  stop: null }]
+     *
+     * This is the spec-compliant form needed to render hard-stop patterns such as
+     *   repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%)
+     * which is the standard CSS checkerboard pattern.
+     */
+    var parseColorStops = function (context, args) {
         var color = color$1.parse(context, args[0]);
-        var stop = args[1];
-        return stop && isLengthPercentage(stop) ? { color: color, stop: stop } : { color: color, stop: null };
+        var stop1 = args[1];
+        var stop2 = args[2];
+        if (stop1 && isLengthPercentage(stop1)) {
+            if (stop2 && isLengthPercentage(stop2)) {
+                // Double-position: expand into two stops with the same color.
+                return [
+                    { color: color, stop: stop1 },
+                    { color: color, stop: stop2 },
+                ];
+            }
+            return [{ color: color, stop: stop1 }];
+        }
+        return [{ color: color, stop: null }];
     };
     var processColorStops = function (stops, lineLength) {
         // Work on a shallow copy to avoid mutating the original stop objects
@@ -9170,8 +9191,8 @@
                     return;
                 }
             }
-            var colorStop = parseColorStop(context, arg);
-            stops.push(colorStop);
+            var colorStop = parseColorStops(context, arg);
+            stops.push.apply(stops, colorStop);
         });
         return {
             angle: angle$1,
@@ -9256,8 +9277,8 @@
                 }, isColorStop);
             }
             if (isColorStop) {
-                var colorStop = parseColorStop(context, arg);
-                stops.push(colorStop);
+                var colorStop = parseColorStops(context, arg);
+                stops.push.apply(stops, colorStop);
             }
         });
         return { size: size, shape: shape, stops: stops, position: position, type: 2 /* CSSImageType.RADIAL_GRADIENT */ };
@@ -9331,8 +9352,8 @@
                 }, isColorStop);
             }
             if (isColorStop) {
-                var colorStop = parseColorStop(context, arg);
-                stops.push(colorStop);
+                var colorStop = parseColorStops(context, arg);
+                stops.push.apply(stops, colorStop);
             }
         });
         return { size: size, shape: shape, stops: stops, position: position, type: 2 /* CSSImageType.RADIAL_GRADIENT */ };
@@ -9437,13 +9458,13 @@
                     }
                     else {
                         // No recognised keyword — treat whole first arg as a color stop
-                        stops.push(parseColorStop(context, arg));
+                        stops.push.apply(stops, parseColorStops(context, arg));
                         return;
                     }
                 }
                 return;
             }
-            stops.push(parseColorStop(context, arg));
+            stops.push.apply(stops, parseColorStops(context, arg));
         });
         return { startAngle: startAngle, stops: stops, position: position, type: 5 /* CSSImageType.CONIC_GRADIENT */ };
     };
@@ -9463,8 +9484,8 @@
                     return;
                 }
             }
-            var colorStop = parseColorStop(context, arg);
-            stops.push(colorStop);
+            var colorStop = parseColorStops(context, arg);
+            stops.push.apply(stops, colorStop);
         });
         return { angle: angle$1, stops: stops, type: 1 /* CSSImageType.LINEAR_GRADIENT */ };
     };
@@ -9515,13 +9536,13 @@
                     }
                     else {
                         // No recognised keyword — treat whole first arg as a color stop
-                        stops.push(parseColorStop(context, arg));
+                        stops.push.apply(stops, parseColorStops(context, arg));
                         return;
                     }
                 }
                 return;
             }
-            stops.push(parseColorStop(context, arg));
+            stops.push.apply(stops, parseColorStops(context, arg));
         });
         return { startAngle: startAngle, stops: stops, position: position, type: 6 /* CSSImageType.REPEATING_CONIC_GRADIENT */ };
     };
@@ -9541,8 +9562,8 @@
                     return;
                 }
             }
-            var colorStop = parseColorStop(context, arg);
-            stops.push(colorStop);
+            var colorStop = parseColorStops(context, arg);
+            stops.push.apply(stops, colorStop);
         });
         return { angle: angle$1, stops: stops, type: 3 /* CSSImageType.REPEATING_LINEAR_GRADIENT */ };
     };
@@ -9615,8 +9636,8 @@
                 }, isColorStop);
             }
             if (isColorStop) {
-                var colorStop = parseColorStop(context, arg);
-                stops.push(colorStop);
+                var colorStop = parseColorStops(context, arg);
+                stops.push.apply(stops, colorStop);
             }
         });
         return { size: size, shape: shape, stops: stops, position: position, type: 4 /* CSSImageType.REPEATING_RADIAL_GRADIENT */ };
@@ -9798,6 +9819,213 @@
     var borderBottomColor = borderColorForSide('bottom');
     var borderLeftColor = borderColorForSide('left');
 
+    var DEFAULT_VALUE$2 = { value: 0, type: 'length' };
+    var borderImageOutset = {
+        name: 'border-image-outset',
+        initialValue: '0',
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        prefix: false,
+        parse: function (_context, tokens) {
+            var parsed = [];
+            for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                var token = tokens_1[_i];
+                if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+                    continue;
+                }
+                if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                    parsed.push({ value: token.number, type: 'number' });
+                }
+                else if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+                    parsed.push({ value: token.number, type: 'length' });
+                }
+            }
+            if (parsed.length === 0) {
+                return [DEFAULT_VALUE$2, DEFAULT_VALUE$2, DEFAULT_VALUE$2, DEFAULT_VALUE$2];
+            }
+            return expandFour$1(parsed);
+        },
+    };
+    function expandFour$1(arr) {
+        if (arr.length === 1) {
+            return [arr[0], arr[0], arr[0], arr[0]];
+        }
+        if (arr.length === 2) {
+            return [arr[0], arr[1], arr[0], arr[1]];
+        }
+        if (arr.length === 3) {
+            return [arr[0], arr[1], arr[2], arr[1]];
+        }
+        return [arr[0], arr[1], arr[2], arr[3]];
+    }
+
+    var borderImageRepeat = {
+        name: 'border-image-repeat',
+        initialValue: 'stretch',
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        prefix: false,
+        parse: function (_context, tokens) {
+            var values = [];
+            for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                var token = tokens_1[_i];
+                if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+                    continue;
+                }
+                if (isIdentToken(token)) {
+                    values.push(parseRepeatKeyword(token.value));
+                }
+            }
+            if (values.length === 0) {
+                return [0 /* BORDER_IMAGE_REPEAT.STRETCH */, 0 /* BORDER_IMAGE_REPEAT.STRETCH */];
+            }
+            if (values.length === 1) {
+                return [values[0], values[0]];
+            }
+            return [values[0], values[1]];
+        },
+    };
+    function parseRepeatKeyword(value) {
+        switch (value) {
+            case 'repeat':
+                return 1 /* BORDER_IMAGE_REPEAT.REPEAT */;
+            case 'round':
+                return 2 /* BORDER_IMAGE_REPEAT.ROUND */;
+            case 'space':
+                return 3 /* BORDER_IMAGE_REPEAT.SPACE */;
+            case 'stretch':
+            default:
+                return 0 /* BORDER_IMAGE_REPEAT.STRETCH */;
+        }
+    }
+
+    var borderImageSlice = {
+        name: 'border-image-slice',
+        initialValue: '100%',
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        prefix: false,
+        parse: function (_context, tokens) {
+            var fill = false;
+            var nums = [];
+            var pcts = [];
+            for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                var token = tokens_1[_i];
+                if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+                    continue;
+                }
+                if (isIdentToken(token) && token.value === 'fill') {
+                    fill = true;
+                    continue;
+                }
+                if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                    nums.push(token.number);
+                    pcts.push(false);
+                }
+                else if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+                    nums.push(token.number);
+                    pcts.push(true);
+                }
+                // Dimension tokens (e.g. 10px) — treat as pixel value
+                else if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+                    nums.push(token.number);
+                    pcts.push(false);
+                }
+            }
+            // Default: 100%
+            if (nums.length === 0) {
+                return {
+                    values: [100, 100, 100, 100],
+                    percentages: [true, true, true, true],
+                    fill: fill,
+                };
+            }
+            // Expand shorthand: 1 → all, 2 → TB/LR, 3 → T/LR/B, 4 → T/R/B/L
+            var v = expandFourValues(nums);
+            var p = expandFourValues(pcts);
+            return {
+                values: v,
+                percentages: p,
+                fill: fill,
+            };
+        },
+    };
+    function expandFourValues(arr) {
+        if (arr.length === 1) {
+            return [arr[0], arr[0], arr[0], arr[0]];
+        }
+        if (arr.length === 2) {
+            return [arr[0], arr[1], arr[0], arr[1]];
+        }
+        if (arr.length === 3) {
+            return [arr[0], arr[1], arr[2], arr[1]];
+        }
+        return [arr[0], arr[1], arr[2], arr[3]];
+    }
+
+    var borderImageSource = {
+        name: 'border-image-source',
+        initialValue: 'none',
+        type: 0 /* PropertyDescriptorParsingType.VALUE */,
+        prefix: false,
+        parse: function (context, token) {
+            if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'none') {
+                return null;
+            }
+            if (!isSupportedImage(token)) {
+                return null;
+            }
+            try {
+                return image.parse(context, token);
+            }
+            catch (e) {
+                return null;
+            }
+        },
+    };
+
+    var DEFAULT_VALUE$1 = { value: 1, type: 'number' };
+    var borderImageWidth = {
+        name: 'border-image-width',
+        initialValue: '1',
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        prefix: false,
+        parse: function (_context, tokens) {
+            var parsed = [];
+            for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                var token = tokens_1[_i];
+                if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+                    continue;
+                }
+                if (isIdentToken(token) && token.value === 'auto') {
+                    parsed.push({ value: 0, type: 'auto' });
+                }
+                else if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                    parsed.push({ value: token.number, type: 'number' });
+                }
+                else if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+                    parsed.push({ value: token.number, type: 'percentage' });
+                }
+                else if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+                    parsed.push({ value: token.number, type: 'length' });
+                }
+            }
+            if (parsed.length === 0) {
+                return [DEFAULT_VALUE$1, DEFAULT_VALUE$1, DEFAULT_VALUE$1, DEFAULT_VALUE$1];
+            }
+            return expandFour(parsed);
+        },
+    };
+    function expandFour(arr) {
+        if (arr.length === 1) {
+            return [arr[0], arr[0], arr[0], arr[0]];
+        }
+        if (arr.length === 2) {
+            return [arr[0], arr[1], arr[0], arr[1]];
+        }
+        if (arr.length === 3) {
+            return [arr[0], arr[1], arr[2], arr[1]];
+        }
+        return [arr[0], arr[1], arr[2], arr[3]];
+    }
+
     var borderRadiusForSide = function (side) { return ({
         name: "border-radius-".concat(side),
         initialValue: '0 0',
@@ -9827,6 +10055,14 @@
                     return 3 /* BORDER_STYLE.DOTTED */;
                 case 'double':
                     return 4 /* BORDER_STYLE.DOUBLE */;
+                case 'groove':
+                    return 5 /* BORDER_STYLE.GROOVE */;
+                case 'ridge':
+                    return 6 /* BORDER_STYLE.RIDGE */;
+                case 'inset':
+                    return 7 /* BORDER_STYLE.INSET */;
+                case 'outset':
+                    return 8 /* BORDER_STYLE.OUTSET */;
             }
             return 1 /* BORDER_STYLE.SOLID */;
         },
@@ -9852,6 +10088,22 @@
     var borderRightWidth = borderWidthForSide('right');
     var borderBottomWidth = borderWidthForSide('bottom');
     var borderLeftWidth = borderWidthForSide('left');
+
+    var boxDecorationBreak = {
+        name: 'box-decoration-break',
+        initialValue: 'slice',
+        prefix: true,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, value) {
+            switch (value) {
+                case 'clone':
+                    return 1 /* BOX_DECORATION_BREAK.CLONE */;
+                case 'slice':
+                default:
+                    return 0 /* BOX_DECORATION_BREAK.SLICE */;
+            }
+        },
+    };
 
     var boxShadow = {
         name: 'box-shadow',
@@ -10638,6 +10890,32 @@
         },
     };
 
+    var imageRendering = {
+        name: 'image-rendering',
+        initialValue: 'auto',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, value) {
+            switch (value) {
+                case 'pixelated':
+                // Legacy Chromium/WebKit alias that also disables smoothing.
+                case '-webkit-optimize-contrast':
+                    return 1 /* IMAGE_RENDERING.PIXELATED */;
+                case 'crisp-edges':
+                case '-webkit-crisp-edges':
+                case '-moz-crisp-edges':
+                case '-o-crisp-edges':
+                    return 2 /* IMAGE_RENDERING.CRISP_EDGES */;
+                case 'smooth':
+                case 'high-quality':
+                    return 3 /* IMAGE_RENDERING.SMOOTH */;
+                case 'auto':
+                default:
+                    return 0 /* IMAGE_RENDERING.AUTO */;
+            }
+        },
+    };
+
     var letterSpacing = {
         name: 'letter-spacing',
         initialValue: '0',
@@ -10943,6 +11221,16 @@
         },
     };
 
+    var objectPosition = {
+        name: 'object-position',
+        initialValue: '50% 50%',
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        prefix: false,
+        parse: function (_context, tokens) {
+            return parseLengthPercentageTuple(tokens.filter(isLengthPercentage));
+        },
+    };
+
     var opacity = {
         name: 'opacity',
         initialValue: '1',
@@ -11069,6 +11357,9 @@
             }
             var first = tokens[0];
             if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+                return 'none';
+            }
+            if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'auto') {
                 return null;
             }
             var quotes = [];
@@ -11085,14 +11376,50 @@
         },
     };
     var getQuote = function (quotes, depth, open) {
-        if (!quotes) {
+        // quotes: none — no quotation marks at all.
+        if (quotes === 'none') {
             return '';
+        }
+        if (!quotes) {
+            // When quotes is null (auto or unset), fall back to the default typographic
+            // quotation marks. This handles <q> elements where the browser uses
+            // locale-dependent quotes via quotes:auto in the user agent stylesheet.
+            // Note: browsers use locale-dependent quotes for quotes:auto (e.g. «» for
+            // French). We fall back to English-style quotes here. Authors can override
+            // this by explicitly setting the quotes property in CSS, e.g.:
+            //   q { quotes: '«' '»' '‹' '›'; }
+            var defaults = [
+                { open: '\u201c', close: '\u201d' }, // "" (level 1)
+                { open: '\u2018', close: '\u2019' }, // '' (level 2)
+            ];
+            var q = defaults[Math.min(depth, defaults.length - 1)];
+            return q ? (open ? q.open : q.close) : '';
         }
         var quote = quotes[Math.min(depth, quotes.length - 1)];
         if (!quote) {
             return '';
         }
         return open ? quote.open : quote.close;
+    };
+
+    var rubyAlign = {
+        name: 'ruby-align',
+        initialValue: 'space-around',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, value) {
+            switch (value) {
+                case 'start':
+                    return 0 /* RUBY_ALIGN.START */;
+                case 'center':
+                    return 1 /* RUBY_ALIGN.CENTER */;
+                case 'space-between':
+                    return 2 /* RUBY_ALIGN.SPACE_BETWEEN */;
+                case 'space-around':
+                default:
+                    return 3 /* RUBY_ALIGN.SPACE_AROUND */;
+            }
+        },
     };
 
     var textAlign = {
@@ -11120,6 +11447,37 @@
         prefix: false,
         type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
         format: 'color',
+    };
+
+    var textDecorationInset = {
+        name: 'text-decoration-inset',
+        initialValue: '0',
+        prefix: false,
+        type: 1 /* PropertyDescriptorParsingType.LIST */,
+        parse: function (_context, tokens) {
+            var values = [];
+            for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                var token = tokens_1[_i];
+                if (isIdentToken(token) && token.value === 'auto') {
+                    // 'auto' — browser decides a small gap; approximate with a small positive value
+                    values.push(2);
+                }
+                else if (token.type === 15 /* TokenType.DIMENSION_TOKEN */ || token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                    values.push(token.number);
+                }
+                else if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+                    // Store percentage as fraction — will be resolved at render time against line length
+                    values.push(token.number / 100);
+                }
+            }
+            if (values.length === 0) {
+                return { start: 0, end: 0 };
+            }
+            if (values.length === 1) {
+                return { start: values[0], end: values[0] };
+            }
+            return { start: values[0], end: values[1] };
+        },
     };
 
     var textDecorationLine = {
@@ -11252,6 +11610,46 @@
                 default:
                     return 0 /* TEXT_TRANSFORM.NONE */;
             }
+        },
+    };
+
+    // Sentinel value for 'auto'
+    var TEXT_UNDERLINE_OFFSET_AUTO = 0;
+    var textUnderlineOffset = {
+        name: 'text-underline-offset',
+        initialValue: 'auto',
+        prefix: false,
+        type: 0 /* PropertyDescriptorParsingType.VALUE */,
+        parse: function (_context, token) {
+            if (token.type === 20 /* TokenType.IDENT_TOKEN */ && token.value === 'auto') {
+                return TEXT_UNDERLINE_OFFSET_AUTO;
+            }
+            if (token.type === 15 /* TokenType.DIMENSION_TOKEN */ || token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+                return token.number;
+            }
+            if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+                // Percentage of 1em — stored as fraction, resolved at render time
+                return token.number / 100;
+            }
+            return TEXT_UNDERLINE_OFFSET_AUTO;
+        },
+    };
+
+    var textUnderlinePosition = {
+        name: 'text-underline-position',
+        initialValue: 'auto',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, position) {
+            switch (position) {
+                case 'under':
+                    return 1 /* TEXT_UNDERLINE_POSITION.UNDER */;
+                case 'left':
+                    return 2 /* TEXT_UNDERLINE_POSITION.LEFT */;
+                case 'right':
+                    return 3 /* TEXT_UNDERLINE_POSITION.RIGHT */;
+            }
+            return 0 /* TEXT_UNDERLINE_POSITION.AUTO */;
         },
     };
 
@@ -11486,6 +11884,30 @@
         },
     };
 
+    var unicodeBidi = {
+        name: 'unicode-bidi',
+        initialValue: 'normal',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, bidi) {
+            switch (bidi) {
+                case 'bidi-override':
+                    return 3 /* UNICODE_BIDI.BIDI_OVERRIDE */;
+                case 'isolate-override':
+                    return 4 /* UNICODE_BIDI.ISOLATE_OVERRIDE */;
+                case 'embed':
+                    return 1 /* UNICODE_BIDI.EMBED */;
+                case 'isolate':
+                    return 2 /* UNICODE_BIDI.ISOLATE */;
+                case 'plaintext':
+                    return 5 /* UNICODE_BIDI.PLAINTEXT */;
+                case 'normal':
+                default:
+                    return 0 /* UNICODE_BIDI.NORMAL */;
+            }
+        },
+    };
+
     var visibility = {
         name: 'visible',
         initialValue: 'none',
@@ -11501,6 +11923,26 @@
                 default:
                     return 0 /* VISIBILITY.VISIBLE */;
             }
+        },
+    };
+
+    /**
+     * `-webkit-line-clamp`: limits the content to the given number of lines,
+     * adding an ellipsis after the last visible line.
+     *
+     * Parsed to a number of lines. `0` means "no clamp" (the `none` keyword or any
+     * non-positive/invalid value).
+     */
+    var webkitLineClamp = {
+        name: "-webkit-line-clamp",
+        initialValue: 'none',
+        type: 0 /* PropertyDescriptorParsingType.VALUE */,
+        prefix: false,
+        parse: function (_context, token) {
+            if (isNumberToken(token) && token.number > 0) {
+                return Math.floor(token.number);
+            }
+            return 0;
         },
     };
 
@@ -11587,10 +12029,32 @@
         },
     };
 
+    // ---------------------------------------------------------------------------
+    // Zoom scaling helpers
+    // ---------------------------------------------------------------------------
+    /**
+     * Scale a LengthPercentage token by `factor`.
+     * - DIMENSION_TOKEN / NUMBER_TOKEN (absolute lengths): multiply .number
+     * - PERCENTAGE_TOKEN: leave unchanged — percentages resolve against bounds
+     *   which are already post-zoom, so no scaling is needed.
+     */
+    var scaleLengthPercentage = function (token, factor) {
+        // PERCENTAGE_TOKEN: leave unchanged — resolves against post-zoom bounds
+        // FUNCTION (calc()): leave unchanged — too complex to scale safely
+        if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */ || token.type === 18 /* TokenType.FUNCTION */) {
+            return token;
+        }
+        // DimensionToken and NumberValueToken both have a .number property
+        return __assign(__assign({}, token), { number: token.number * factor });
+    };
+    /** Scale an absolute Length token (DIMENSION or NUMBER) by `factor`. */
+    var scaleLength = function (token, factor) { return (__assign(__assign({}, token), { number: token.number * factor })); };
     var CSSParsedDeclaration = /** @class */ (function () {
-        function CSSParsedDeclaration(context, declaration) {
-            var _a, _b;
+        function CSSParsedDeclaration(context, declaration, zoomFactor) {
+            if (zoomFactor === void 0) { zoomFactor = 1; }
+            var _a, _b, _c;
             this.animationDuration = parse(context, duration, declaration.animationDuration);
+            this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
             this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
             this.backgroundBlendMode = parse(context, backgroundBlendMode, declaration.backgroundBlendMode);
             this.backgroundColor = parse(context, backgroundColor, declaration.backgroundColor);
@@ -11615,6 +12079,12 @@
             this.borderRightWidth = parse(context, borderRightWidth, declaration.borderRightWidth);
             this.borderBottomWidth = parse(context, borderBottomWidth, declaration.borderBottomWidth);
             this.borderLeftWidth = parse(context, borderLeftWidth, declaration.borderLeftWidth);
+            this.borderImageSource = parse(context, borderImageSource, declaration.borderImageSource);
+            this.borderImageSlice = parse(context, borderImageSlice, declaration.borderImageSlice);
+            this.borderImageWidth = parse(context, borderImageWidth, declaration.borderImageWidth);
+            this.borderImageOutset = parse(context, borderImageOutset, declaration.borderImageOutset);
+            this.borderImageRepeat = parse(context, borderImageRepeat, declaration.borderImageRepeat);
+            this.boxDecorationBreak = parse(context, boxDecorationBreak, (_a = declaration.boxDecorationBreak) !== null && _a !== void 0 ? _a : declaration.webkitBoxDecorationBreak);
             this.boxShadow = parse(context, boxShadow, declaration.boxShadow);
             this.clip = parse(context, clip, declaration.clip);
             this.clipPath = parse(context, clipPath, declaration.clipPath);
@@ -11628,6 +12098,7 @@
             this.fontStyle = parse(context, fontStyle, declaration.fontStyle);
             this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
             this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
+            this.imageRendering = parse(context, imageRendering, declaration.imageRendering);
             this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
             this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
             this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
@@ -11639,6 +12110,7 @@
             this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
             this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
             this.objectFit = parse(context, objectFit, declaration.objectFit);
+            this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
             this.opacity = parse(context, opacity, declaration.opacity);
             this.mixBlendMode = parse(context, mixBlendMode, declaration.mixBlendMode);
             var overflowTuple = parse(context, overflow, declaration.overflow);
@@ -11651,21 +12123,101 @@
             this.paddingLeft = parse(context, paddingLeft, declaration.paddingLeft);
             this.paintOrder = parse(context, paintOrder, declaration.paintOrder);
             this.position = parse(context, position, declaration.position);
+            this.rubyAlign = parse(context, rubyAlign, declaration.rubyAlign);
             this.textAlign = parse(context, textAlign, declaration.textAlign);
-            this.textDecorationColor = parse(context, textDecorationColor, (_a = declaration.textDecorationColor) !== null && _a !== void 0 ? _a : declaration.color);
-            this.textDecorationLine = parse(context, textDecorationLine, (_b = declaration.textDecorationLine) !== null && _b !== void 0 ? _b : declaration.textDecoration);
+            this.textDecorationColor = parse(context, textDecorationColor, (_b = declaration.textDecorationColor) !== null && _b !== void 0 ? _b : declaration.color);
+            this.textDecorationInset = parse(context, textDecorationInset, declaration.textDecorationInset);
+            this.textDecorationLine = parse(context, textDecorationLine, (_c = declaration.textDecorationLine) !== null && _c !== void 0 ? _c : declaration.textDecoration);
             this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
             this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
             this.textShadow = parse(context, textShadow, declaration.textShadow);
             this.textTransform = parse(context, textTransform, declaration.textTransform);
+            this.textUnderlineOffset = parse(context, textUnderlineOffset, declaration.textUnderlineOffset);
+            this.textUnderlinePosition = parse(context, textUnderlinePosition, declaration.textUnderlinePosition);
             this.transform = parse(context, transform$1, declaration.transform);
             this.transformOrigin = parse(context, transformOrigin, declaration.transformOrigin);
+            this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
             this.visibility = parse(context, visibility, declaration.visibility);
+            this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
             this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
             this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
             this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
             this.writingMode = parse(context, writingMode, declaration.writingMode);
             this.zIndex = parse(context, zIndex, declaration.zIndex);
+            // -----------------------------------------------------------------------
+            // CSS zoom scaling
+            // When an element has zoom != 1, getComputedStyle returns pre-zoom values
+            // while getBoundingClientRect returns post-zoom dimensions. We scale all
+            // absolute dimensional values here so they are consistent with the bounds.
+            // Percentage-based values are left unchanged — they resolve against bounds
+            // which are already post-zoom.
+            // -----------------------------------------------------------------------
+            if (zoomFactor !== 1 && zoomFactor > 0) {
+                var z_1 = zoomFactor;
+                // Border widths (plain numbers in px)
+                this.borderTopWidth *= z_1;
+                this.borderRightWidth *= z_1;
+                this.borderBottomWidth *= z_1;
+                this.borderLeftWidth *= z_1;
+                // Border-image outset & width: scale absolute length values
+                this.borderImageOutset = this.borderImageOutset.map(function (v) {
+                    return v.type === 'length' ? __assign(__assign({}, v), { value: v.value * z_1 }) : v;
+                });
+                this.borderImageWidth = this.borderImageWidth.map(function (v) {
+                    return v.type === 'length' ? __assign(__assign({}, v), { value: v.value * z_1 }) : v;
+                });
+                // Border radii (LengthPercentageTuple — scale each component)
+                this.borderTopLeftRadius = this.borderTopLeftRadius.map(function (t) {
+                    return scaleLengthPercentage(t, z_1);
+                });
+                this.borderTopRightRadius = this.borderTopRightRadius.map(function (t) {
+                    return scaleLengthPercentage(t, z_1);
+                });
+                this.borderBottomRightRadius = this.borderBottomRightRadius.map(function (t) {
+                    return scaleLengthPercentage(t, z_1);
+                });
+                this.borderBottomLeftRadius = this.borderBottomLeftRadius.map(function (t) {
+                    return scaleLengthPercentage(t, z_1);
+                });
+                // Padding (LengthPercentage)
+                this.paddingTop = scaleLengthPercentage(this.paddingTop, z_1);
+                this.paddingRight = scaleLengthPercentage(this.paddingRight, z_1);
+                this.paddingBottom = scaleLengthPercentage(this.paddingBottom, z_1);
+                this.paddingLeft = scaleLengthPercentage(this.paddingLeft, z_1);
+                // Font size (LengthPercentage)
+                this.fontSize = scaleLengthPercentage(this.fontSize, z_1);
+                // Letter spacing (plain number in px)
+                this.letterSpacing *= z_1;
+                // webkit-text-stroke-width (plain number in px)
+                this.webkitTextStrokeWidth *= z_1;
+                // Text decoration thickness (number | null)
+                if (typeof this.textDecorationThickness === 'number') {
+                    this.textDecorationThickness *= z_1;
+                }
+                // Text underline offset (number | null)
+                if (typeof this.textUnderlineOffset === 'number') {
+                    this.textUnderlineOffset *= z_1;
+                }
+                // box-shadow: scale offsetX, offsetY, blur, spread
+                this.boxShadow = this.boxShadow.map(function (shadow) { return (__assign(__assign({}, shadow), { offsetX: scaleLength(shadow.offsetX, z_1), offsetY: scaleLength(shadow.offsetY, z_1), blur: scaleLength(shadow.blur, z_1), spread: scaleLength(shadow.spread, z_1) })); });
+                // text-shadow: scale offsetX, offsetY, blur
+                this.textShadow = this.textShadow.map(function (shadow) { return (__assign(__assign({}, shadow), { offsetX: scaleLength(shadow.offsetX, z_1), offsetY: scaleLength(shadow.offsetY, z_1), blur: scaleLength(shadow.blur, z_1) })); });
+                // transform: scale the translation components (e=matrix[4], f=matrix[5])
+                if (this.transform !== null) {
+                    this.transform = [
+                        this.transform[0],
+                        this.transform[1],
+                        this.transform[2],
+                        this.transform[3],
+                        this.transform[4] * z_1,
+                        this.transform[5] * z_1,
+                    ];
+                }
+                // transform-origin: scale absolute (px) components, leave percentages alone
+                this.transformOrigin = this.transformOrigin.map(function (t) {
+                    return scaleLengthPercentage(t, z_1);
+                });
+            }
         }
         CSSParsedDeclaration.prototype.isVisible = function () {
             return this.display > 0 && this.opacity > 0 && this.visibility === 0 /* VISIBILITY.VISIBLE */;
@@ -11755,6 +12307,42 @@
         }
     };
 
+    /**
+     * Data attribute names used to pass pseudo-element style information from
+     * the document cloner (which reads getComputedStyle on the original DOM)
+     * to the node parser and element containers (which run on the iframe clone).
+     *
+     * Centralised here to avoid circular imports between document-cloner and
+     * the element containers / node-parser.
+     */
+    /** Serialised ::first-line style delta (JSON object of CSS property → value). */
+    var DATA_ATTR_FIRST_LINE = 'data-h2c-first-line';
+    /** Computed ::placeholder color (CSS color string). */
+    var DATA_ATTR_PLACEHOLDER = 'data-h2c-placeholder';
+    /** Serialised ::marker style delta (JSON object of CSS property → value). */
+    var DATA_ATTR_MARKER = 'data-h2c-marker';
+
+    var elementDebuggerAttribute = 'data-html2canvas-debug';
+    var getElementDebugType = function (element) {
+        var attribute = element.getAttribute(elementDebuggerAttribute);
+        switch (attribute) {
+            case 'all':
+                return 1 /* DebuggerType.ALL */;
+            case 'clone':
+                return 2 /* DebuggerType.CLONE */;
+            case 'parse':
+                return 3 /* DebuggerType.PARSE */;
+            case 'render':
+                return 4 /* DebuggerType.RENDER */;
+            default:
+                return 0 /* DebuggerType.NONE */;
+        }
+    };
+    var isDebugging = function (element, type) {
+        var elementType = getElementDebugType(element);
+        return elementType === 1 /* DebuggerType.ALL */ || type === elementType;
+    };
+
     var Bounds = /** @class */ (function () {
         function Bounds(left, top, width, height) {
             this.left = left;
@@ -11798,11 +12386,46 @@
             this.textNodes = [];
             this.elements = [];
             this.flags = 0;
+            /** Computed styles for ::first-line, populated by parseNodeTree when the pseudo-element has effective styling. */
+            this.firstLineStyles = null;
             if (isDebugging(element, 3 /* DebuggerType.PARSE */)) {
                 debugger;
             }
             var computedStyle = ((_b = (_a = element.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) !== null && _b !== void 0 ? _b : window).getComputedStyle(element, null);
-            this.styles = new CSSParsedDeclaration(context, computedStyle);
+            // Detect the effective CSS zoom factor by comparing the visual size
+            // (getBoundingClientRect, post-zoom accumulated) with the layout size
+            // (offsetWidth, pre-zoom of this element only).
+            //
+            // We use offsetWidth rather than computedStyle.width because:
+            //   - computedStyle.zoom returns only the element's own zoom (not accumulated)
+            //   - offsetWidth is in CSS pixels of the current element, unaffected by
+            //     ancestor zoom, so rect.width / offsetWidth gives the full accumulated factor.
+            //
+            // Temporarily neutralise transform so getBoundingClientRect reflects
+            // only zoom, not any CSS transform on this element.
+            var zoomFactor = 1;
+            if (isHTMLElementNode(element)) {
+                var htmlEl = element;
+                var savedTransform = null;
+                if (computedStyle.transform !== 'none') {
+                    savedTransform = htmlEl.style.transform;
+                    htmlEl.style.transform = 'none';
+                }
+                var rect = htmlEl.getBoundingClientRect();
+                if (savedTransform !== null) {
+                    htmlEl.style.transform = savedTransform !== null && savedTransform !== void 0 ? savedTransform : '';
+                }
+                var offsetWidth = htmlEl.offsetWidth;
+                if (offsetWidth > 0) {
+                    var ratio = rect.width / offsetWidth;
+                    // Only treat it as a real zoom if the ratio deviates by more than
+                    // 0.5% to avoid floating-point noise on non-zoomed elements.
+                    if (Math.abs(ratio - 1) > 0.005) {
+                        zoomFactor = ratio;
+                    }
+                }
+            }
+            this.styles = new CSSParsedDeclaration(context, computedStyle, zoomFactor);
             if (isHTMLElementNode(element)) {
                 if (this.styles.animationDuration.some(function (duration) { return duration > 0; })) {
                     element.style.animationDuration = '0s';
@@ -11813,6 +12436,27 @@
                 }
             }
             this.bounds = parseBounds(this.context, element);
+            // --- <fieldset> / <legend> support ---
+            // In Chromium, getBoundingClientRect() on a fieldset returns a rect whose top
+            // is at the top of the <legend> (which overflows above the border line).
+            // We capture legendBounds for the gap rendering and correct bounds.top so that
+            // BoundCurves places the top border at the legend's vertical centre, matching
+            // the visual rendering.
+            if (element.tagName === 'FIELDSET') {
+                var legend = element.querySelector(':scope > legend');
+                if (legend) {
+                    var legendBounds = parseBounds(this.context, legend);
+                    this.legendBounds = legendBounds;
+                    // Top border sits at: legend centre - borderTopWidth / 2
+                    var legendCentreY = legendBounds.top + legendBounds.height / 2;
+                    var borderBoxTop = legendCentreY - this.styles.borderTopWidth / 2;
+                    // Only correct when the bounding rect top is genuinely above the border edge
+                    // (display:block case in Chromium). Use a 1px threshold to avoid FP noise.
+                    if (borderBoxTop - this.bounds.top > 1) {
+                        this.bounds = new Bounds(this.bounds.left, borderBoxTop, this.bounds.width, this.bounds.height - (borderBoxTop - this.bounds.top));
+                    }
+                }
+            }
             if (isDebugging(element, 4 /* DebuggerType.RENDER */)) {
                 this.flags |= 16 /* FLAGS.DEBUG_RENDER */;
             }
@@ -11825,6 +12469,8 @@
         function LIElementContainer(context, element) {
             var _this = _super.call(this, context, element) || this;
             _this.value = element.value;
+            var markerAttr = element.getAttribute(DATA_ATTR_MARKER);
+            _this.markerStyles = markerAttr ? JSON.parse(markerAttr) : null;
             return _this;
         }
         return LIElementContainer;
@@ -11845,8 +12491,25 @@
         __extends(SelectElementContainer, _super);
         function SelectElementContainer(context, element) {
             var _this = _super.call(this, context, element) || this;
-            var option = element.options[element.selectedIndex || 0];
-            _this.value = option ? option.text || '' : '';
+            // A <select> renders as a multi-line list box when `multiple` is set or
+            // its `size` attribute is greater than 1. Otherwise it is the familiar
+            // single-line closed dropdown showing the selected option.
+            _this.isListBox = element.multiple || element.size > 1;
+            _this.scrollTop = element.scrollTop;
+            // Read the native per-option geometry rather than estimating a row
+            // height: option box heights differ between engines (e.g. 18px in
+            // Chromium vs 26px in Firefox for the same 14px font), and offsetTop
+            // already encodes the layout. offsetTop is relative to the select's
+            // border box; the renderer subtracts the top border + scrollTop.
+            _this.options = Array.from(element.options).map(function (option) { return ({
+                text: option.text || '',
+                selected: option.selected,
+                offsetTop: option.offsetTop,
+                offsetHeight: option.offsetHeight,
+            }); });
+            var firstSelected = _this.options.find(function (o) { return o.selected; });
+            var fallback = element.options[element.selectedIndex || 0];
+            _this.value = firstSelected ? firstSelected.text : fallback ? fallback.text || '' : '';
             return _this;
         }
         return SelectElementContainer;
@@ -11856,7 +12519,10 @@
         __extends(TextareaElementContainer, _super);
         function TextareaElementContainer(context, element) {
             var _this = _super.call(this, context, element) || this;
-            _this.value = element.value;
+            _this.value = element.value.length === 0 ? element.placeholder || '' : element.value;
+            _this.isPlaceholder = element.value.length === 0 && (element.placeholder || '').length > 0;
+            var phAttr = element.getAttribute(DATA_ATTR_PLACEHOLDER);
+            _this.placeholderStyles = phAttr ? JSON.parse(phAttr) : null;
             _this.scrollTop = element.scrollTop;
             return _this;
         }
@@ -12002,6 +12668,9 @@
             _this.type = input.type.toLowerCase();
             _this.checked = input.checked;
             _this.value = getInputValue(input);
+            _this.isPlaceholder = input.value.length === 0 && (input.placeholder || '').length > 0;
+            var phAttr = input.getAttribute(DATA_ATTR_PLACEHOLDER);
+            _this.placeholderStyles = phAttr ? JSON.parse(phAttr) : null;
             _this.min = parseFloat(input.min) || 0;
             _this.max = parseFloat(input.max) || 100;
             _this.valueAsNumber = isNaN(input.valueAsNumber) ? (_this.min + _this.max) / 2 : input.valueAsNumber;
@@ -12101,6 +12770,47 @@
             configurable: true
         });
         return MeterElementContainer;
+    }(ElementContainer));
+
+    /**
+     * Container for `<object>` elements.
+     *
+     * When the object's `data` attribute references an image (e.g. a data-URI PNG),
+     * we treat it as a replaced element (like `<img>`) so that html2canvas renders
+     * the loaded image instead of (or on top of) the fallback child content.
+     *
+     * When the data fails to load or is not an image type, the browser shows the
+     * fallback children — those are handled by the normal DOM tree traversal, and
+     * `intrinsicWidth`/`intrinsicHeight` stay at 0 so the renderer skips the image
+     * paint path.
+     */
+    var ObjectElementContainer = /** @class */ (function (_super) {
+        __extends(ObjectElementContainer, _super);
+        function ObjectElementContainer(context, object) {
+            var _this = _super.call(this, context, object) || this;
+            _this.intrinsicWidth = 0;
+            _this.intrinsicHeight = 0;
+            _this.src = object.data;
+            if (_this.src) {
+                _this.context.cache.addImage(_this.src);
+            }
+            return _this;
+        }
+        /**
+         * Returns `true` when the `<object>` has loaded image content that should
+         * be rendered as a replaced element.
+         *
+         * The heuristic mirrors how the browser decides whether to show fallback:
+         *   - If the element has a contentDocument, the data loaded as a document
+         *     (HTML/SVG) — we don't handle that here (future work: treat like iframe).
+         *   - If the computed `data` URL looks like an image MIME type, and the cache
+         *     was able to load it, the object is showing the image — skip fallback.
+         *   - Otherwise the browser is showing fallback children.
+         */
+        ObjectElementContainer.prototype.hasLoadedImage = function () {
+            return this.intrinsicWidth > 0 && this.intrinsicHeight > 0;
+        };
+        return ObjectElementContainer;
     }(ElementContainer));
 
     var ProgressElementContainer = /** @class */ (function (_super) {
@@ -12591,20 +13301,16 @@
     var _reusableRange = null;
     var segmentGraphemes = function (value) {
         if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            var segmenter = new Intl.Segmenter(void 0, { granularity: 'grapheme' });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            var segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
             return Array.from(segmenter.segment(value)).map(function (segment) { return segment.segment; });
         }
         return splitGraphemes(value);
     };
     var segmentWords = function (value, styles) {
         if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            var segmenter = new Intl.Segmenter(void 0, {
+            var segmenter = new Intl.Segmenter(undefined, {
                 granularity: 'word',
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return Array.from(segmenter.segment(value)).map(function (segment) { return segment.segment; });
         }
         return breakWords(value, styles);
@@ -12787,7 +13493,18 @@
 
     var LIST_OWNERS = ['OL', 'UL', 'MENU'];
     var parseNodeTree = function (context, node, parent, root) {
-        var _a;
+        var _a, _b, _c, _d;
+        // A <select> renders its own content (dropdown value or list-box rows) via
+        // SelectElementContainer + the form renderer. Never descend into its <option>
+        // / <optgroup> children: doing so would parse each option as a generic element
+        // whose UA background and text paint on top of the form renderer's output
+        // (double-drawn text, selection highlight overwritten). The guard below in the
+        // child loop only prevents descending FROM a parent INTO a nested <select>;
+        // when a <select> is the captured root element, this early return is what
+        // stops its options from being parsed.
+        if (isElementNode(node) && isSelectElement(node)) {
+            return;
+        }
         for (var childNode = node.firstChild, nextNode = void 0; childNode; childNode = nextNode) {
             nextNode = childNode.nextSibling;
             // Fixes #2238 #1624 - Fix the issue of TextNode content being overlooked in rendering due to being perceived as blank by trim().
@@ -12828,8 +13545,48 @@
                         else if (createsStackingContext(container.styles)) {
                             container.flags |= 2 /* FLAGS.CREATES_STACKING_CONTEXT */;
                         }
+                        else if (container.legendBounds) {
+                            // A <fieldset> with a <legend> must create its own stacking context
+                            // so its children (legend, content) are rendered after its background,
+                            // not before. Without this, inline-block fieldsets end up in inlineLevel
+                            // while their children land in nonInlineLevel of the parent stacking
+                            // context, causing the fieldset background to paint over its children.
+                            container.flags |= 2 /* FLAGS.CREATES_STACKING_CONTEXT */;
+                        }
                         if (LIST_OWNERS.indexOf(childNode.tagName) !== -1) {
                             container.flags |= 8 /* FLAGS.IS_LIST_OWNER */;
+                        }
+                        // Capture ::first-line styles from the data attribute serialised by
+                        // DocumentCloner.resolveFirstLinePseudo(). We cannot read getComputedStyle
+                        // with '::first-line' here because createPseudoHideStyles already injected
+                        // CSS that resets all ::first-line properties to inherit in the iframe.
+                        var firstLineSerialized = childNode.getAttribute(DATA_ATTR_FIRST_LINE);
+                        if (firstLineSerialized) {
+                            childNode.removeAttribute(DATA_ATTR_FIRST_LINE);
+                            try {
+                                var delta = JSON.parse(firstLineSerialized);
+                                // Build a minimal CSSStyleDeclaration-like object by blending
+                                // the delta over the element's own computed style.
+                                var win = (_b = childNode.ownerDocument) === null || _b === void 0 ? void 0 : _b.defaultView;
+                                if (win) {
+                                    var elemStyle = win.getComputedStyle(childNode);
+                                    // Create a synthetic style by applying delta values onto a
+                                    // temporary element so CSSParsedDeclaration can parse it.
+                                    var tmp = childNode.ownerDocument.createElement('span');
+                                    tmp.style.cssText = elemStyle.cssText;
+                                    for (var _i = 0, _f = Object.entries(delta); _i < _f.length; _i++) {
+                                        var _g = _f[_i], prop = _g[0], val = _g[1];
+                                        tmp.style.setProperty(prop, val);
+                                    }
+                                    (_c = childNode.parentElement) === null || _c === void 0 ? void 0 : _c.appendChild(tmp);
+                                    var syntheticStyle = win.getComputedStyle(tmp);
+                                    container.firstLineStyles = new CSSParsedDeclaration(context, syntheticStyle);
+                                    (_d = childNode.parentElement) === null || _d === void 0 ? void 0 : _d.removeChild(tmp);
+                                }
+                            }
+                            catch (_e) {
+                                // Ignore parse errors — first-line simply won't be applied.
+                            }
                         }
                         parent.elements.push(container);
                         if (childNode.shadowRoot) {
@@ -12837,7 +13594,8 @@
                         }
                         else if (!isTextareaElement(childNode) &&
                             !isSVGElement(childNode) &&
-                            !isSelectElement(childNode)) {
+                            !isSelectElement(childNode) &&
+                            !isLoadedObjectElement(childNode)) {
                             parseNodeTree(context, childNode, container, root);
                         }
                     }
@@ -12878,6 +13636,9 @@
         }
         if (isMeterElement(element)) {
             return new MeterElementContainer(context, element);
+        }
+        if (isObjectElement(element)) {
+            return new ObjectElementContainer(context, element);
         }
         return new ElementContainer(context, element);
     };
@@ -12922,8 +13683,40 @@
     var isSlotElement = function (node) { return node.tagName === 'SLOT'; };
     var isProgressElement = function (node) { return node.tagName === 'PROGRESS'; };
     var isMeterElement = function (node) { return node.tagName === 'METER'; };
+    var isObjectElement = function (node) { return node.tagName === 'OBJECT'; };
     // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
     var isCustomElement = function (node) { return node.tagName.indexOf('-') > 0; };
+    var isDetailsElement = function (node) { return node.tagName === 'DETAILS'; };
+    var isSummaryElement = function (node) { return node.tagName === 'SUMMARY'; };
+    /**
+     * Returns true when an `<object>` element has successfully loaded content that
+     * replaces its fallback children. In that case, we must NOT traverse the child
+     * nodes because they are hidden fallback content.
+     *
+     * The check works by looking at the object's `contentDocument`: when the browser
+     * successfully loads the data attribute, it creates a nested browsing context.
+     * For data-URI images the browser renders the image directly without a content
+     * document, but it also hides the fallback children — however those children
+     * still exist in the DOM. We detect this case by checking if the `data` attribute
+     * points to an image type.
+     */
+    var isLoadedObjectElement = function (node) {
+        if (!isObjectElement(node)) {
+            return false;
+        }
+        // If the object has a contentDocument, it loaded a document (HTML, SVG, etc.).
+        // Its children are fallback content and should be skipped.
+        if (node.contentDocument) {
+            return true;
+        }
+        // For data-URI images and other successfully loaded resources, the browser
+        // hides fallback children. We detect this by checking the data attribute.
+        var data = node.data;
+        if (data && /^data:image\//i.test(data)) {
+            return true;
+        }
+        return false;
+    };
 
     var testRangeBounds = function (document) {
         var TEST_HEIGHT = 123;
@@ -13122,7 +13915,6 @@
             return value;
         },
         get SUPPORT_NATIVE_TEXT_SEGMENTATION() {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             var value = !!(typeof Intl !== 'undefined' && Intl.Segmenter);
             Object.defineProperty(FEATURES, 'SUPPORT_NATIVE_TEXT_SEGMENTATION', { value: value });
             return value;
@@ -13153,6 +13945,22 @@
         CacheStorage._origin = 'about:blank';
         return CacheStorage;
     }());
+    /**
+     * Insertion/access order of keys in `cache`, oldest first. Kept in sync with
+     * `cache` so that LRU eviction can drop the least-recently-used entry.
+     */
+    var cacheOrder = [];
+    var removeFromOrder = function (key) {
+        var i = cacheOrder.indexOf(key);
+        if (i !== -1) {
+            cacheOrder.splice(i, 1);
+        }
+    };
+    // Mark `key` as most-recently-used (moves it to the end of the order list).
+    var touchOrder = function (key) {
+        removeFromOrder(key);
+        cacheOrder.push(key);
+    };
     var Cache = /** @class */ (function () {
         function Cache(context, _options) {
             this.context = context;
@@ -13161,9 +13969,32 @@
         Cache.prototype.deleteImage = function (src) {
             if (this.has(src)) {
                 delete cache[src];
+                removeFromOrder(src);
                 return true;
             }
             return false;
+        };
+        /**
+         * Removes every entry from the (module-level, shared) image cache.
+         *
+         * Because the cache is global and persists across `html2canvas()` calls, it
+         * grows without bound in long-lived applications (e.g. SPAs) that capture
+         * many screenshots. Call this to reclaim the memory held by cached images.
+         *
+         * Note: the cache is shared, so clearing it affects any other in-flight or
+         * subsequent render that relies on the same entries. Only clear when no
+         * other capture depends on the cached resources.
+         *
+         * @returns the number of entries removed.
+         */
+        Cache.prototype.clear = function () {
+            var keys = Object.keys(cache);
+            for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
+                var key = keys_1[_i];
+                delete cache[key];
+            }
+            cacheOrder.length = 0;
+            return keys.length;
         };
         Cache.prototype.addImage = function (src) {
             if (this.has(src))
@@ -13172,13 +14003,47 @@
                 (cache[src] = this.loadImage(src)).catch(function () {
                     // prevent unhandled rejection
                 });
+                touchOrder(src);
+                this._evictIfNeeded();
                 return true;
             }
             return false;
         };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Cache.prototype.match = function (src) {
+            // Accessing an entry marks it as recently used for LRU purposes.
+            if (src in cache) {
+                touchOrder(src);
+            }
             return cache[src];
+        };
+        /**
+         * Evicts least-recently-used entries while the cache exceeds maxCacheSize.
+         * No-op when maxCacheSize is undefined or <= 0 (unbounded cache).
+         */
+        Cache.prototype._evictIfNeeded = function () {
+            var max = this._options.maxCacheSize;
+            if (!max || max <= 0) {
+                return;
+            }
+            while (cacheOrder.length > max) {
+                var oldest = cacheOrder.shift();
+                if (oldest !== undefined) {
+                    delete cache[oldest];
+                }
+            }
+        };
+        Cache.prototype.isSameOrigin = function (src) {
+            // Allow callers to override the same-origin decision per URL. When the
+            // custom function returns undefined, fall back to the default check.
+            var override = this._options.isResourceSameOrigin;
+            if (override) {
+                var result = override(src);
+                if (typeof result === 'boolean') {
+                    return result;
+                }
+            }
+            return CacheStorage.isSameOrigin(src);
         };
         Cache.prototype.loadImage = function (key) {
             return __awaiter(this, void 0, void 0, function () {
@@ -13188,7 +14053,7 @@
                     switch (_a.label) {
                         case 0:
                             isExtensionImage = key.startsWith('chrome-extension://');
-                            isSameOrigin = CacheStorage.isSameOrigin(key) || isExtensionImage;
+                            isSameOrigin = this.isSameOrigin(key) || isExtensionImage;
                             useCORS = !isInlineImage(key) && this._options.useCORS === true && FEATURES.SUPPORT_CORS_IMAGES && !isSameOrigin;
                             useProxy = !isInlineImage(key) &&
                                 !isSameOrigin &&
@@ -13372,7 +14237,21 @@
             this.instanceName = "#".concat(Context.instanceCount++);
             this.logger = new Logger({ id: this.instanceName, enabled: options.logging });
             this.cache = (_a = options.cache) !== null && _a !== void 0 ? _a : new Cache(this, options);
+            this._onError = options.onError;
         }
+        /**
+         * Logs an error and notifies the `onError` callback (if provided).
+         * Use this instead of `logger.error` for recoverable resource failures that
+         * callers may want to observe.
+         */
+        Context.prototype.error = function (message, error) {
+            var _a;
+            (_a = this.logger).error.apply(_a, __spreadArray([message], (error !== undefined ? [error] : []), false));
+            if (this._onError) {
+                var err = error instanceof Error ? error : new Error(message);
+                this._onError(err);
+            }
+        };
         Context.instanceCount = 1;
         return Context;
     }());
@@ -13738,6 +14617,10 @@
                 return createCounterStyleFromRange(value, 0xe50, 0xe59, true, defaultSuffix);
             case 47 /* LIST_STYLE_TYPE.TIBETAN */:
                 return createCounterStyleFromRange(value, 0xf20, 0xf29, true, defaultSuffix);
+            case 51 /* LIST_STYLE_TYPE.DISCLOSURE_OPEN */:
+                return '\u25BE'; // ▾ (down-pointing small triangle)
+            case 52 /* LIST_STYLE_TYPE.DISCLOSURE_CLOSED */:
+                return '\u25B8'; // ▸ (right-pointing small triangle)
             case 3 /* LIST_STYLE_TYPE.DECIMAL */:
             default:
                 return createCounterStyleFromRange(value, 48, 57, true, defaultSuffix);
@@ -13799,6 +14682,9 @@
                     switch (_c.label) {
                         case 0:
                             this.scrolledElements.forEach(restoreNodeScroll);
+                            // Re-apply scroll offsets that were serialized as data attributes (the
+                            // in-memory clone references above do not survive document.write()).
+                            restoreScrollFromAttr(documentClone);
                             if (cloneWindow) {
                                 cloneWindow.scrollTo(windowSize.left, windowSize.top);
                                 if (/(iPad|iPhone|iPod)/g.test(navigator.userAgent) &&
@@ -13816,7 +14702,16 @@
                             }
                             this.clonedReferenceElement = referenceElement;
                             onclone = this.options.onclone;
-                            if (!(documentClone.fonts && documentClone.fonts.status === 'loading')) return [3 /*break*/, 2];
+                            // Restore canvas pixel data that was lost during outerHTML serialization.
+                            // Each canvas with a data-html2canvas-canvas attribute contains a data URL
+                            // captured from the original canvas before serialization.
+                            return [4 /*yield*/, restoreCanvasData(documentClone)];
+                        case 1:
+                            // Restore canvas pixel data that was lost during outerHTML serialization.
+                            // Each canvas with a data-html2canvas-canvas attribute contains a data URL
+                            // captured from the original canvas before serialization.
+                            _c.sent();
+                            if (!(documentClone.fonts && documentClone.fonts.status === 'loading')) return [3 /*break*/, 3];
                             return [4 /*yield*/, Promise.race([
                                     documentClone.fonts.ready,
                                     new Promise(function (resolve) {
@@ -13828,16 +14723,16 @@
                                         }, 1000);
                                     }),
                                 ])];
-                        case 1:
-                            _c.sent();
-                            _c.label = 2;
                         case 2:
-                            if (!/(AppleWebKit)/g.test(navigator.userAgent)) return [3 /*break*/, 4];
-                            return [4 /*yield*/, imagesReady(documentClone)];
-                        case 3:
                             _c.sent();
-                            _c.label = 4;
+                            _c.label = 3;
+                        case 3:
+                            if (!/(AppleWebKit)/g.test(navigator.userAgent)) return [3 /*break*/, 5];
+                            return [4 /*yield*/, imagesReady(documentClone)];
                         case 4:
+                            _c.sent();
+                            _c.label = 5;
+                        case 5:
                             if (typeof onclone === 'function') {
                                 return [2 /*return*/, Promise.resolve()
                                         .then(function () { return onclone(documentClone, referenceElement); })
@@ -13913,21 +14808,49 @@
             return node.cloneNode(false);
         };
         DocumentCloner.prototype.createCanvasClone = function (canvas) {
+            // Capture the canvas pixel data as a data URL and store it in a data attribute
+            // so it survives the outerHTML + document.write() serialization round-trip in
+            // toIFrame(). After the iframe loads, restoreCanvasData() redraws each canvas
+            // from its stored data URL, keeping the original <canvas> tag (and therefore
+            // all CSS selectors, CanvasElementContainer parsing, etc.) intact.
             var _a;
-            if (this.options.inlineImages && canvas.ownerDocument) {
-                var img = canvas.ownerDocument.createElement('img');
-                try {
-                    img.src = canvas.toDataURL();
-                    return img;
-                }
-                catch (e) {
-                    this.context.logger.info("Unable to inline canvas contents, canvas is tainted", canvas);
+            var clonedCanvas = canvas.cloneNode(false);
+            clonedCanvas.width = canvas.width;
+            clonedCanvas.height = canvas.height;
+            // Try to capture pixel data as a data URL
+            try {
+                var dataUrl = canvas.toDataURL();
+                if (dataUrl && dataUrl !== 'data:,') {
+                    clonedCanvas.setAttribute('data-html2canvas-canvas', dataUrl);
+                    return clonedCanvas;
                 }
             }
-            var clonedCanvas = canvas.cloneNode(false);
+            catch (e) {
+                this.context.logger.info("Unable to serialize canvas via toDataURL, canvas is tainted", canvas);
+            }
+            // For tainted canvases with allowTaint, try drawImage to an intermediate canvas
+            if (this.options.allowTaint) {
+                try {
+                    var tempCanvas = canvas.ownerDocument.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    var tempCtx = tempCanvas.getContext('2d');
+                    if (tempCtx) {
+                        tempCtx.drawImage(canvas, 0, 0);
+                        var dataUrl = tempCanvas.toDataURL();
+                        if (dataUrl && dataUrl !== 'data:,') {
+                            clonedCanvas.setAttribute('data-html2canvas-canvas', dataUrl);
+                            return clonedCanvas;
+                        }
+                    }
+                }
+                catch (e) {
+                    this.context.logger.info("Unable to clone tainted canvas via drawImage", canvas);
+                }
+            }
+            // Fallback: try to copy pixels directly (will be lost after serialization,
+            // but covers the edge case where the canvas is rendered without toIFrame)
             try {
-                clonedCanvas.width = canvas.width;
-                clonedCanvas.height = canvas.height;
                 var ctx = canvas.getContext('2d');
                 var clonedCtx = clonedCanvas.getContext('2d', { willReadFrequently: true });
                 if (clonedCtx) {
@@ -13945,7 +14868,6 @@
                         clonedCtx.drawImage(canvas, 0, 0);
                     }
                 }
-                return clonedCanvas;
             }
             catch (e) {
                 this.context.logger.info("Unable to clone canvas as it is tainted", canvas);
@@ -13988,7 +14910,18 @@
         };
         DocumentCloner.prototype.cloneChildNodes = function (node, clone, copyStyles) {
             var _this = this;
+            // A closed <details> element hides all children except <summary> via browser-
+            // internal mechanisms (not purely CSS). Since outerHTML + document.write() may
+            // not fully reconstitute that behavior, skip non-<summary> children here so
+            // they are never serialized into the iframe.
+            var isClosedDetails = isDetailsElement(node) && !node.open;
             for (var child = node.shadowRoot ? node.shadowRoot.firstChild : node.firstChild; child; child = child.nextSibling) {
+                if (isClosedDetails) {
+                    // Only clone <summary> children and text nodes (whitespace) of a closed <details>
+                    if (isElementNode(child) && !isSummaryElement(child)) {
+                        continue;
+                    }
+                }
                 if (isElementNode(child) && isSlotElement(child) && typeof child.assignedNodes === 'function') {
                     var assignedNodes = child.assignedNodes();
                     if (assignedNodes.length) {
@@ -14014,6 +14947,21 @@
                 var style = window.getComputedStyle(node);
                 var styleBefore = window.getComputedStyle(node, ':before');
                 var styleAfter = window.getComputedStyle(node, ':after');
+                // Chromium bug workaround: when the document is cloned via document.write()
+                // into an iframe, percentage-based height/min-height/max-height values may
+                // resolve differently than in the original document. This happens because
+                // Chromium sometimes resolves percentage heights against the iframe's
+                // scrollHeight instead of treating them as auto/0/none when the containing
+                // block has no explicit height (CSS2.1 §10.5/§10.7).
+                //
+                // Fix: inline the computed (pixel) values for these properties when the
+                // specified value is a percentage, so the clone preserves the original layout.
+                if (isHTMLElementNode(node)) {
+                    var inlineS = node.style;
+                    _inlinePercentageHeight(clone, style, inlineS, 'height');
+                    _inlinePercentageHeight(clone, style, inlineS, 'min-height');
+                    _inlinePercentageHeight(clone, style, inlineS, 'max-height');
+                }
                 if (this.referenceElement === node && isHTMLElementNode(clone)) {
                     this.clonedReferenceElement = clone;
                 }
@@ -14036,6 +14984,54 @@
                     clone.appendChild(after);
                 }
                 this.counters.pop(counters);
+                // Resolve ::first-letter after child nodes have been cloned
+                // so that the first-letter logic can locate the correct first text node.
+                // Also mark elements with ::first-line so the native pseudo is neutralised
+                // in the iframe; the actual ::first-line styles are applied at render time
+                // using TextBounds line-top coordinates (see canvas-text-renderer.ts).
+                if (isHTMLElementNode(node)) {
+                    var styleFirstLetter = window.getComputedStyle(node, '::first-letter');
+                    var styleFirstLine = window.getComputedStyle(node, '::first-line');
+                    this.resolveFirstLetterPseudo(node, clone, styleFirstLetter);
+                    this.resolveFirstLinePseudo(node, clone, styleFirstLine);
+                    // Serialize ::placeholder styles for input/textarea elements.
+                    // The renderer uses these to draw placeholder text with correct appearance.
+                    var tagName = node.tagName;
+                    if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+                        var placeholderStyle = window.getComputedStyle(node, '::placeholder');
+                        var delta = {};
+                        var phProps = ['color', 'opacity', 'font-weight', 'font-style', 'background-color'];
+                        for (var _i = 0, phProps_1 = phProps; _i < phProps_1.length; _i++) {
+                            var p = phProps_1[_i];
+                            var pseudoVal = placeholderStyle.getPropertyValue(p);
+                            var elemVal = style.getPropertyValue(p);
+                            if (pseudoVal && pseudoVal !== elemVal) {
+                                delta[p] = pseudoVal;
+                            }
+                        }
+                        if (Object.keys(delta).length > 0) {
+                            clone.setAttribute(DATA_ATTR_PLACEHOLDER, JSON.stringify(delta));
+                        }
+                    }
+                    // Serialize ::marker styles for list items.
+                    // The renderer uses these to draw list markers with the correct color/font.
+                    if (tagName === 'LI') {
+                        var markerStyle = window.getComputedStyle(node, '::marker');
+                        var delta = {};
+                        if (markerStyle.color && markerStyle.color !== style.color) {
+                            delta['color'] = markerStyle.color;
+                        }
+                        if (markerStyle.fontSize && markerStyle.fontSize !== style.fontSize) {
+                            delta['font-size'] = markerStyle.fontSize;
+                        }
+                        if (markerStyle.fontFamily && markerStyle.fontFamily !== style.fontFamily) {
+                            delta['font-family'] = markerStyle.fontFamily;
+                        }
+                        if (Object.keys(delta).length > 0) {
+                            clone.setAttribute(DATA_ATTR_MARKER, JSON.stringify(delta));
+                        }
+                    }
+                }
                 if ((style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
                     copyStyles) {
                     // Pass node.style as the inline style reference so that background properties
@@ -14046,8 +15042,19 @@
                         : undefined;
                     copyCSSStyles(style, clone, this.options.onCopyProperty, inlineStyle);
                 }
-                if (node.scrollTop !== 0 || node.scrollLeft !== 0) {
-                    this.scrolledElements.push([clone, node.scrollLeft, node.scrollTop]);
+                // Persist scroll offsets through the outerHTML + document.write() round-trip.
+                // The in-memory `clone` node is discarded when the iframe re-parses the
+                // serialized HTML, so pushing it onto scrolledElements (whose references are
+                // restored after load) does not survive. Instead, stamp the wanted scroll on
+                // a data attribute that is part of the serialized HTML; restoreScrollFromAttr
+                // re-applies it to the freshly-parsed node after load.
+                //
+                // A multi-line list-box <select> must be handled even when the original
+                // scroll is 0: the browser auto-scrolls the fresh clone so the selected
+                // <option> is visible, so we stamp 0 explicitly to override that auto-scroll.
+                var isListBoxSelect = isSelectElement(node) && (node.multiple || node.size > 1);
+                if (node.scrollTop !== 0 || node.scrollLeft !== 0 || isListBoxSelect) {
+                    clone.setAttribute(SCROLL_ATTR, "".concat(node.scrollLeft, ",").concat(node.scrollTop));
                 }
                 if ((isTextareaElement(node) || isSelectElement(node)) &&
                     (isTextareaElement(clone) || isSelectElement(clone))) {
@@ -14145,6 +15152,205 @@
             }
             return anonymousReplacedElement;
         };
+        /**
+         * Handles ::first-letter by wrapping the first character of the first text node
+         * inside the element in a <span> with the computed ::first-letter styles applied.
+         * The native ::first-letter pseudo-element is neutralised via an injected stylesheet
+         * (all inheritable properties reset to inherit) so only the synthesised span is visible.
+         */
+        DocumentCloner.prototype.resolveFirstLetterPseudo = function (node, clone, style) {
+            var _a, _b;
+            if (!style) {
+                return;
+            }
+            // Check whether any ::first-letter style differs from the element's own computed style.
+            // If the pseudo-element has no effective styling, skip the wrapping entirely.
+            var elementStyle = (_b = (_a = node.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) === null || _b === void 0 ? void 0 : _b.getComputedStyle(node);
+            var hasFirstLetterStyle = elementStyle &&
+                (style.color !== elementStyle.color ||
+                    style.fontSize !== elementStyle.fontSize ||
+                    style.fontWeight !== elementStyle.fontWeight ||
+                    style.fontStyle !== elementStyle.fontStyle ||
+                    style.fontFamily !== elementStyle.fontFamily ||
+                    style.textTransform !== elementStyle.textTransform ||
+                    style.float !== elementStyle.float ||
+                    style.letterSpacing !== elementStyle.letterSpacing);
+            if (!hasFirstLetterStyle) {
+                return;
+            }
+            var document = clone.ownerDocument;
+            if (!document) {
+                return;
+            }
+            // Find the first text node with actual content, descending through element children.
+            // We must skip any ::before synthesised element (html2canvaspseudoelement inserted first).
+            // Also skip pure-whitespace text nodes — ::first-letter targets the first actual letter.
+            var findFirstTextNode = function (el) {
+                for (var child = el.firstChild; child; child = child.nextSibling) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        var text = child.data;
+                        // Skip whitespace-only nodes
+                        if (text.trim().length > 0) {
+                            return child;
+                        }
+                    }
+                    else if (child.nodeType === Node.ELEMENT_NODE &&
+                        child.tagName.toLowerCase() !== 'html2canvaspseudoelement') {
+                        var found = findFirstTextNode(child);
+                        if (found) {
+                            return found;
+                        }
+                    }
+                }
+                return null;
+            };
+            var firstTextNode = findFirstTextNode(clone);
+            if (!firstTextNode || firstTextNode.data.trim().length === 0) {
+                return;
+            }
+            // The text node may start with whitespace (HTML indentation). We need to find
+            // the actual first non-whitespace character index to split correctly.
+            var leadingWhitespaceMatch = firstTextNode.data.match(/^(\s*)([\s\S]*)$/);
+            var leadingWhitespace = leadingWhitespaceMatch ? leadingWhitespaceMatch[1] : '';
+            var textWithoutLeading = leadingWhitespaceMatch ? leadingWhitespaceMatch[2] : firstTextNode.data;
+            if (textWithoutLeading.length === 0) {
+                return;
+            }
+            // Isolate the first character (handle surrogate pairs / multi-codepoint graphemes
+            // via Intl.Segmenter when available, otherwise fall back to Array.from).
+            var firstChar;
+            var restAfterFirstChar;
+            if (typeof Intl !== 'undefined' && typeof Intl.Segmenter !== 'undefined') {
+                var segmenter = new Intl.Segmenter();
+                var segments = Array.from(segmenter.segment(textWithoutLeading));
+                if (segments.length === 0) {
+                    return;
+                }
+                firstChar = segments[0].segment;
+                restAfterFirstChar = textWithoutLeading.slice(firstChar.length);
+            }
+            else {
+                var chars = Array.from(textWithoutLeading);
+                firstChar = chars[0];
+                restAfterFirstChar = chars.slice(1).join('');
+            }
+            // Build the wrapper <span> with only the ::first-letter styles that differ from
+            // the parent element's computed style. Copying all styles via copyCSSStyles would
+            // override inherited values (e.g. font-family, line-height) with the resolved
+            // pseudo-element values, which can break layout. We only want the delta.
+            var span = document.createElement('html2canvasfirstletter');
+            span.style.display = 'inline';
+            var firstLetterProperties = [
+                'color',
+                'font-size',
+                'font-weight',
+                'font-style',
+                'font-variant',
+                'font-family',
+                'line-height',
+                'text-transform',
+                'letter-spacing',
+                'float',
+                'padding',
+                'padding-top',
+                'padding-right',
+                'padding-bottom',
+                'padding-left',
+                'margin',
+                'margin-top',
+                'margin-right',
+                'margin-bottom',
+                'margin-left',
+                'border',
+                'border-top',
+                'border-right',
+                'border-bottom',
+                'border-left',
+                'background',
+                'background-color',
+                'text-decoration',
+                'vertical-align',
+            ];
+            for (var _i = 0, firstLetterProperties_1 = firstLetterProperties; _i < firstLetterProperties_1.length; _i++) {
+                var prop = firstLetterProperties_1[_i];
+                var pseudoVal = style.getPropertyValue(prop);
+                var elemVal = elementStyle.getPropertyValue(prop);
+                if (pseudoVal && pseudoVal !== elemVal) {
+                    span.style.setProperty(prop, pseudoVal);
+                }
+            }
+            span.appendChild(document.createTextNode(firstChar));
+            // Replace the original text node with:
+            // [leading whitespace text node (if any)] [<span>firstChar</span>] [rest text node (if any)]
+            var parent = firstTextNode.parentNode;
+            if (!parent) {
+                return;
+            }
+            parent.insertBefore(span, firstTextNode);
+            // Put the remaining text back: leading whitespace + rest after first char
+            var remainingText = leadingWhitespace + restAfterFirstChar;
+            if (remainingText.length > 0) {
+                firstTextNode.data = remainingText;
+            }
+            else {
+                parent.removeChild(firstTextNode);
+            }
+            // Mark the clone so createPseudoHideStyles can suppress the native ::first-letter.
+            if (isSVGElementNode(clone)) {
+                clone.className.baseValue += " ".concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LETTER);
+            }
+            else {
+                clone.className += " ".concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LETTER);
+            }
+        };
+        /**
+         * Neutralises the native ::first-line pseudo-element in the cloned iframe document
+         * by adding a marker class. Also serialises the computed ::first-line styles from the
+         * original document into a data attribute so parseNodeTree can read them after the
+         * iframe is created (at which point the native pseudo is already neutralised by CSS).
+         *
+         * Only non-layout-affecting properties (color, font-style, text-decoration) are
+         * serialised. Properties that change glyph dimensions (font-size, font-weight,
+         * font-family, letter-spacing, word-spacing, text-transform) cannot be supported
+         * because TextBounds are measured in the iframe where ::first-line is neutralised,
+         * so the positions would not match the styled output.
+         */
+        DocumentCloner.prototype.resolveFirstLinePseudo = function (node, clone, style) {
+            var _a, _b;
+            if (!style) {
+                return;
+            }
+            var elementStyle = (_b = (_a = node.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) === null || _b === void 0 ? void 0 : _b.getComputedStyle(node);
+            if (!elementStyle) {
+                return;
+            }
+            // Only properties that do NOT affect text layout / glyph dimensions.
+            // These can be swapped at render time without invalidating TextBounds positions.
+            // text-decoration is excluded because neutralising it via !important in the iframe
+            // would break native underlines on <a>, <u>, etc. across the entire document.
+            var firstLineProps = ['color', 'font-style'];
+            var delta = {};
+            for (var _i = 0, firstLineProps_1 = firstLineProps; _i < firstLineProps_1.length; _i++) {
+                var p = firstLineProps_1[_i];
+                var pseudoVal = style.getPropertyValue(p);
+                var elemVal = elementStyle.getPropertyValue(p);
+                if (pseudoVal && pseudoVal !== elemVal) {
+                    delta[p] = pseudoVal;
+                }
+            }
+            if (Object.keys(delta).length === 0) {
+                return;
+            }
+            // Serialise the delta into a data attribute so it survives document.write() re-parsing.
+            clone.setAttribute(DATA_ATTR_FIRST_LINE, JSON.stringify(delta));
+            // Mark the clone so createPseudoHideStyles neutralises the native ::first-line.
+            if (isSVGElementNode(clone)) {
+                clone.className.baseValue += " ".concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LINE);
+            }
+            else {
+                clone.className += " ".concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LINE);
+            }
+        };
         DocumentCloner.destroy = function (ownerDocument, id) {
             var ownerContainer = ownerDocument.getElementById(id);
             var documentContainer = document.getElementById(id);
@@ -14177,6 +15383,7 @@
     (function (PseudoElementType) {
         PseudoElementType[PseudoElementType["BEFORE"] = 0] = "BEFORE";
         PseudoElementType[PseudoElementType["AFTER"] = 1] = "AFTER";
+        PseudoElementType[PseudoElementType["FIRST_LETTER"] = 2] = "FIRST_LETTER";
     })(PseudoElementType || (PseudoElementType = {}));
     var iframeIdCounter = 0;
     var createIFrameContainer = function (ownerDocument, bounds) {
@@ -14267,6 +15474,51 @@
         'background-clip',
         'background-attachment',
     ]);
+    /**
+     * Inlines the computed value of a height-related property on the clone when the
+     * stylesheet-specified value is a percentage. This works around a Chromium bug where
+     * percentage heights resolve incorrectly in iframes populated via document.write().
+     *
+     * For `height` we inline the element's actual computed pixel height from the original
+     * document so the clone preserves the original layout regardless of how the browser
+     * resolves percentages in the iframe context.
+     *
+     * For `min-height` with a percentage containing block without explicit height, CSS2.1
+     * §10.7 says the percentage should be treated as 0. We inline `0px` when the computed
+     * value is still reported as a percentage (Chromium keeps it as-is rather than
+     * resolving to 0px).
+     *
+     * For `max-height` with a percentage containing block without explicit height, CSS2.1
+     * §10.7 says the percentage should be treated as `none`. We inline `none` in that case.
+     */
+    var _inlinePercentageHeight = function (clone, computedStyle, inlineStyle, property) {
+        // Only act when there is no inline style override (the value comes from a stylesheet)
+        if (inlineStyle.getPropertyValue(property)) {
+            return;
+        }
+        var computed = computedStyle.getPropertyValue(property);
+        if (!computed || computed === 'auto' || computed === 'none') {
+            return;
+        }
+        if (computed.includes('%')) {
+            // The browser returned a percentage — meaning it did NOT resolve it to pixels.
+            // Per CSS2.1, percentage min-height should resolve to 0 and percentage max-height
+            // should resolve to none when the containing block has no explicit height.
+            if (property === 'min-height') {
+                clone.style.setProperty(property, '0px');
+            }
+            else if (property === 'max-height') {
+                clone.style.setProperty(property, 'none');
+            }
+            // For 'height', a percentage that wasn't resolved means 'auto' — don't set.
+        }
+        // Do NOT inline pixel heights when the specified value is auto (i.e. the browser
+        // resolved a shrink-to-fit height). Inlining the computed pixel value would fix the
+        // height of the clone and break CSS margin collapse between children and their parent,
+        // causing child margins to no longer pierce the parent boundary in the iframe.
+        // Only inline when the computed value is itself a percentage (handled above) — in that
+        // case the browser may resolve it differently in the iframe context.
+    };
     var copyCSSStyles = function (style, target, onCopyProperty, inlineStyle) {
         // Edge does not provide value for cssText.
         // Iterate forward so we can break early when reaching CSS custom properties (--*)
@@ -14295,23 +15547,28 @@
         return target;
     };
     var serializeDoctype = function (doctype) {
-        var str = '';
-        if (doctype) {
-            str += '<!DOCTYPE ';
-            if (doctype.name) {
-                str += doctype.name;
-            }
-            if (doctype.internalSubset) {
-                str += doctype.internalSubset;
-            }
-            if (doctype.publicId) {
-                str += "\"".concat(doctype.publicId, "\"");
-            }
-            if (doctype.systemId) {
-                str += "\"".concat(doctype.systemId, "\"");
-            }
-            str += '>';
+        if (!doctype) {
+            return '';
         }
+        // Serialize the doctype following the HTML/XML spec grammar. A malformed
+        // doctype (e.g. missing the PUBLIC/SYSTEM keyword, or the publicId glued to
+        // the name without a separating space) makes the cloned iframe fall back to
+        // "quirks mode", which changes margin-collapsing and height computation and
+        // therefore breaks the layout html2canvas reads back. See the Acid2 reftest,
+        // whose `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">` must round-trip
+        // to standards mode.
+        var str = "<!DOCTYPE ".concat(doctype.name || 'html');
+        if (doctype.publicId) {
+            str += " PUBLIC \"".concat(doctype.publicId, "\"");
+            // The systemId, when present alongside a publicId, follows without a keyword.
+            if (doctype.systemId) {
+                str += " \"".concat(doctype.systemId, "\"");
+            }
+        }
+        else if (doctype.systemId) {
+            str += " SYSTEM \"".concat(doctype.systemId, "\"");
+        }
+        str += '>';
         return str;
     };
     var restoreOwnerScroll = function (ownerDocument, x, y) {
@@ -14326,13 +15583,43 @@
         element.scrollLeft = x;
         element.scrollTop = y;
     };
+    /**
+     * Attribute used to carry an element's scroll offset ("scrollLeft,scrollTop")
+     * through the outerHTML + document.write() serialization round-trip, since the
+     * in-memory clone node references are discarded when the iframe re-parses.
+     */
+    var SCROLL_ATTR = 'data-html2canvas-scroll';
+    /**
+     * Re-apply scroll offsets stamped via SCROLL_ATTR onto the freshly-parsed iframe
+     * document. This restores scrolled containers (and neutralises the browser's
+     * auto-scroll of list-box <select> elements toward their selected option).
+     */
+    var restoreScrollFromAttr = function (document) {
+        var scrolled = document.querySelectorAll("[".concat(SCROLL_ATTR, "]"));
+        scrolled.forEach(function (element) {
+            var raw = element.getAttribute(SCROLL_ATTR);
+            element.removeAttribute(SCROLL_ATTR);
+            if (!raw) {
+                return;
+            }
+            var _a = raw.split(',').map(Number), x = _a[0], y = _a[1];
+            element.scrollLeft = x || 0;
+            element.scrollTop = y || 0;
+        });
+    };
     var PSEUDO_BEFORE = ':before';
     var PSEUDO_AFTER = ':after';
+    var PSEUDO_FIRST_LETTER = '::first-letter';
+    var PSEUDO_FIRST_LINE = '::first-line';
     var PSEUDO_HIDE_ELEMENT_CLASS_BEFORE = '___html2canvas___pseudoelement_before';
     var PSEUDO_HIDE_ELEMENT_CLASS_AFTER = '___html2canvas___pseudoelement_after';
+    var PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LETTER = '___html2canvas___pseudoelement_first_letter';
+    var PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LINE = '___html2canvas___pseudoelement_first_line';
     var PSEUDO_HIDE_ELEMENT_STYLE = "{\n    content: \"\" !important;\n    display: none !important;\n}";
+    var PSEUDO_HIDE_FIRST_LETTER_STYLE = "{\n    color: inherit !important;\n    font-size: inherit !important;\n    font-weight: inherit !important;\n    font-style: inherit !important;\n    font-variant: inherit !important;\n    font-family: inherit !important;\n    line-height: inherit !important;\n    text-transform: inherit !important;\n    letter-spacing: inherit !important;\n}";
+    var PSEUDO_HIDE_FIRST_LINE_STYLE = "{\n    color: inherit !important;\n    font-style: inherit !important;\n}";
     var createPseudoHideStyles = function (body) {
-        createStyles(body, ".".concat(PSEUDO_HIDE_ELEMENT_CLASS_BEFORE).concat(PSEUDO_BEFORE).concat(PSEUDO_HIDE_ELEMENT_STYLE, "\n         .").concat(PSEUDO_HIDE_ELEMENT_CLASS_AFTER).concat(PSEUDO_AFTER).concat(PSEUDO_HIDE_ELEMENT_STYLE));
+        createStyles(body, ".".concat(PSEUDO_HIDE_ELEMENT_CLASS_BEFORE).concat(PSEUDO_BEFORE).concat(PSEUDO_HIDE_ELEMENT_STYLE, "\n         .").concat(PSEUDO_HIDE_ELEMENT_CLASS_AFTER).concat(PSEUDO_AFTER).concat(PSEUDO_HIDE_ELEMENT_STYLE, "\n         .").concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LETTER).concat(PSEUDO_FIRST_LETTER).concat(PSEUDO_HIDE_FIRST_LETTER_STYLE, "\n         .").concat(PSEUDO_HIDE_ELEMENT_CLASS_FIRST_LINE).concat(PSEUDO_FIRST_LINE).concat(PSEUDO_HIDE_FIRST_LINE_STYLE));
     };
     var createStyles = function (body, styles) {
         var document = body.ownerDocument;
@@ -14342,6 +15629,36 @@
             body.appendChild(style);
         }
     };
+    var CANVAS_DATA_ATTR = 'data-html2canvas-canvas';
+    /**
+     * After document.write() re-parses the cloned HTML, all <canvas> elements lose their
+     * bitmap data. This function finds canvases stamped with a data URL during cloning
+     * and redraws their content from that stored data URL.
+     */
+    var restoreCanvasData = function (document) {
+        var canvases = document.querySelectorAll("canvas[".concat(CANVAS_DATA_ATTR, "]"));
+        var promises = [];
+        canvases.forEach(function (canvas) {
+            var dataUrl = canvas.getAttribute(CANVAS_DATA_ATTR);
+            if (!dataUrl) {
+                return;
+            }
+            canvas.removeAttribute(CANVAS_DATA_ATTR);
+            promises.push(new Promise(function (resolve) {
+                var img = new Image();
+                img.onload = function () {
+                    var ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0);
+                    }
+                    resolve();
+                };
+                img.onerror = function () { return resolve(); };
+                img.src = dataUrl;
+            }));
+        });
+        return Promise.all(promises);
+    };
     var addBase = function (targetELement, referenceDocument) {
         var _a;
         var baseNode = referenceDocument.createElement('base');
@@ -14350,20 +15667,183 @@
         headEle === null || headEle === void 0 ? void 0 : headEle.insertBefore(baseNode, (_a = headEle === null || headEle === void 0 ? void 0 : headEle.firstChild) !== null && _a !== void 0 ? _a : null);
     };
 
-    var paddingBox = function (element) {
-        var bounds = element.bounds;
-        var styles = element.styles;
-        return bounds.add(styles.borderLeftWidth, styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth), -(styles.borderTopWidth + styles.borderBottomWidth));
+    var TransformEffect = /** @class */ (function () {
+        function TransformEffect(offsetX, offsetY, matrix) {
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.matrix = matrix;
+            this.type = 0 /* EffectType.TRANSFORM */;
+            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+        }
+        return TransformEffect;
+    }());
+    var ClipEffect = /** @class */ (function () {
+        function ClipEffect(path, target, fillRule) {
+            if (fillRule === void 0) { fillRule = 'nonzero'; }
+            this.path = path;
+            this.target = target;
+            this.fillRule = fillRule;
+            this.type = 1 /* EffectType.CLIP */;
+        }
+        return ClipEffect;
+    }());
+    /** Clip produced by overflow:hidden/scroll — distinct from clip-path ClipEffect. */
+    var OverflowClipEffect = /** @class */ (function () {
+        function OverflowClipEffect(path, target) {
+            this.path = path;
+            this.target = target;
+            this.type = 6 /* EffectType.OVERFLOW_CLIP */;
+        }
+        return OverflowClipEffect;
+    }());
+    var OpacityEffect = /** @class */ (function () {
+        function OpacityEffect(opacity) {
+            this.opacity = opacity;
+            this.type = 2 /* EffectType.OPACITY */;
+            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+        }
+        return OpacityEffect;
+    }());
+    var FilterEffect = /** @class */ (function () {
+        function FilterEffect(filter) {
+            this.filter = filter;
+            this.type = 3 /* EffectType.FILTER */;
+            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+        }
+        return FilterEffect;
+    }());
+    var MixBlendModeEffect = /** @class */ (function () {
+        function MixBlendModeEffect(mixBlendMode) {
+            this.mixBlendMode = mixBlendMode;
+            this.type = 4 /* EffectType.MIX_BLEND_MODE */;
+            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+        }
+        return MixBlendModeEffect;
+    }());
+    var Path2DClipEffect = /** @class */ (function () {
+        function Path2DClipEffect(path2d, target, fillRule) {
+            this.path2d = path2d;
+            this.target = target;
+            this.fillRule = fillRule;
+            this.type = 5 /* EffectType.PATH2D_CLIP */;
+        }
+        return Path2DClipEffect;
+    }());
+    var isTransformEffect = function (effect) {
+        return effect.type === 0 /* EffectType.TRANSFORM */;
     };
-    var contentBox = function (element) {
-        var styles = element.styles;
-        var bounds = element.bounds;
-        var paddingLeft = getAbsoluteValue(styles.paddingLeft, bounds.width);
-        var paddingRight = getAbsoluteValue(styles.paddingRight, bounds.width);
-        var paddingTop = getAbsoluteValue(styles.paddingTop, bounds.width);
-        var paddingBottom = getAbsoluteValue(styles.paddingBottom, bounds.width);
-        return bounds.add(paddingLeft + styles.borderLeftWidth, paddingTop + styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth + paddingLeft + paddingRight), -(styles.borderTopWidth + styles.borderBottomWidth + paddingTop + paddingBottom));
+    var isClipEffect = function (effect) { return effect.type === 1 /* EffectType.CLIP */; };
+    var isOverflowClipEffect = function (effect) {
+        return effect.type === 6 /* EffectType.OVERFLOW_CLIP */;
     };
+    var isOpacityEffect = function (effect) { return effect.type === 2 /* EffectType.OPACITY */; };
+    var isFilterEffect = function (effect) { return effect.type === 3 /* EffectType.FILTER */; };
+    var isMixBlendModeEffect = function (effect) {
+        return effect.type === 4 /* EffectType.MIX_BLEND_MODE */;
+    };
+    var isPath2DClipEffect = function (effect) {
+        return effect.type === 5 /* EffectType.PATH2D_CLIP */;
+    };
+
+    var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+    var SAMPLE_TEXT = 'Hidden Text';
+    var FontMetrics = /** @class */ (function () {
+        function FontMetrics(document, baselineAdjustment) {
+            if (baselineAdjustment === void 0) { baselineAdjustment = 2; }
+            this._data = {};
+            this._document = document;
+            this._baselineAdjustment = baselineAdjustment;
+        }
+        FontMetrics.prototype.parseMetrics = function (fontFamily, fontSize) {
+            var container = this._document.createElement('div');
+            var img = this._document.createElement('img');
+            var span = this._document.createElement('span');
+            var body = this._document.body;
+            container.style.visibility = 'hidden';
+            container.style.fontFamily = fontFamily;
+            container.style.fontSize = fontSize;
+            container.style.margin = '0';
+            container.style.padding = '0';
+            container.style.whiteSpace = 'nowrap';
+            body.appendChild(container);
+            img.src = SMALL_IMAGE;
+            img.width = 1;
+            img.height = 1;
+            img.style.margin = '0';
+            img.style.padding = '0';
+            img.style.verticalAlign = 'baseline';
+            span.style.fontFamily = fontFamily;
+            span.style.fontSize = fontSize;
+            span.style.margin = '0';
+            span.style.padding = '0';
+            span.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+            container.appendChild(span);
+            container.appendChild(img);
+            var baseline = img.offsetTop - span.offsetTop + this._baselineAdjustment;
+            container.removeChild(span);
+            container.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+            container.style.lineHeight = 'normal';
+            img.style.verticalAlign = 'super';
+            var middle = img.offsetTop - container.offsetTop + this._baselineAdjustment;
+            body.removeChild(container);
+            return { baseline: baseline, middle: middle };
+        };
+        FontMetrics.prototype.getMetrics = function (fontFamily, fontSize) {
+            var key = "".concat(fontFamily, " ").concat(fontSize);
+            if (typeof this._data[key] === 'undefined') {
+                this._data[key] = this.parseMetrics(fontFamily, fontSize);
+            }
+            return this._data[key];
+        };
+        FontMetrics.prototype.getRawMetrics = function (fontFamily, fontSize) {
+            var key = "__raw__".concat(fontFamily, " ").concat(fontSize);
+            if (typeof this._data[key] === 'undefined') {
+                var container = this._document.createElement('div');
+                var img = this._document.createElement('img');
+                var span = this._document.createElement('span');
+                var body = this._document.body;
+                container.style.visibility = 'hidden';
+                container.style.fontFamily = fontFamily;
+                container.style.fontSize = fontSize;
+                container.style.margin = '0';
+                container.style.padding = '0';
+                container.style.whiteSpace = 'nowrap';
+                body.appendChild(container);
+                img.src = SMALL_IMAGE;
+                img.width = 1;
+                img.height = 1;
+                img.style.margin = '0';
+                img.style.padding = '0';
+                img.style.verticalAlign = 'baseline';
+                span.style.fontFamily = fontFamily;
+                span.style.fontSize = fontSize;
+                span.style.margin = '0';
+                span.style.padding = '0';
+                span.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+                container.appendChild(span);
+                container.appendChild(img);
+                var baseline = img.offsetTop - span.offsetTop;
+                container.removeChild(span);
+                container.appendChild(this._document.createTextNode(SAMPLE_TEXT));
+                container.style.lineHeight = 'normal';
+                img.style.verticalAlign = 'super';
+                var middle = img.offsetTop - container.offsetTop;
+                body.removeChild(container);
+                this._data[key] = { baseline: baseline, middle: middle };
+            }
+            return this._data[key];
+        };
+        return FontMetrics;
+    }());
+
+    var Renderer = /** @class */ (function () {
+        function Renderer(context, options) {
+            this.context = context;
+            this.options = options;
+        }
+        return Renderer;
+    }());
 
     var PathType;
     (function (PathType) {
@@ -14400,185 +15880,6 @@
         return Vector;
     }());
 
-    var calculateBackgroundPositioningArea = function (backgroundOrigin, element) {
-        if (backgroundOrigin === 0 /* BACKGROUND_ORIGIN.BORDER_BOX */) {
-            return element.bounds;
-        }
-        if (backgroundOrigin === 2 /* BACKGROUND_ORIGIN.CONTENT_BOX */) {
-            return contentBox(element);
-        }
-        return paddingBox(element);
-    };
-    var calculateBackgroundPaintingArea = function (backgroundClip, element) {
-        if (backgroundClip === 0 /* BACKGROUND_CLIP.BORDER_BOX */) {
-            return element.bounds;
-        }
-        if (backgroundClip === 2 /* BACKGROUND_CLIP.CONTENT_BOX */) {
-            return contentBox(element);
-        }
-        // For background-clip: text, use padding-box as the initial painting area.
-        // The actual text-shape clipping happens at render time via canvas compositing.
-        if (backgroundClip === 3 /* BACKGROUND_CLIP.TEXT */) {
-            return paddingBox(element);
-        }
-        return paddingBox(element);
-    };
-    var calculateBackgroundRendering = function (container, index, intrinsicSize) {
-        var backgroundPositioningArea = calculateBackgroundPositioningArea(getBackgroundValueForIndex(container.styles.backgroundOrigin, index), container);
-        var backgroundPaintingArea = calculateBackgroundPaintingArea(getBackgroundValueForIndex(container.styles.backgroundClip, index), container);
-        var backgroundImageSize = calculateBackgroundSize(getBackgroundValueForIndex(container.styles.backgroundSize, index), intrinsicSize, backgroundPositioningArea);
-        var sizeWidth = backgroundImageSize[0], sizeHeight = backgroundImageSize[1];
-        var position = getAbsoluteValueForTuple(getBackgroundValueForIndex(container.styles.backgroundPosition, index), backgroundPositioningArea.width - sizeWidth, backgroundPositioningArea.height - sizeHeight);
-        var path = calculateBackgroundRepeatPath(getBackgroundValueForIndex(container.styles.backgroundRepeat, index), position, backgroundImageSize, backgroundPositioningArea, backgroundPaintingArea);
-        var offsetX = Math.round(backgroundPositioningArea.left + position[0]);
-        var offsetY = Math.round(backgroundPositioningArea.top + position[1]);
-        sizeWidth = Math.max(1, sizeWidth);
-        sizeHeight = Math.max(1, sizeHeight);
-        return [path, offsetX, offsetY, sizeWidth, sizeHeight];
-    };
-    var isAuto = function (token) { return isIdentToken(token) && token.value === BACKGROUND_SIZE.AUTO; };
-    var hasIntrinsicValue = function (value) { return typeof value === 'number'; };
-    var calculateBackgroundSize = function (size, _a, bounds) {
-        var intrinsicWidth = _a[0], intrinsicHeight = _a[1], intrinsicProportion = _a[2];
-        var first = size[0], second = size[1];
-        if (!first) {
-            return [0, 0];
-        }
-        if (isLengthPercentage(first) && second && isLengthPercentage(second)) {
-            return [getAbsoluteValue(first, bounds.width), getAbsoluteValue(second, bounds.height)];
-        }
-        var hasIntrinsicProportion = hasIntrinsicValue(intrinsicProportion);
-        if (isIdentToken(first) && (first.value === BACKGROUND_SIZE.CONTAIN || first.value === BACKGROUND_SIZE.COVER)) {
-            if (hasIntrinsicValue(intrinsicProportion)) {
-                var targetRatio = bounds.width / bounds.height;
-                return targetRatio < intrinsicProportion !== (first.value === BACKGROUND_SIZE.COVER)
-                    ? [bounds.width, bounds.width / intrinsicProportion]
-                    : [bounds.height * intrinsicProportion, bounds.height];
-            }
-            return [bounds.width, bounds.height];
-        }
-        var hasIntrinsicWidth = hasIntrinsicValue(intrinsicWidth);
-        var hasIntrinsicHeight = hasIntrinsicValue(intrinsicHeight);
-        var hasIntrinsicDimensions = hasIntrinsicWidth || hasIntrinsicHeight;
-        // If the background-size is auto or auto auto:
-        if (isAuto(first) && (!second || isAuto(second))) {
-            // If the image has both horizontal and vertical intrinsic dimensions, it's rendered at that size.
-            if (hasIntrinsicWidth && hasIntrinsicHeight) {
-                return [intrinsicWidth, intrinsicHeight];
-            }
-            // If the image has no intrinsic dimensions and has no intrinsic proportions,
-            // it's rendered at the size of the background positioning area.
-            if (!hasIntrinsicProportion && !hasIntrinsicDimensions) {
-                return [bounds.width, bounds.height];
-            }
-            // TODO If the image has no intrinsic dimensions but has intrinsic proportions, it's rendered as if contain had been specified instead.
-            // If the image has only one intrinsic dimension and has intrinsic proportions, it's rendered at the size corresponding to that one dimension.
-            // The other dimension is computed using the specified dimension and the intrinsic proportions.
-            if (hasIntrinsicDimensions && hasIntrinsicProportion) {
-                var width_1 = hasIntrinsicWidth
-                    ? intrinsicWidth
-                    : intrinsicHeight * intrinsicProportion;
-                var height_1 = hasIntrinsicHeight
-                    ? intrinsicHeight
-                    : intrinsicWidth / intrinsicProportion;
-                return [width_1, height_1];
-            }
-            // If the image has only one intrinsic dimension but has no intrinsic proportions,
-            // it's rendered using the specified dimension and the other dimension of the background positioning area.
-            var width_2 = hasIntrinsicWidth ? intrinsicWidth : bounds.width;
-            var height_2 = hasIntrinsicHeight ? intrinsicHeight : bounds.height;
-            return [width_2, height_2];
-        }
-        // If the image has intrinsic proportions, it's stretched to the specified dimension.
-        // The unspecified dimension is computed using the specified dimension and the intrinsic proportions.
-        if (hasIntrinsicProportion) {
-            var width_3 = 0;
-            var height_3 = 0;
-            if (isLengthPercentage(first)) {
-                width_3 = getAbsoluteValue(first, bounds.width);
-            }
-            else if (isLengthPercentage(second)) {
-                height_3 = getAbsoluteValue(second, bounds.height);
-            }
-            if (isAuto(first)) {
-                width_3 = height_3 * intrinsicProportion;
-            }
-            else if (!second || isAuto(second)) {
-                height_3 = width_3 / intrinsicProportion;
-            }
-            return [width_3, height_3];
-        }
-        // If the image has no intrinsic proportions, it's stretched to the specified dimension.
-        // The unspecified dimension is computed using the image's corresponding intrinsic dimension,
-        // if there is one. If there is no such intrinsic dimension,
-        // it becomes the corresponding dimension of the background positioning area.
-        var width = null;
-        var height = null;
-        if (isLengthPercentage(first)) {
-            width = getAbsoluteValue(first, bounds.width);
-        }
-        else if (second && isLengthPercentage(second)) {
-            height = getAbsoluteValue(second, bounds.height);
-        }
-        if (width !== null && (!second || isAuto(second))) {
-            height =
-                hasIntrinsicWidth && hasIntrinsicHeight
-                    ? (width / intrinsicWidth) * intrinsicHeight
-                    : bounds.height;
-        }
-        if (height !== null && isAuto(first)) {
-            width =
-                hasIntrinsicWidth && hasIntrinsicHeight
-                    ? (height / intrinsicHeight) * intrinsicWidth
-                    : bounds.width;
-        }
-        if (width !== null && height !== null) {
-            return [width, height];
-        }
-        throw new Error("Unable to calculate background-size for element");
-    };
-    var getBackgroundValueForIndex = function (values, index) {
-        var value = values[index];
-        if (typeof value === 'undefined') {
-            return values[0];
-        }
-        return value;
-    };
-    var calculateBackgroundRepeatPath = function (repeat, _a, _b, backgroundPositioningArea, backgroundPaintingArea) {
-        var x = _a[0], y = _a[1];
-        var width = _b[0], height = _b[1];
-        switch (repeat) {
-            case 2 /* BACKGROUND_REPEAT.REPEAT_X */:
-                return [
-                    new Vector(Math.round(backgroundPositioningArea.left), Math.round(backgroundPositioningArea.top + y)),
-                    new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(backgroundPositioningArea.top + y)),
-                    new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(height + backgroundPositioningArea.top + y)),
-                    new Vector(Math.round(backgroundPositioningArea.left), Math.round(height + backgroundPositioningArea.top + y)),
-                ];
-            case 3 /* BACKGROUND_REPEAT.REPEAT_Y */:
-                return [
-                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
-                ];
-            case 1 /* BACKGROUND_REPEAT.NO_REPEAT */:
-                return [
-                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y + height)),
-                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y + height)),
-                ];
-            default:
-                return [
-                    new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.top)),
-                    new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.top)),
-                    new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
-                    new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
-                ];
-        }
-    };
-
     var lerp = function (a, b, t) {
         return new Vector(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
     };
@@ -14608,103 +15909,6 @@
         return BezierCurve;
     }());
     var isBezierCurve = function (path) { return path.type === PathType.BEZIER_CURVE; };
-
-    var parsePathForBorder = function (curves, borderSide) {
-        switch (borderSide) {
-            case 0:
-                return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftPaddingBox, curves.topRightBorderBox, curves.topRightPaddingBox);
-            case 1:
-                return createPathFromCurves(curves.topRightBorderBox, curves.topRightPaddingBox, curves.bottomRightBorderBox, curves.bottomRightPaddingBox);
-            case 2:
-                return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox);
-            case 3:
-            default:
-                return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox, curves.topLeftBorderBox, curves.topLeftPaddingBox);
-        }
-    };
-    var parsePathForBorderDoubleOuter = function (curves, borderSide) {
-        switch (borderSide) {
-            case 0:
-                return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox, curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox);
-            case 1:
-                return createPathFromCurves(curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox, curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox);
-            case 2:
-                return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox, curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox);
-            case 3:
-            default:
-                return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox, curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox);
-        }
-    };
-    var parsePathForBorderDoubleInner = function (curves, borderSide) {
-        switch (borderSide) {
-            case 0:
-                return createPathFromCurves(curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox, curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox);
-            case 1:
-                return createPathFromCurves(curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox, curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox);
-            case 2:
-                return createPathFromCurves(curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox);
-            case 3:
-            default:
-                return createPathFromCurves(curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox, curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox);
-        }
-    };
-    var parsePathForBorderStroke = function (curves, borderSide) {
-        switch (borderSide) {
-            case 0:
-                return createStrokePathFromCurves(curves.topLeftBorderStroke, curves.topRightBorderStroke);
-            case 1:
-                return createStrokePathFromCurves(curves.topRightBorderStroke, curves.bottomRightBorderStroke);
-            case 2:
-                return createStrokePathFromCurves(curves.bottomRightBorderStroke, curves.bottomLeftBorderStroke);
-            case 3:
-            default:
-                return createStrokePathFromCurves(curves.bottomLeftBorderStroke, curves.topLeftBorderStroke);
-        }
-    };
-    var createStrokePathFromCurves = function (outer1, outer2) {
-        var path = [];
-        if (isBezierCurve(outer1)) {
-            path.push(outer1.subdivide(0.5, false));
-        }
-        else {
-            path.push(outer1);
-        }
-        if (isBezierCurve(outer2)) {
-            path.push(outer2.subdivide(0.5, true));
-        }
-        else {
-            path.push(outer2);
-        }
-        return path;
-    };
-    var createPathFromCurves = function (outer1, inner1, outer2, inner2) {
-        var path = [];
-        if (isBezierCurve(outer1)) {
-            path.push(outer1.subdivide(0.5, false));
-        }
-        else {
-            path.push(outer1);
-        }
-        if (isBezierCurve(outer2)) {
-            path.push(outer2.subdivide(0.5, true));
-        }
-        else {
-            path.push(outer2);
-        }
-        if (isBezierCurve(inner2)) {
-            path.push(inner2.subdivide(0.5, true).reverse());
-        }
-        else {
-            path.push(inner2);
-        }
-        if (isBezierCurve(inner1)) {
-            path.push(inner1.subdivide(0.5, false).reverse());
-        }
-        else {
-            path.push(inner1);
-        }
-        return path;
-    };
 
     var BoundCurves = /** @class */ (function () {
         function BoundCurves(element) {
@@ -14961,282 +16165,6 @@
             curves.bottomLeftPaddingBox,
         ];
     };
-
-    var TransformEffect = /** @class */ (function () {
-        function TransformEffect(offsetX, offsetY, matrix) {
-            this.offsetX = offsetX;
-            this.offsetY = offsetY;
-            this.matrix = matrix;
-            this.type = 0 /* EffectType.TRANSFORM */;
-            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
-        }
-        return TransformEffect;
-    }());
-    var ClipEffect = /** @class */ (function () {
-        function ClipEffect(path, target, fillRule) {
-            if (fillRule === void 0) { fillRule = 'nonzero'; }
-            this.path = path;
-            this.target = target;
-            this.fillRule = fillRule;
-            this.type = 1 /* EffectType.CLIP */;
-        }
-        return ClipEffect;
-    }());
-    /** Clip produced by overflow:hidden/scroll — distinct from clip-path ClipEffect. */
-    var OverflowClipEffect = /** @class */ (function () {
-        function OverflowClipEffect(path, target) {
-            this.path = path;
-            this.target = target;
-            this.type = 6 /* EffectType.OVERFLOW_CLIP */;
-        }
-        return OverflowClipEffect;
-    }());
-    var OpacityEffect = /** @class */ (function () {
-        function OpacityEffect(opacity) {
-            this.opacity = opacity;
-            this.type = 2 /* EffectType.OPACITY */;
-            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
-        }
-        return OpacityEffect;
-    }());
-    var FilterEffect = /** @class */ (function () {
-        function FilterEffect(filter) {
-            this.filter = filter;
-            this.type = 3 /* EffectType.FILTER */;
-            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
-        }
-        return FilterEffect;
-    }());
-    var MixBlendModeEffect = /** @class */ (function () {
-        function MixBlendModeEffect(mixBlendMode) {
-            this.mixBlendMode = mixBlendMode;
-            this.type = 4 /* EffectType.MIX_BLEND_MODE */;
-            this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
-        }
-        return MixBlendModeEffect;
-    }());
-    var Path2DClipEffect = /** @class */ (function () {
-        function Path2DClipEffect(path2d, target, fillRule) {
-            this.path2d = path2d;
-            this.target = target;
-            this.fillRule = fillRule;
-            this.type = 5 /* EffectType.PATH2D_CLIP */;
-        }
-        return Path2DClipEffect;
-    }());
-    var isTransformEffect = function (effect) {
-        return effect.type === 0 /* EffectType.TRANSFORM */;
-    };
-    var isClipEffect = function (effect) { return effect.type === 1 /* EffectType.CLIP */; };
-    var isOverflowClipEffect = function (effect) {
-        return effect.type === 6 /* EffectType.OVERFLOW_CLIP */;
-    };
-    var isOpacityEffect = function (effect) { return effect.type === 2 /* EffectType.OPACITY */; };
-    var isFilterEffect = function (effect) { return effect.type === 3 /* EffectType.FILTER */; };
-    var isMixBlendModeEffect = function (effect) {
-        return effect.type === 4 /* EffectType.MIX_BLEND_MODE */;
-    };
-    var isPath2DClipEffect = function (effect) {
-        return effect.type === 5 /* EffectType.PATH2D_CLIP */;
-    };
-
-    var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
-    var SAMPLE_TEXT = 'Hidden Text';
-    var FontMetrics = /** @class */ (function () {
-        function FontMetrics(document, baselineAdjustment) {
-            if (baselineAdjustment === void 0) { baselineAdjustment = 2; }
-            this._data = {};
-            this._document = document;
-            this._baselineAdjustment = baselineAdjustment;
-        }
-        FontMetrics.prototype.parseMetrics = function (fontFamily, fontSize) {
-            var container = this._document.createElement('div');
-            var img = this._document.createElement('img');
-            var span = this._document.createElement('span');
-            var body = this._document.body;
-            container.style.visibility = 'hidden';
-            container.style.fontFamily = fontFamily;
-            container.style.fontSize = fontSize;
-            container.style.margin = '0';
-            container.style.padding = '0';
-            container.style.whiteSpace = 'nowrap';
-            body.appendChild(container);
-            img.src = SMALL_IMAGE;
-            img.width = 1;
-            img.height = 1;
-            img.style.margin = '0';
-            img.style.padding = '0';
-            img.style.verticalAlign = 'baseline';
-            span.style.fontFamily = fontFamily;
-            span.style.fontSize = fontSize;
-            span.style.margin = '0';
-            span.style.padding = '0';
-            span.appendChild(this._document.createTextNode(SAMPLE_TEXT));
-            container.appendChild(span);
-            container.appendChild(img);
-            var baseline = img.offsetTop - span.offsetTop + this._baselineAdjustment;
-            container.removeChild(span);
-            container.appendChild(this._document.createTextNode(SAMPLE_TEXT));
-            container.style.lineHeight = 'normal';
-            img.style.verticalAlign = 'super';
-            var middle = img.offsetTop - container.offsetTop + this._baselineAdjustment;
-            body.removeChild(container);
-            return { baseline: baseline, middle: middle };
-        };
-        FontMetrics.prototype.getMetrics = function (fontFamily, fontSize) {
-            var key = "".concat(fontFamily, " ").concat(fontSize);
-            if (typeof this._data[key] === 'undefined') {
-                this._data[key] = this.parseMetrics(fontFamily, fontSize);
-            }
-            return this._data[key];
-        };
-        FontMetrics.prototype.getRawMetrics = function (fontFamily, fontSize) {
-            var key = "__raw__".concat(fontFamily, " ").concat(fontSize);
-            if (typeof this._data[key] === 'undefined') {
-                var container = this._document.createElement('div');
-                var img = this._document.createElement('img');
-                var span = this._document.createElement('span');
-                var body = this._document.body;
-                container.style.visibility = 'hidden';
-                container.style.fontFamily = fontFamily;
-                container.style.fontSize = fontSize;
-                container.style.margin = '0';
-                container.style.padding = '0';
-                container.style.whiteSpace = 'nowrap';
-                body.appendChild(container);
-                img.src = SMALL_IMAGE;
-                img.width = 1;
-                img.height = 1;
-                img.style.margin = '0';
-                img.style.padding = '0';
-                img.style.verticalAlign = 'baseline';
-                span.style.fontFamily = fontFamily;
-                span.style.fontSize = fontSize;
-                span.style.margin = '0';
-                span.style.padding = '0';
-                span.appendChild(this._document.createTextNode(SAMPLE_TEXT));
-                container.appendChild(span);
-                container.appendChild(img);
-                var baseline = img.offsetTop - span.offsetTop;
-                container.removeChild(span);
-                container.appendChild(this._document.createTextNode(SAMPLE_TEXT));
-                container.style.lineHeight = 'normal';
-                img.style.verticalAlign = 'super';
-                var middle = img.offsetTop - container.offsetTop;
-                body.removeChild(container);
-                this._data[key] = { baseline: baseline, middle: middle };
-            }
-            return this._data[key];
-        };
-        return FontMetrics;
-    }());
-
-    var calculateObjectFitBounds = function (objectFit, naturalWidth, naturalHeight, clientWidth, clientHeight) {
-        var naturalRatio = naturalWidth / naturalHeight;
-        var clientRatio = clientWidth / clientHeight;
-        // 'object-position' is not currently supported, so use default value of 50% 50%.
-        var objectPositionX = 0.5;
-        var objectPositionY = 0.5;
-        var srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight;
-        if (objectFit === "scale-down" /* OBJECT_FIT.SCALE_DOWN */) {
-            objectFit =
-                naturalWidth < clientWidth && naturalHeight < clientHeight
-                    ? "none" /* OBJECT_FIT.NONE */
-                    : "contain" /* OBJECT_FIT.CONTAIN */; // at least one axis is greater or equal in size
-        }
-        switch (objectFit) {
-            case "contain" /* OBJECT_FIT.CONTAIN */:
-                srcX = 0;
-                srcY = 0;
-                srcWidth = naturalWidth;
-                srcHeight = naturalHeight;
-                if (naturalRatio < clientRatio) {
-                    // snap to top/bottom
-                    destY = 0;
-                    destHeight = clientHeight;
-                    destWidth = destHeight * naturalRatio;
-                    destX = (clientWidth - destWidth) * objectPositionX;
-                }
-                else {
-                    // snap to left/right
-                    destX = 0;
-                    destWidth = clientWidth;
-                    destHeight = destWidth / naturalRatio;
-                    destY = (clientHeight - destHeight) * objectPositionY;
-                }
-                break;
-            case "cover" /* OBJECT_FIT.COVER */:
-                destX = 0;
-                destY = 0;
-                destWidth = clientWidth;
-                destHeight = clientHeight;
-                if (naturalRatio < clientRatio) {
-                    // fill left/right
-                    srcX = 0;
-                    srcWidth = naturalWidth;
-                    srcHeight = clientHeight * (naturalWidth / clientWidth);
-                    srcY = (naturalHeight - srcHeight) * objectPositionY;
-                }
-                else {
-                    // fill top/bottom
-                    srcY = 0;
-                    srcHeight = naturalHeight;
-                    srcWidth = clientWidth * (naturalHeight / clientHeight);
-                    srcX = (naturalWidth - srcWidth) * objectPositionX;
-                }
-                break;
-            case "none" /* OBJECT_FIT.NONE */:
-                if (naturalWidth < clientWidth) {
-                    srcX = 0;
-                    srcWidth = naturalWidth;
-                    destX = (clientWidth - naturalWidth) * objectPositionX;
-                    destWidth = naturalWidth;
-                }
-                else {
-                    srcX = (naturalWidth - clientWidth) * objectPositionX;
-                    srcWidth = clientWidth;
-                    destX = 0;
-                    destWidth = clientWidth;
-                }
-                if (naturalHeight < clientHeight) {
-                    srcY = 0;
-                    srcHeight = naturalHeight;
-                    destY = (clientHeight - naturalHeight) * objectPositionY;
-                    destHeight = naturalHeight;
-                }
-                else {
-                    srcY = (naturalHeight - clientHeight) * objectPositionY;
-                    srcHeight = clientHeight;
-                    destY = 0;
-                    destHeight = clientHeight;
-                }
-                break;
-            case "fill" /* OBJECT_FIT.FILL */:
-            default:
-                srcX = 0;
-                srcY = 0;
-                srcWidth = naturalWidth;
-                srcHeight = naturalHeight;
-                destX = 0;
-                destY = 0;
-                destWidth = clientWidth;
-                destHeight = clientHeight;
-                break;
-        }
-        return {
-            src: new Bounds(srcX, srcY, srcWidth, srcHeight),
-            dest: new Bounds(destX, destY, destWidth, destHeight),
-        };
-    };
-
-    var Renderer = /** @class */ (function () {
-        function Renderer(context, options) {
-            this.context = context;
-            this.options = options;
-        }
-        return Renderer;
-    }());
 
     /**
      * clip-path-effect.ts
@@ -15666,31 +16594,3853 @@
         return root;
     };
 
+    var paddingBox = function (element) {
+        var bounds = element.bounds;
+        var styles = element.styles;
+        return bounds.add(styles.borderLeftWidth, styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth), -(styles.borderTopWidth + styles.borderBottomWidth));
+    };
+    var contentBox = function (element) {
+        var styles = element.styles;
+        var bounds = element.bounds;
+        var paddingLeft = getAbsoluteValue(styles.paddingLeft, bounds.width);
+        var paddingRight = getAbsoluteValue(styles.paddingRight, bounds.width);
+        var paddingTop = getAbsoluteValue(styles.paddingTop, bounds.width);
+        var paddingBottom = getAbsoluteValue(styles.paddingBottom, bounds.width);
+        return bounds.add(paddingLeft + styles.borderLeftWidth, paddingTop + styles.borderTopWidth, -(styles.borderRightWidth + styles.borderLeftWidth + paddingLeft + paddingRight), -(styles.borderTopWidth + styles.borderBottomWidth + paddingTop + paddingBottom));
+    };
+
+    var calculateBackgroundPositioningArea = function (backgroundOrigin, element) {
+        if (backgroundOrigin === 0 /* BACKGROUND_ORIGIN.BORDER_BOX */) {
+            return element.bounds;
+        }
+        if (backgroundOrigin === 2 /* BACKGROUND_ORIGIN.CONTENT_BOX */) {
+            return contentBox(element);
+        }
+        return paddingBox(element);
+    };
+    var calculateBackgroundPaintingArea = function (backgroundClip, element) {
+        if (backgroundClip === 0 /* BACKGROUND_CLIP.BORDER_BOX */) {
+            return element.bounds;
+        }
+        if (backgroundClip === 2 /* BACKGROUND_CLIP.CONTENT_BOX */) {
+            return contentBox(element);
+        }
+        // For background-clip: text, use padding-box as the initial painting area.
+        // The actual text-shape clipping happens at render time via canvas compositing.
+        if (backgroundClip === 3 /* BACKGROUND_CLIP.TEXT */) {
+            return paddingBox(element);
+        }
+        return paddingBox(element);
+    };
+    var calculateBackgroundRendering = function (container, index, intrinsicSize, viewportBounds) {
+        var attachment = getBackgroundValueForIndex(container.styles.backgroundAttachment, index);
+        // For background-attachment: fixed, the positioning area is the viewport.
+        // The background is positioned and sized relative to the viewport, but
+        // the painting area (clip) still follows the element's background-clip.
+        var isFixed = attachment === 1 /* BACKGROUND_ATTACHMENT.FIXED */ && viewportBounds;
+        var backgroundPositioningArea = isFixed
+            ? viewportBounds
+            : calculateBackgroundPositioningArea(getBackgroundValueForIndex(container.styles.backgroundOrigin, index), container);
+        var backgroundPaintingArea = calculateBackgroundPaintingArea(getBackgroundValueForIndex(container.styles.backgroundClip, index), container);
+        var backgroundImageSize = calculateBackgroundSize(getBackgroundValueForIndex(container.styles.backgroundSize, index), intrinsicSize, backgroundPositioningArea);
+        var sizeWidth = backgroundImageSize[0], sizeHeight = backgroundImageSize[1];
+        var position = getAbsoluteValueForTuple(getBackgroundValueForIndex(container.styles.backgroundPosition, index), backgroundPositioningArea.width - sizeWidth, backgroundPositioningArea.height - sizeHeight);
+        var path = calculateBackgroundRepeatPath(getBackgroundValueForIndex(container.styles.backgroundRepeat, index), position, backgroundImageSize, backgroundPositioningArea, backgroundPaintingArea);
+        var offsetX = Math.round(backgroundPositioningArea.left + position[0]);
+        var offsetY = Math.round(backgroundPositioningArea.top + position[1]);
+        sizeWidth = Math.max(1, sizeWidth);
+        sizeHeight = Math.max(1, sizeHeight);
+        return [path, offsetX, offsetY, sizeWidth, sizeHeight];
+    };
+    var isAuto = function (token) { return isIdentToken(token) && token.value === BACKGROUND_SIZE.AUTO; };
+    var hasIntrinsicValue = function (value) { return typeof value === 'number'; };
+    var calculateBackgroundSize = function (size, _a, bounds) {
+        var intrinsicWidth = _a[0], intrinsicHeight = _a[1], intrinsicProportion = _a[2];
+        var first = size[0], second = size[1];
+        if (!first) {
+            return [0, 0];
+        }
+        if (isLengthPercentage(first) && second && isLengthPercentage(second)) {
+            return [getAbsoluteValue(first, bounds.width), getAbsoluteValue(second, bounds.height)];
+        }
+        var hasIntrinsicProportion = hasIntrinsicValue(intrinsicProportion);
+        if (isIdentToken(first) && (first.value === BACKGROUND_SIZE.CONTAIN || first.value === BACKGROUND_SIZE.COVER)) {
+            if (hasIntrinsicValue(intrinsicProportion)) {
+                var targetRatio = bounds.width / bounds.height;
+                return targetRatio < intrinsicProportion !== (first.value === BACKGROUND_SIZE.COVER)
+                    ? [bounds.width, bounds.width / intrinsicProportion]
+                    : [bounds.height * intrinsicProportion, bounds.height];
+            }
+            return [bounds.width, bounds.height];
+        }
+        var hasIntrinsicWidth = hasIntrinsicValue(intrinsicWidth);
+        var hasIntrinsicHeight = hasIntrinsicValue(intrinsicHeight);
+        var hasIntrinsicDimensions = hasIntrinsicWidth || hasIntrinsicHeight;
+        // If the background-size is auto or auto auto:
+        if (isAuto(first) && (!second || isAuto(second))) {
+            // If the image has both horizontal and vertical intrinsic dimensions, it's rendered at that size.
+            if (hasIntrinsicWidth && hasIntrinsicHeight) {
+                return [intrinsicWidth, intrinsicHeight];
+            }
+            // If the image has no intrinsic dimensions and has no intrinsic proportions,
+            // it's rendered at the size of the background positioning area.
+            if (!hasIntrinsicProportion && !hasIntrinsicDimensions) {
+                return [bounds.width, bounds.height];
+            }
+            // TODO If the image has no intrinsic dimensions but has intrinsic proportions, it's rendered as if contain had been specified instead.
+            // If the image has only one intrinsic dimension and has intrinsic proportions, it's rendered at the size corresponding to that one dimension.
+            // The other dimension is computed using the specified dimension and the intrinsic proportions.
+            if (hasIntrinsicDimensions && hasIntrinsicProportion) {
+                var width_1 = hasIntrinsicWidth
+                    ? intrinsicWidth
+                    : intrinsicHeight * intrinsicProportion;
+                var height_1 = hasIntrinsicHeight
+                    ? intrinsicHeight
+                    : intrinsicWidth / intrinsicProportion;
+                return [width_1, height_1];
+            }
+            // If the image has only one intrinsic dimension but has no intrinsic proportions,
+            // it's rendered using the specified dimension and the other dimension of the background positioning area.
+            var width_2 = hasIntrinsicWidth ? intrinsicWidth : bounds.width;
+            var height_2 = hasIntrinsicHeight ? intrinsicHeight : bounds.height;
+            return [width_2, height_2];
+        }
+        // If the image has intrinsic proportions, it's stretched to the specified dimension.
+        // The unspecified dimension is computed using the specified dimension and the intrinsic proportions.
+        if (hasIntrinsicProportion) {
+            var width_3 = 0;
+            var height_3 = 0;
+            if (isLengthPercentage(first)) {
+                width_3 = getAbsoluteValue(first, bounds.width);
+            }
+            else if (isLengthPercentage(second)) {
+                height_3 = getAbsoluteValue(second, bounds.height);
+            }
+            if (isAuto(first)) {
+                width_3 = height_3 * intrinsicProportion;
+            }
+            else if (!second || isAuto(second)) {
+                height_3 = width_3 / intrinsicProportion;
+            }
+            return [width_3, height_3];
+        }
+        // If the image has no intrinsic proportions, it's stretched to the specified dimension.
+        // The unspecified dimension is computed using the image's corresponding intrinsic dimension,
+        // if there is one. If there is no such intrinsic dimension,
+        // it becomes the corresponding dimension of the background positioning area.
+        var width = null;
+        var height = null;
+        if (isLengthPercentage(first)) {
+            width = getAbsoluteValue(first, bounds.width);
+        }
+        else if (second && isLengthPercentage(second)) {
+            height = getAbsoluteValue(second, bounds.height);
+        }
+        if (width !== null && (!second || isAuto(second))) {
+            height =
+                hasIntrinsicWidth && hasIntrinsicHeight
+                    ? (width / intrinsicWidth) * intrinsicHeight
+                    : bounds.height;
+        }
+        if (height !== null && isAuto(first)) {
+            width =
+                hasIntrinsicWidth && hasIntrinsicHeight
+                    ? (height / intrinsicHeight) * intrinsicWidth
+                    : bounds.width;
+        }
+        if (width !== null && height !== null) {
+            return [width, height];
+        }
+        throw new Error("Unable to calculate background-size for element");
+    };
+    var getBackgroundValueForIndex = function (values, index) {
+        var value = values[index];
+        if (typeof value === 'undefined') {
+            return values[0];
+        }
+        return value;
+    };
+    var calculateBackgroundRepeatPath = function (repeat, _a, _b, backgroundPositioningArea, backgroundPaintingArea) {
+        var x = _a[0], y = _a[1];
+        var width = _b[0], height = _b[1];
+        switch (repeat) {
+            case 2 /* BACKGROUND_REPEAT.REPEAT_X */:
+                return [
+                    new Vector(Math.round(backgroundPositioningArea.left), Math.round(backgroundPositioningArea.top + y)),
+                    new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(backgroundPositioningArea.top + y)),
+                    new Vector(Math.round(backgroundPositioningArea.left + backgroundPositioningArea.width), Math.round(height + backgroundPositioningArea.top + y)),
+                    new Vector(Math.round(backgroundPositioningArea.left), Math.round(height + backgroundPositioningArea.top + y)),
+                ];
+            case 3 /* BACKGROUND_REPEAT.REPEAT_Y */:
+                return [
+                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.height + backgroundPositioningArea.top)),
+                ];
+            case 1 /* BACKGROUND_REPEAT.NO_REPEAT */:
+                return [
+                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x + width), Math.round(backgroundPositioningArea.top + y + height)),
+                    new Vector(Math.round(backgroundPositioningArea.left + x), Math.round(backgroundPositioningArea.top + y + height)),
+                ];
+            default:
+                return [
+                    new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.top)),
+                    new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.top)),
+                    new Vector(Math.round(backgroundPaintingArea.left + backgroundPaintingArea.width), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
+                    new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
+                ];
+        }
+    };
+
+    var parsePathForBorder = function (curves, borderSide) {
+        switch (borderSide) {
+            case 0:
+                return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftPaddingBox, curves.topRightBorderBox, curves.topRightPaddingBox);
+            case 1:
+                return createPathFromCurves(curves.topRightBorderBox, curves.topRightPaddingBox, curves.bottomRightBorderBox, curves.bottomRightPaddingBox);
+            case 2:
+                return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox);
+            case 3:
+            default:
+                return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftPaddingBox, curves.topLeftBorderBox, curves.topLeftPaddingBox);
+        }
+    };
+    var parsePathForBorderDoubleOuter = function (curves, borderSide) {
+        switch (borderSide) {
+            case 0:
+                return createPathFromCurves(curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox, curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox);
+            case 1:
+                return createPathFromCurves(curves.topRightBorderBox, curves.topRightBorderDoubleOuterBox, curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox);
+            case 2:
+                return createPathFromCurves(curves.bottomRightBorderBox, curves.bottomRightBorderDoubleOuterBox, curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox);
+            case 3:
+            default:
+                return createPathFromCurves(curves.bottomLeftBorderBox, curves.bottomLeftBorderDoubleOuterBox, curves.topLeftBorderBox, curves.topLeftBorderDoubleOuterBox);
+        }
+    };
+    var parsePathForBorderDoubleInner = function (curves, borderSide) {
+        switch (borderSide) {
+            case 0:
+                return createPathFromCurves(curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox, curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox);
+            case 1:
+                return createPathFromCurves(curves.topRightBorderDoubleInnerBox, curves.topRightPaddingBox, curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox);
+            case 2:
+                return createPathFromCurves(curves.bottomRightBorderDoubleInnerBox, curves.bottomRightPaddingBox, curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox);
+            case 3:
+            default:
+                return createPathFromCurves(curves.bottomLeftBorderDoubleInnerBox, curves.bottomLeftPaddingBox, curves.topLeftBorderDoubleInnerBox, curves.topLeftPaddingBox);
+        }
+    };
+    var parsePathForBorderStroke = function (curves, borderSide) {
+        switch (borderSide) {
+            case 0:
+                return createStrokePathFromCurves(curves.topLeftBorderStroke, curves.topRightBorderStroke);
+            case 1:
+                return createStrokePathFromCurves(curves.topRightBorderStroke, curves.bottomRightBorderStroke);
+            case 2:
+                return createStrokePathFromCurves(curves.bottomRightBorderStroke, curves.bottomLeftBorderStroke);
+            case 3:
+            default:
+                return createStrokePathFromCurves(curves.bottomLeftBorderStroke, curves.topLeftBorderStroke);
+        }
+    };
+    var createStrokePathFromCurves = function (outer1, outer2) {
+        var path = [];
+        if (isBezierCurve(outer1)) {
+            path.push(outer1.subdivide(0.5, false));
+        }
+        else {
+            path.push(outer1);
+        }
+        if (isBezierCurve(outer2)) {
+            path.push(outer2.subdivide(0.5, true));
+        }
+        else {
+            path.push(outer2);
+        }
+        return path;
+    };
+    var createPathFromCurves = function (outer1, inner1, outer2, inner2) {
+        var path = [];
+        if (isBezierCurve(outer1)) {
+            path.push(outer1.subdivide(0.5, false));
+        }
+        else {
+            path.push(outer1);
+        }
+        if (isBezierCurve(outer2)) {
+            path.push(outer2.subdivide(0.5, true));
+        }
+        else {
+            path.push(outer2);
+        }
+        if (isBezierCurve(inner2)) {
+            path.push(inner2.subdivide(0.5, true).reverse());
+        }
+        else {
+            path.push(inner2);
+        }
+        if (isBezierCurve(inner1)) {
+            path.push(inner1.subdivide(0.5, false).reverse());
+        }
+        else {
+            path.push(inner1);
+        }
+        return path;
+    };
+
+    // ---------------------------------------------------------------------------
+    // Image smoothing resolution
+    // ---------------------------------------------------------------------------
+    /**
+     * Resolves the effective image-smoothing settings for a given element, applying
+     * the precedence rule:
+     *
+     *   forceImageQuality === true   -> always use the global options (ignore CSS)
+     *   otherwise                    -> the element's CSS `image-rendering` wins when
+     *                                   it is not `auto`; if it is `auto`, fall back
+     *                                   to the global options.
+     *
+     * `pixelated` and `crisp-edges` disable smoothing; `smooth` forces it on (high
+     * quality); `auto` defers to the global default.
+     *
+     * Returns the enabled flag and quality so callers can apply them to whichever
+     * context actually performs the draw/scale (main context or an offscreen resize).
+     */
+    function resolveImageSmoothing(state, imageRendering) {
+        var _a, _b;
+        var globalEnabled = (_a = state.options.imageSmoothing) !== null && _a !== void 0 ? _a : true;
+        var globalQuality = (_b = state.options.imageSmoothingQuality) !== null && _b !== void 0 ? _b : 'low';
+        if (state.options.forceImageQuality || imageRendering === 0 /* IMAGE_RENDERING.AUTO */) {
+            return { enabled: globalEnabled, quality: globalQuality };
+        }
+        switch (imageRendering) {
+            case 1 /* IMAGE_RENDERING.PIXELATED */:
+            case 2 /* IMAGE_RENDERING.CRISP_EDGES */:
+                return { enabled: false, quality: globalQuality };
+            case 3 /* IMAGE_RENDERING.SMOOTH */:
+                return { enabled: true, quality: 'high' };
+            default:
+                return { enabled: globalEnabled, quality: globalQuality };
+        }
+    }
+    // ---------------------------------------------------------------------------
+    // Low-level path primitives
+    // These are plain functions so any renderer can call them without inheritance.
+    // ---------------------------------------------------------------------------
+    function formatPath(ctx, paths) {
+        paths.forEach(function (point, index) {
+            var start = isBezierCurve(point) ? point.start : point;
+            if (index === 0) {
+                ctx.moveTo(start.x, start.y);
+            }
+            else {
+                ctx.lineTo(start.x, start.y);
+            }
+            if (isBezierCurve(point)) {
+                ctx.bezierCurveTo(point.startControl.x, point.startControl.y, point.endControl.x, point.endControl.y, point.end.x, point.end.y);
+            }
+        });
+    }
+    function canvasPath(state, paths) {
+        state.ctx.beginPath();
+        formatPath(state.ctx, paths);
+        state.ctx.closePath();
+    }
+    function canvasMask(state, paths) {
+        state.ctx.beginPath();
+        state.ctx.save();
+        state.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        state.ctx.moveTo(0, 0);
+        state.ctx.lineTo(state.canvas.width, 0);
+        state.ctx.lineTo(state.canvas.width, state.canvas.height);
+        state.ctx.lineTo(0, state.canvas.height);
+        state.ctx.lineTo(0, 0);
+        state.ctx.restore();
+        formatPath(state.ctx, reversePath(paths));
+        state.ctx.closePath();
+    }
+    function renderRepeat(state, path, pattern, offsetX, offsetY) {
+        canvasPath(state, path);
+        state.ctx.fillStyle = pattern;
+        state.ctx.translate(offsetX, offsetY);
+        state.ctx.fill();
+        state.ctx.translate(-offsetX, -offsetY);
+    }
+    function resizeImage(state, image, width, height, smoothing) {
+        var _a;
+        // Note: the "return image unchanged when sizes match" shortcut is deliberately
+        // NOT used — it triggers "Operation is insecure" on Safari (see upstream
+        // niklasvh/html2canvas#2911). We always draw to a canvas, but memoise the
+        // result so identical (source, size) requests reuse it.
+        // The smoothing mode is part of the cache key so a crisp (pixelated) resize
+        // and a smooth resize of the same source+size don't collide.
+        var smoothingKey = '';
+        var key = "".concat(image.src, "|").concat(width, "|").concat(height).concat(smoothingKey);
+        var cached = state.resizeCache.get(key);
+        if (cached) {
+            return cached;
+        }
+        // Dimensions computed exactly as before (the canvas.width/height setters
+        // truncate to integers) to keep pixel output identical; only add caching.
+        var ownerDocument = (_a = state.canvas.ownerDocument) !== null && _a !== void 0 ? _a : document;
+        var canvas = ownerDocument.createElement('canvas');
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
+        // Owned by the resize cache — never released to canvasPool.
+        state.resizeCache.set(key, canvas);
+        return canvas;
+    }
+    /**
+     * Returns a canvas containing a rasterised linear gradient, memoised by `key`.
+     *
+     * `key` must uniquely describe the gradient's appearance at the requested size
+     * (type, angle, stops, width, height). `paint` receives a fresh 2D context and
+     * must draw the gradient into it (it is only called on a cache miss).
+     *
+     * The returned canvas is owned by the gradient cache and must NOT be released
+     * to `canvasPool`. Callers create their own CanvasPattern from it, since a
+     * pattern is bound to the context that created it.
+     */
+    function getLinearGradientCanvas(state, key, width, height, paint) {
+        var _a;
+        var cached = state.gradientCanvasCache.get(key);
+        if (cached) {
+            return cached;
+        }
+        var ownerDocument = (_a = state.canvas.ownerDocument) !== null && _a !== void 0 ? _a : document;
+        var canvas = ownerDocument.createElement('canvas');
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+        var ctx = canvas.getContext('2d');
+        paint(ctx, width, height);
+        state.gradientCanvasCache.set(key, canvas);
+        return canvas;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Font style cache (per CSSParsedDeclaration instance)
+    // ---------------------------------------------------------------------------
+    // see https://github.com/niklasvh/html2canvas/pull/2645
+    var iOSBrokenFonts = ['-apple-system', 'system-ui'];
+    var fixIOSSystemFonts = function (fontFamilies) {
+        return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)
+            ? fontFamilies.filter(function (fontFamily) { return iOSBrokenFonts.indexOf(fontFamily) === -1; })
+            : fontFamilies;
+    };
+    var fontStyleCache = new WeakMap();
+    /**
+     * True when the element forces a directional glyph override (unicode-bidi:
+     * bidi-override / isolate-override), as produced by <bdo>. In that case the
+     * glyph order must follow the resolved `direction` regardless of the text's
+     * intrinsic bidi character types.
+     */
+    function isBidiOverride(styles) {
+        return styles.unicodeBidi === 3 /* UNICODE_BIDI.BIDI_OVERRIDE */ || styles.unicodeBidi === 4 /* UNICODE_BIDI.ISOLATE_OVERRIDE */;
+    }
+    /**
+     * Align ruby annotation segments within their measured boxes.
+     *
+     * For `<rt>` (display: ruby-text) the DOM Range of the annotation text reports
+     * the full ruby-column width (matching the base), while the browser paints the
+     * shorter annotation text within that column according to `ruby-align`. Since
+     * the renderer draws at bounds.left with textAlign='left', we shift each segment
+     * so it lands where the browser places it:
+     *   - `start`: keep bounds.left (left edge of the column).
+     *   - everything else (`center` / `space-around` / `space-between`): centre the
+     *     text within the measured column box. `space-*` distribute glyphs, but that
+     *     layout is not exposed reliably via getClientRects, so we approximate with
+     *     centering, which matches the common default (`space-around`) visually.
+     * `ctx.font` must already be set to the annotation's font before calling this.
+     */
+    function alignRubyText(ctx, bounds, align) {
+        if (align === 0 /* RUBY_ALIGN.START */) {
+            return bounds;
+        }
+        return bounds.map(function (tb) {
+            var textWidth = ctx.measureText(tb.text).width;
+            var slack = tb.bounds.width - textWidth;
+            // Only shift when the measured box is wider than the text (the ruby
+            // column case); never shift when the box is already tight.
+            if (slack <= 0.5) {
+                return tb;
+            }
+            var centeredLeft = tb.bounds.left + slack / 2;
+            return new TextBounds(tb.text, new Bounds(centeredLeft, tb.bounds.top, textWidth, tb.bounds.height));
+        });
+    }
+    /**
+     * Returns [fontString, fontFamily, fontSize] for use with ctx.font.
+     * Results are cached per CSSParsedDeclaration instance.
+     */
+    function createFontStyle(styles) {
+        var cached = fontStyleCache.get(styles);
+        if (cached) {
+            return cached;
+        }
+        var fontVariant = styles.fontVariant.filter(function (variant) { return variant === 'normal' || variant === 'small-caps'; }).join('');
+        var fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
+        var fontSize = isDimensionToken(styles.fontSize)
+            ? "".concat(getNumber(styles.fontSize)).concat(styles.fontSize.unit)
+            : "".concat(getNumber(styles.fontSize), "px");
+        var result = [
+            [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
+            fontFamily,
+            fontSize,
+        ];
+        fontStyleCache.set(styles, result);
+        return result;
+    }
+    // ---------------------------------------------------------------------------
+    // Text with letter-spacing
+    // ---------------------------------------------------------------------------
+    /**
+     * Draws a run of text at (x, y) applying `letterSpacing` (in px).
+     *
+     * When the native `ctx.letterSpacing` property is available (Chrome 94+,
+     * Firefox 115+, Safari 16.4+) the whole run is drawn with a single
+     * fill/strokeText call. Otherwise it falls back to drawing one grapheme at a
+     * time, advancing by the measured width plus the spacing. The `- 1` in the
+     * fallback matches html2canvas' historical per-character spacing compensation.
+     *
+     * The caller is responsible for baseline/alignment and for any rotation used
+     * by vertical writing modes; this helper only handles horizontal advance.
+     */
+    function drawTextWithLetterSpacing(ctx, text, x, y, letterSpacing, useStroke) {
+        if (useStroke === void 0) { useStroke = false; }
+        var draw = useStroke
+            ? function (t, dx, dy) { return ctx.strokeText(t, dx, dy); }
+            : function (t, dx, dy) { return ctx.fillText(t, dx, dy); };
+        if (letterSpacing === 0) {
+            draw(text, x, y);
+            return;
+        }
+        // TS lib types don't declare letterSpacing on CanvasRenderingContext2D yet,
+        // so read/write it through a typed view without narrowing `ctx` itself.
+        var spacingCtx = ctx;
+        if (typeof spacingCtx.letterSpacing === 'string') {
+            // Native path: one draw call for the whole run.
+            var previous = spacingCtx.letterSpacing;
+            spacingCtx.letterSpacing = "".concat(letterSpacing, "px");
+            draw(text, x, y);
+            spacingCtx.letterSpacing = previous;
+            return;
+        }
+        // Fallback: draw each grapheme and advance manually.
+        var letters = segmentGraphemes(text);
+        letters.reduce(function (left, letter, index) {
+            draw(letter, left, y);
+            var isLast = index === letters.length - 1;
+            return left + ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
+        }, x);
+    }
+    /**
+     * Draws a single text segment, handling vertical writing modes and letter-spacing.
+     */
+    function renderTextWithLetterSpacing(state, text, letterSpacing, baseline, writingMode, useStroke, reverseGraphemes) {
+        if (writingMode === void 0) { writingMode = 0 /* WRITING_MODE.HORIZONTAL_TB */; }
+        if (useStroke === void 0) { useStroke = false; }
+        if (reverseGraphemes === void 0) { reverseGraphemes = false; }
+        // unicode-bidi: bidi-override forces glyphs to be laid out in the direction's
+        // visual order. The canvas 2d bidi algorithm (ctx.direction) will not reverse
+        // a run of strong-LTR characters (e.g. latin) the way <bdo dir="rtl"> does, so
+        // when an override is in effect we reverse the grapheme order ourselves and
+        // draw the result as a plain run. Only correct for scripts that do not require
+        // contextual shaping (latin, digits); complex-shaping scripts are left as-is.
+        if (reverseGraphemes) {
+            var reversed = segmentGraphemes(text.text).reverse().join('');
+            text = new TextBounds(reversed, text.bounds);
+        }
+        var isVertical = writingMode === 1 /* WRITING_MODE.VERTICAL_RL */ ||
+            writingMode === 2 /* WRITING_MODE.VERTICAL_LR */ ||
+            writingMode === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
+            writingMode === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+        var drawText = useStroke
+            ? function (t, x, y) { return state.ctx.strokeText(t, x, y); }
+            : function (t, x, y) { return state.ctx.fillText(t, x, y); };
+        if (isVertical) {
+            // For vertical writing modes the browser already positions the text bounds correctly.
+            // We rotate the canvas ±90° around the centre of the text bounds so that fillText
+            // draws along the right axis, then restore.
+            var isSidewaysLR = writingMode === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+            // sideways-lr rotates -90°; all other vertical modes rotate +90°
+            var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+            var cx = text.bounds.left + text.bounds.width / 2;
+            var cy = text.bounds.top + text.bounds.height / 2;
+            state.ctx.save();
+            state.ctx.translate(cx, cy);
+            state.ctx.rotate(angle);
+            state.ctx.translate(-cx, -cy);
+            // After rotation the "visual" width and height swap, so we need to
+            // paint as if the text was horizontal with swapped bounds.
+            var rotatedBounds = new Bounds(cx - text.bounds.height / 2, cy - text.bounds.width / 2, text.bounds.height, text.bounds.width);
+            var rotatedText = new TextBounds(text.text, rotatedBounds);
+            if (letterSpacing === 0 && !state.isFirefox) {
+                state.ctx.textBaseline = 'ideographic';
+                drawText(rotatedText.text, rotatedText.bounds.left, rotatedText.bounds.top + rotatedText.bounds.height);
+            }
+            else {
+                // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+                var drawY = rotatedText.bounds.top + baseline;
+                drawTextWithLetterSpacing(state.ctx, rotatedText.text, rotatedText.bounds.left, drawY, letterSpacing, useStroke);
+            }
+            state.ctx.restore();
+        }
+        else {
+            if (letterSpacing === 0 && !state.isFirefox) {
+                // Fixed an issue with characters moving up in non-Firefox.
+                // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
+                state.ctx.textBaseline = 'ideographic';
+                drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+            }
+            else {
+                // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+                var drawY = text.bounds.top + baseline;
+                drawTextWithLetterSpacing(state.ctx, text.text, text.bounds.left, drawY, letterSpacing, useStroke);
+            }
+        }
+    }
+    // ---------------------------------------------------------------------------
+    // Decoration lines
+    // ---------------------------------------------------------------------------
+    /**
+     * Draws a single text-decoration line segment using the given style.
+     * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
+     * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
+     */
+    function renderDecorationLine(state, style, x, y, w, h, isVertical, textDecorationLine, lineStart, _fontSizePx) {
+        switch (style) {
+            case 1 /* TEXT_DECORATION_STYLE.DOUBLE */: {
+                // For double, `h` (or `w` in vertical) is the thickness of each individual line.
+                // Gap between the two lines = max(1, round(thickness / 2)).
+                if (isVertical) {
+                    var lineW = Math.max(1, w);
+                    var gap = Math.max(1, Math.round(w / 2));
+                    state.ctx.fillRect(x, y, lineW, h);
+                    if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
+                        state.ctx.fillRect(x - lineW - gap, y, lineW, h);
+                    }
+                    else {
+                        state.ctx.fillRect(x + lineW + gap, y, lineW, h);
+                    }
+                }
+                else {
+                    var lineH = Math.max(1, h);
+                    var gap = Math.max(1, Math.trunc(h / 2));
+                    state.ctx.fillRect(x, y, w, lineH);
+                    if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
+                        state.ctx.fillRect(x, y - lineH - gap, w, lineH);
+                    }
+                    else {
+                        state.ctx.fillRect(x, y + lineH + gap, w, lineH);
+                    }
+                }
+                break;
+            }
+            case 2 /* TEXT_DECORATION_STYLE.DOTTED */: {
+                // Dots (squares) with diameter = thickness, spaced by one dot width.
+                var dotSize = isVertical ? w : h;
+                var length_1 = isVertical ? h : w;
+                var step = dotSize * 2;
+                for (var pos = 0; pos < length_1; pos += step) {
+                    if (isVertical) {
+                        state.ctx.fillRect(x, y + pos, w, Math.min(dotSize, length_1 - pos));
+                    }
+                    else {
+                        state.ctx.fillRect(x + pos, y, Math.min(dotSize, length_1 - pos), h);
+                    }
+                }
+                break;
+            }
+            case 3 /* TEXT_DECORATION_STYLE.DASHED */: {
+                // Dashes 3× the thickness long, with a gap equal to the dash length.
+                var thickness = isVertical ? w : h;
+                var dashLen = thickness * 3;
+                var length_2 = isVertical ? h : w;
+                var step = dashLen * 2;
+                for (var pos = 0; pos < length_2; pos += step) {
+                    if (isVertical) {
+                        state.ctx.fillRect(x, y + pos, w, Math.min(dashLen, length_2 - pos));
+                    }
+                    else {
+                        state.ctx.fillRect(x + pos, y, Math.min(dashLen, length_2 - pos), h);
+                    }
+                }
+                break;
+            }
+            case 4 /* TEXT_DECORATION_STYLE.WAVY */: {
+                // Wavy line using quadratic Bezier curves (one per half-wavelength).
+                // Quadratic curves are required (not cubic) so that the tangent at each
+                // midline crossing is horizontal, giving a smooth continuous wave when
+                // segments are chained.
+                //
+                // Sizing from Chromium's MakeWave() (thickness-based):
+                //   clamped         = max(1, thickness)
+                //   wavelength      = 1 + 2 * round(2 * clamped + 0.5)
+                //   amplitude       = 0.5 + round(3 * clamped + 0.5)   (= cpDist)
+                //
+                // Phase continuity across word/space segments is maintained by aligning
+                // the half-wave grid to `lineStart` (the absolute start of the decoration line).
+                var length_3 = isVertical ? h : w;
+                var thickness2 = isVertical ? w : h;
+                var clamped = Math.max(1, thickness2);
+                var wavelength = 1 + 2 * Math.round(2 * clamped + 0.5);
+                var amplitude = Math.max(3, thickness2 * 1.5);
+                var halfWave = wavelength / 2;
+                state.ctx.save();
+                state.ctx.beginPath();
+                if (isVertical) {
+                    var ref = lineStart !== null && lineStart !== void 0 ? lineStart : y;
+                    var midX = x + w / 2;
+                    // Align to half-wave grid from ref.
+                    var phaseOffset = (((y - ref) % halfWave) + halfWave) % halfWave;
+                    var halfWaveOrigin = y - phaseOffset;
+                    // Count half-waves elapsed to determine initial direction.
+                    var halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                    var direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+                    state.ctx.moveTo(midX, y);
+                    var pos = halfWaveOrigin;
+                    while (pos < y + length_3) {
+                        var nextPos = pos + halfWave;
+                        var controlPos = (pos + nextPos) / 2;
+                        state.ctx.quadraticCurveTo(midX + amplitude * direction, controlPos, midX, Math.min(nextPos, y + length_3));
+                        pos = nextPos;
+                        direction *= -1;
+                    }
+                }
+                else {
+                    var ref = lineStart !== null && lineStart !== void 0 ? lineStart : x;
+                    // midY is set so the top of the wave starts at y (top of the decoration band).
+                    var midY = y + amplitude;
+                    // Align to half-wave grid from ref.
+                    var phaseOffset = (((x - ref) % halfWave) + halfWave) % halfWave;
+                    var halfWaveOrigin = x - phaseOffset;
+                    var halfWavesElapsed = Math.round((halfWaveOrigin - ref) / halfWave);
+                    var direction = halfWavesElapsed % 2 === 0 ? 1 : -1;
+                    state.ctx.moveTo(x, midY);
+                    var pos = halfWaveOrigin;
+                    while (pos < x + length_3) {
+                        var nextPos = pos + halfWave;
+                        var controlPos = (pos + nextPos) / 2;
+                        state.ctx.quadraticCurveTo(controlPos, midY + amplitude * direction, Math.min(nextPos, x + length_3), midY);
+                        pos = nextPos;
+                        direction *= -1;
+                    }
+                }
+                state.ctx.strokeStyle = state.ctx.fillStyle;
+                state.ctx.lineWidth = thickness2 + 1;
+                state.ctx.stroke();
+                state.ctx.restore();
+                break;
+            }
+            case 0 /* TEXT_DECORATION_STYLE.SOLID */:
+            default:
+                state.ctx.fillRect(x, y, w, h);
+                break;
+        }
+    }
+    // ---------------------------------------------------------------------------
+    // Full text node rendering
+    // ---------------------------------------------------------------------------
+    function renderTextNode(state, text, styles, firstLineStyles) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, font, fontFamily, fontSize, fontSizePx, FIRST_LINE_TOLERANCE, firstLineTop, RUBY_TEXT_MASK, renderTextBounds, paintOrder, wm, isVertical, baseline, lineStartMap, lineEndMap, isFirstInLine, lineMin, lineMax_1, _i, renderTextBounds_1, tb, lineKey, start, end, minEntry, maxEntry, clamp, anchor;
+            return __generator(this, function (_b) {
+                _a = createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
+                fontSizePx = getNumber(styles.fontSize);
+                FIRST_LINE_TOLERANCE = 1;
+                firstLineTop = null;
+                if (firstLineStyles && text.textBounds.length > 0) {
+                    firstLineTop = text.textBounds.reduce(function (min, tb) { return Math.min(min, tb.bounds.top); }, Infinity);
+                }
+                state.ctx.font = font;
+                state.ctx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
+                state.ctx.textAlign = 'left';
+                state.ctx.textBaseline = 'alphabetic';
+                RUBY_TEXT_MASK = 2097152 /* DISPLAY.RUBY_TEXT */ | 1048576 /* DISPLAY.RUBY_BASE */ | 512 /* DISPLAY.RUBY */;
+                renderTextBounds = (styles.display & RUBY_TEXT_MASK) !== 0
+                    ? alignRubyText(state.ctx, text.textBounds, styles.rubyAlign)
+                    : text.textBounds;
+                paintOrder = styles.paintOrder;
+                wm = styles.writingMode;
+                isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
+                    wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
+                    wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
+                    wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                baseline = state.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
+                lineStartMap = new Map();
+                lineEndMap = new Map();
+                isFirstInLine = new Set();
+                if (styles.textDecorationLine.length) {
+                    lineMin = new Map();
+                    lineMax_1 = new Map();
+                    for (_i = 0, renderTextBounds_1 = renderTextBounds; _i < renderTextBounds_1.length; _i++) {
+                        tb = renderTextBounds_1[_i];
+                        lineKey = isVertical ? Math.round(tb.bounds.left) : Math.round(tb.bounds.top);
+                        start = isVertical ? tb.bounds.top : tb.bounds.left;
+                        end = isVertical ? tb.bounds.top + tb.bounds.height : tb.bounds.left + tb.bounds.width;
+                        minEntry = lineMin.get(lineKey);
+                        if (minEntry === undefined || start < minEntry.val) {
+                            lineMin.set(lineKey, { val: start, tb: tb });
+                        }
+                        maxEntry = lineMax_1.get(lineKey);
+                        if (maxEntry === undefined || end > maxEntry.val) {
+                            lineMax_1.set(lineKey, { val: end, tb: tb });
+                        }
+                    }
+                    // Mark only the first segment of each line; store start/end on it.
+                    lineMin.forEach(function (_a) {
+                        var startVal = _a.val, firstTb = _a.tb;
+                        isFirstInLine.add(firstTb);
+                        lineStartMap.set(firstTb, startVal);
+                    });
+                    // Attach lineEnd to each line's first TextBounds.
+                    lineMin.forEach(function (_a, lineKey) {
+                        var firstTb = _a.tb;
+                        lineEndMap.set(firstTb, lineMax_1.get(lineKey).val);
+                    });
+                }
+                clamp = !isVertical && styles.webkitLineClamp > 0 ? computeLineClamp(renderTextBounds, styles.webkitLineClamp) : null;
+                renderTextBounds.forEach(function (textBound) {
+                    // Skip segments on lines beyond the clamp limit.
+                    if (clamp && !clamp.kept.has(textBound)) {
+                        return;
+                    }
+                    // Determine whether this segment is on the first visual line.
+                    // If so, use firstLineStyles (overriding color, font, etc.) for rendering.
+                    var isOnFirstLine = firstLineTop !== null &&
+                        firstLineStyles !== undefined &&
+                        Math.abs(textBound.bounds.top - firstLineTop) <= FIRST_LINE_TOLERANCE;
+                    var activeStyles = isOnFirstLine ? firstLineStyles : styles;
+                    var activeFont = isOnFirstLine ? createFontStyle(activeStyles)[0] : font;
+                    var activeBaseline = isOnFirstLine
+                        ? state.fontMetrics.getMetrics(createFontStyle(activeStyles)[1], createFontStyle(activeStyles)[2]).baseline
+                        : baseline;
+                    paintOrder.forEach(function (paintOrderLayer) {
+                        switch (paintOrderLayer) {
+                            case 0 /* PAINT_ORDER_LAYER.FILL */:
+                                // When background-clip: text is active, the text fill is handled
+                                // by the background compositing — skip normal text rendering.
+                                if (getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */) {
+                                    break;
+                                }
+                                state.ctx.font = activeFont;
+                                state.ctx.fillStyle = asString(activeStyles.color);
+                                _renderTextFill(state, textBound, activeStyles, activeBaseline, wm, fontSizePx, isVertical, lineStartMap, lineEndMap, isFirstInLine);
+                                // Restore the base font for subsequent segments.
+                                state.ctx.font = font;
+                                break;
+                            case 1 /* PAINT_ORDER_LAYER.STROKE */:
+                                if (styles.webkitTextStrokeWidth && textBound.text.trim().length) {
+                                    state.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
+                                    state.ctx.lineWidth = styles.webkitTextStrokeWidth;
+                                    state.ctx.lineJoin = state.isChrome ? 'miter' : 'round';
+                                    renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, true);
+                                }
+                                state.ctx.strokeStyle = '';
+                                state.ctx.lineWidth = 0;
+                                state.ctx.lineJoin = 'miter';
+                                break;
+                        }
+                    });
+                });
+                // Draw the clamp ellipsis after the last kept line, unless the text fill is
+                // handled elsewhere (background-clip: text) or the colour is transparent.
+                if (clamp &&
+                    clamp.ellipsisAnchor &&
+                    getBackgroundValueForIndex(styles.backgroundClip, 0) !== 3 /* BACKGROUND_CLIP.TEXT */ &&
+                    !isTransparent(styles.color)) {
+                    anchor = clamp.ellipsisAnchor;
+                    state.ctx.font = font;
+                    state.ctx.fillStyle = asString(styles.color);
+                    state.ctx.textBaseline = 'alphabetic';
+                    state.ctx.fillText(ELLIPSIS, anchor.bounds.left + anchor.bounds.width, anchor.bounds.top + baseline);
+                }
+                return [2 /*return*/];
+            });
+        });
+    }
+    var ELLIPSIS = '\u2026';
+    /**
+     * Computes which text segments survive a `-webkit-line-clamp: maxLines` limit.
+     *
+     * Segments are grouped into visual lines by their rounded top coordinate. The
+     * first `maxLines` distinct lines are kept; the rest are dropped. The rightmost
+     * segment of the last kept line is returned as the ellipsis anchor so the caller
+     * can draw a trailing "…" right after it.
+     *
+     * Returns null when the text already fits within `maxLines` (no clamping needed).
+     */
+    function computeLineClamp(textBounds, maxLines) {
+        // Distinct line tops in visual order.
+        var lineTops = [];
+        var seen = new Set();
+        for (var _i = 0, textBounds_1 = textBounds; _i < textBounds_1.length; _i++) {
+            var tb = textBounds_1[_i];
+            var key = Math.round(tb.bounds.top);
+            if (!seen.has(key)) {
+                seen.add(key);
+                lineTops.push(key);
+            }
+        }
+        // Nothing to clamp if the content already fits.
+        if (lineTops.length <= maxLines) {
+            return null;
+        }
+        var keptTops = new Set(lineTops.slice(0, maxLines).map(function (t) { return t; }));
+        var lastKeptTop = lineTops[maxLines - 1];
+        var kept = new Set();
+        var ellipsisAnchor = null;
+        for (var _a = 0, textBounds_2 = textBounds; _a < textBounds_2.length; _a++) {
+            var tb = textBounds_2[_a];
+            var key = Math.round(tb.bounds.top);
+            if (!keptTops.has(key)) {
+                continue;
+            }
+            kept.add(tb);
+            // Track the rightmost segment of the last kept line for the ellipsis.
+            if (key === lastKeptTop &&
+                (ellipsisAnchor === null ||
+                    tb.bounds.left + tb.bounds.width > ellipsisAnchor.bounds.left + ellipsisAnchor.bounds.width)) {
+                ellipsisAnchor = tb;
+            }
+        }
+        return { kept: kept, ellipsisAnchor: ellipsisAnchor };
+    }
+    // ---------------------------------------------------------------------------
+    // Internal helper for FILL paint order layer
+    // ---------------------------------------------------------------------------
+    function _renderTextFill(state, textBound, styles, baseline, wm, fontSizePx, isVertical, lineStartMap, lineEndMap, isFirstInLine) {
+        var textShadows = styles.textShadow;
+        // <bdo dir="rtl"> (bidi-override + RTL) lays glyphs right-to-left; reverse the
+        // grapheme order so a single fillText reproduces it. bidi-override with LTR
+        // keeps logical order, so no reversal is needed there.
+        var reverse = isBidiOverride(styles) && styles.direction === 1 /* DIRECTION.RTL */ && !isVertical;
+        if (textShadows.length && textBound.text.trim().length) {
+            _renderTextShadows(state, textBound, styles, baseline, wm, textShadows);
+        }
+        else if (!isTransparent(styles.color)) {
+            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm, false, reverse);
+        }
+        if (styles.textDecorationLine.length) {
+            _renderTextDecorations(state, textBound, styles, baseline, wm, isVertical, fontSizePx, lineStartMap, lineEndMap, isFirstInLine);
+        }
+    }
+    function _renderTextShadows(state, textBound, styles, baseline, wm, textShadows) {
+        var w = state.canvas.width;
+        var h = state.canvas.height;
+        var scale = state.options.scale;
+        var ox = state.options.x;
+        var oy = state.options.y;
+        textShadows
+            .slice(0)
+            .reverse()
+            .forEach(function (textShadow) {
+            var shadowCanvas = state.canvasPool.acquire(w, h);
+            var shadowCtx = shadowCanvas.getContext('2d');
+            shadowCtx.scale(scale, scale);
+            // Incorporate the shadow offset into the translate so the
+            // text is drawn at the correct position on the offscreen.
+            shadowCtx.translate(-ox + textShadow.offsetX.number, -oy + textShadow.offsetY.number);
+            shadowCtx.font = state.ctx.font;
+            shadowCtx.direction = state.ctx.direction;
+            shadowCtx.textAlign = state.ctx.textAlign;
+            shadowCtx.textBaseline = state.ctx.textBaseline;
+            shadowCtx.fillStyle = asString(textShadow.color);
+            var mainCtx = state.ctx;
+            state.ctx = shadowCtx;
+            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+            state.ctx = mainCtx;
+            if (textShadow.blur.number > 0) {
+                state.ctx.save();
+                // Apply blur via ctx.filter on the main canvas drawImage call.
+                state.ctx.filter = "blur(".concat(textShadow.blur.number / 2, "px)");
+            }
+            state.ctx.drawImage(shadowCanvas, 0, 0, w, h, ox, oy, w / scale, h / scale);
+            if (textShadow.blur.number > 0) {
+                state.ctx.restore();
+            }
+            // Return the shadow canvas to the pool for reuse.
+            state.canvasPool.release(shadowCanvas);
+        });
+        // Draw the real text on top of all shadows.
+        // Skipped for transparent text — shadows are the only visual.
+        if (!isTransparent(styles.color)) {
+            state.ctx.save();
+            state.ctx.fillStyle = asString(styles.color);
+            renderTextWithLetterSpacing(state, textBound, styles.letterSpacing, baseline, wm);
+            state.ctx.restore();
+        }
+    }
+    function _renderTextDecorations(state, textBound, styles, baseline, wm, isVertical, fontSizePx, lineStartMap, lineEndMap, isFirstInLine) {
+        // Decoration is drawn once per visual line, using the full span from
+        // lineStart to lineEnd.  Skip all non-first segments — nothing to draw.
+        if (!isFirstInLine.has(textBound)) {
+            return;
+        }
+        state.ctx.fillStyle = asString(isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor);
+        // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
+        var thickness = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
+        var underlineOffset = styles.textUnderlineOffset ? styles.textUnderlineOffset - 2 : 0;
+        var inset = styles.textDecorationInset;
+        // Full extent of the decoration span across all words on this line.
+        var lineStart = lineStartMap.get(textBound);
+        var lineEnd = lineEndMap.get(textBound);
+        styles.textDecorationLine.forEach(function (textDecorationLine) {
+            if (isVertical) {
+                var underlineOnLeft = wm === 2 /* WRITING_MODE.VERTICAL_LR */ || wm === 1 /* WRITING_MODE.VERTICAL_RL */;
+                var lineX = void 0;
+                switch (textDecorationLine) {
+                    case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
+                        lineX = underlineOnLeft
+                            ? textBound.bounds.left
+                            : textBound.bounds.left + textBound.bounds.width - thickness;
+                        break;
+                    case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
+                        lineX = underlineOnLeft
+                            ? textBound.bounds.left + textBound.bounds.width - thickness
+                            : textBound.bounds.left;
+                        break;
+                    case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
+                    default:
+                        lineX = textBound.bounds.left + textBound.bounds.width / 2 - thickness / 2;
+                        break;
+                }
+                // Draw the full vertical span in one call, applying insets at both ends.
+                var insetY = lineStart + inset.start;
+                var insetH = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
+                renderDecorationLine(state, styles.textDecorationStyle, lineX, insetY, thickness, insetH, true, textDecorationLine, lineStart);
+            }
+            else {
+                var baselineY = textBound.bounds.top + baseline;
+                var lineY = void 0;
+                switch (textDecorationLine) {
+                    case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
+                        if (styles.textUnderlinePosition === 1 /* TEXT_UNDERLINE_POSITION.UNDER */) {
+                            lineY = textBound.bounds.top + textBound.bounds.height;
+                        }
+                        else {
+                            lineY = baselineY + 2;
+                        }
+                        lineY += underlineOffset;
+                        break;
+                    case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
+                        lineY = Math.round(textBound.bounds.top + (textBound.bounds.height - baseline) * 0.1);
+                        break;
+                    case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
+                    default:
+                        lineY = Math.round(baselineY - baseline * 0.4) + 2;
+                        break;
+                }
+                // Draw the full horizontal span in one call, applying insets at both ends.
+                var insetX = lineStart + inset.start;
+                var insetW = Math.max(0, lineEnd - lineStart - inset.start - inset.end);
+                renderDecorationLine(state, styles.textDecorationStyle, insetX, lineY, insetW, thickness, false, textDecorationLine, lineStart);
+            }
+        });
+    }
+
+    /**
+     * Stable cache key fragment from processed gradient stops.
+     */
+    var gradientStopsKey = function (stops) {
+        return stops.map(function (s) { return "".concat(s.color, "@").concat(s.stop); }).join(',');
+    };
+    // Colours are packed as 0xRRGGBBAA (see css/types/color.ts).
+    var packedAlpha = function (color) { return color & 0xff; };
+    var packedRgb = function (color) { return color & 0xffffff00; };
+    /**
+     * Fixes the "transparent goes through black" artefact.
+     *
+     * The CSS keyword `transparent` is `rgba(0,0,0,0)`. Canvas gradients interpolate
+     * colour channels in non-premultiplied space, so a stop from an opaque colour to
+     * `transparent` fades its RGB towards black while the alpha drops — producing a
+     * dark halo instead of a clean fade-out.
+     *
+     * Per the CSS spec, interpolation happens in premultiplied space, which is
+     * equivalent to giving a fully-transparent stop the RGB of its opaque neighbour.
+     * We rewrite every fully-transparent stop (alpha === 0) to carry the RGB of the
+     * nearest non-transparent stop (previous first, otherwise next), keeping alpha 0.
+     */
+    var fixTransparentStops = function (stops) {
+        if (stops.length < 2)
+            return stops;
+        var result = stops.map(function (s) { return (__assign({}, s)); });
+        for (var i = 0; i < result.length; i++) {
+            if (packedAlpha(result[i].color) !== 0)
+                continue;
+            // Look for the nearest neighbour with a non-zero alpha to borrow its hue.
+            var donor = -1;
+            for (var j = i - 1; j >= 0; j--) {
+                if (packedAlpha(result[j].color) !== 0) {
+                    donor = j;
+                    break;
+                }
+            }
+            if (donor === -1) {
+                for (var j = i + 1; j < result.length; j++) {
+                    if (packedAlpha(result[j].color) !== 0) {
+                        donor = j;
+                        break;
+                    }
+                }
+            }
+            if (donor !== -1) {
+                // Keep alpha 0, adopt the donor's RGB (packed value with alpha byte cleared).
+                result[i].color = packedRgb(result[donor].color) >>> 0;
+            }
+        }
+        return result;
+    };
+    /**
+     * Prepares stops for the Canvas gradient API.
+     *
+     * The only transformation needed is the transparency fix: two stops at the same
+     * position (hard stops) are handled natively by the browser's gradient engine,
+     * so no epsilon nudging is required — and doing so would paint a thin sliver of
+     * the wrong colour at every hard-stop boundary.
+     */
+    var prepareStops = function (stops) { return fixTransparentStops(stops); };
+    /**
+     * Expands the one-tile stop list of a `repeating-conic-gradient` /
+     * `repeating-*-gradient` (already normalised to [0,1] by processColorStops)
+     * into a full [0,1] list by repeating the tile forwards and backwards.
+     *
+     * The Canvas gradient APIs don't repeat on their own, so we materialise every
+     * repetition. The result is sorted and clamped to [0,1] and always covers both
+     * endpoints, guaranteeing strictly usable (monotonic) stops for addColorStop.
+     */
+    var tileRepeatingStops = function (processedStops) {
+        var tileStart = processedStops[0].stop;
+        var tileEnd = processedStops[processedStops.length - 1].stop;
+        var tileSize = tileEnd - tileStart;
+        // Degenerate tile (all stops at one position): nothing to repeat.
+        if (tileSize <= 0) {
+            return processedStops;
+        }
+        // Positions of each stop *relative to the tile origin*, in [0, tileSize].
+        // Using relative positions keeps the per-tile stop order intact and avoids
+        // floating-point drift between "end of tile k" and "start of tile k+1"
+        // (which are the same coordinate and must not be reordered).
+        var rel = processedStops.map(function (s) { return ({ color: s.color, offset: s.stop - tileStart }); });
+        var MAX_TILES = 4096;
+        // First tile index whose content can reach >= 0, and last that can reach <= 1.
+        var firstTile = Math.max(-MAX_TILES, Math.floor((0 - tileEnd) / tileSize) - 1);
+        var lastTile = Math.min(MAX_TILES, Math.ceil((1 - tileStart) / tileSize) + 1);
+        // Build strictly in ascending tile order so shared boundaries keep the
+        // correct "previous tile end, then next tile start" ordering.
+        // We keep every stop whose position lands inside [0,1] (inclusive of the
+        // exact endpoints) plus the first stop just outside each edge, so the
+        // interpolation entering 0 and leaving 1 uses the real neighbouring colour.
+        var EPS = 1e-9;
+        var raw = [];
+        for (var k = firstTile; k <= lastTile; k++) {
+            var base = tileStart + k * tileSize;
+            for (var _i = 0, rel_1 = rel; _i < rel_1.length; _i++) {
+                var s = rel_1[_i];
+                var pos = base + s.offset;
+                raw.push({ color: s.color, stop: pos });
+            }
+        }
+        // Interpolates the repeating pattern at an out-of-range / boundary position
+        // by finding the segment [prev, next] in `raw` that surrounds `target`.
+        var sampleAt = function (target) {
+            for (var i = 0; i < raw.length - 1; i++) {
+                var a = raw[i];
+                var b = raw[i + 1];
+                if (target >= a.stop - EPS && target <= b.stop + EPS) {
+                    if (b.stop - a.stop < EPS)
+                        return b.color; // hard stop
+                    // Nearest-ish: for endpoints we only need a sensible colour; the
+                    // real gradient stops around it carry the interpolation. Pick the
+                    // stop whose position is closest to target.
+                    return target - a.stop <= b.stop - target ? a.color : b.color;
+                }
+            }
+            return raw[raw.length - 1].color;
+        };
+        // Collect the stops strictly inside (0,1)…
+        var inside = raw.filter(function (s) { return s.stop > EPS && s.stop < 1 - EPS; });
+        // …and build the final list, ensuring 0 and 1 are present exactly once.
+        // At each endpoint, reuse a real stop that sits on the boundary if there is
+        // one (preserving hard-stop pairs); otherwise synthesise the interpolated
+        // colour so the pattern continues seamlessly across the edge.
+        var atStart = raw.filter(function (s) { return Math.abs(s.stop) < EPS; }).map(function (s) { return ({ color: s.color, stop: 0 }); });
+        var atEnd = raw.filter(function (s) { return Math.abs(s.stop - 1) < EPS; }).map(function (s) { return ({ color: s.color, stop: 1 }); });
+        var head = atStart.length ? atStart : [{ color: sampleAt(0), stop: 0 }];
+        var tail = atEnd.length ? atEnd : [{ color: sampleAt(1), stop: 1 }];
+        return __spreadArray(__spreadArray(__spreadArray([], head, true), inside, true), tail, true);
+    };
+    /**
+     * Groups all textBounds from every textNode of `container` by visual line and
+     * returns one InlineFragment per line with three sets of bounds:
+     *
+     *   borderBox – full expansion (padding + border on all sides)
+     *   sliceBox  – top/bottom expansion on every fragment, but left expansion only
+     *               on the first fragment and right expansion only on the last
+     *   textBox   – raw text extents without any expansion
+     *
+     * Returns `null` when there are no textBounds (e.g. replaced inline elements),
+     * so callers can fall back to the normal single-box path.
+     */
+    var getInlineFragmentBounds = function (container) {
+        var styles = container.styles;
+        // Collect all textBounds across every child textNode.
+        var allTextBounds = container.textNodes.flatMap(function (tn) { return tn.textBounds; });
+        if (allTextBounds.length === 0) {
+            return null;
+        }
+        var bt = styles.borderTopWidth;
+        var br = styles.borderRightWidth;
+        var bb = styles.borderBottomWidth;
+        var bl = styles.borderLeftWidth;
+        // Resolve padding to absolute pixel values.
+        var refWidth = container.bounds.width;
+        var pt = getAbsoluteValue(styles.paddingTop, refWidth);
+        var pr = getAbsoluteValue(styles.paddingRight, refWidth);
+        var pb = getAbsoluteValue(styles.paddingBottom, refWidth);
+        var pl = getAbsoluteValue(styles.paddingLeft, refWidth);
+        // Group textBounds by visual line (rounded bounds.top for horizontal text).
+        var lineMap = new Map();
+        for (var _i = 0, allTextBounds_1 = allTextBounds; _i < allTextBounds_1.length; _i++) {
+            var tb = allTextBounds_1[_i];
+            var key = Math.round(tb.bounds.top);
+            var entry = lineMap.get(key);
+            var left = tb.bounds.left;
+            var right = tb.bounds.left + tb.bounds.width;
+            var top_1 = tb.bounds.top;
+            var bottom = tb.bounds.top + tb.bounds.height;
+            if (!entry) {
+                lineMap.set(key, { minLeft: left, maxRight: right, minTop: top_1, maxBottom: bottom });
+            }
+            else {
+                entry.minLeft = Math.min(entry.minLeft, left);
+                entry.maxRight = Math.max(entry.maxRight, right);
+                entry.minTop = Math.min(entry.minTop, top_1);
+                entry.maxBottom = Math.max(entry.maxBottom, bottom);
+            }
+        }
+        // Sort lines top-to-bottom.
+        var lines = Array.from(lineMap.values()).sort(function (a, b) { return a.minTop - b.minTop; });
+        var total = lines.length;
+        return lines.map(function (line, idx) {
+            var isFirst = idx === 0;
+            var isLast = idx === total - 1;
+            // textBox — raw text extents, no expansion.
+            var textBox = new Bounds(line.minLeft, line.minTop, line.maxRight - line.minLeft, line.maxBottom - line.minTop);
+            // borderBox — full expansion on all sides (for clone mode).
+            var borderBox = new Bounds(line.minLeft - pl - bl, line.minTop - pt - bt, line.maxRight - line.minLeft + pl + pr + bl + br, line.maxBottom - line.minTop + pt + pb + bt + bb);
+            // sliceBox — top/bottom always expanded; left only on first, right only on last.
+            var sliceLeft = isFirst ? pl + bl : 0;
+            var sliceRight = isLast ? pr + br : 0;
+            var sliceBox = new Bounds(line.minLeft - sliceLeft, line.minTop - pt - bt, line.maxRight - line.minLeft + sliceLeft + sliceRight, line.maxBottom - line.minTop + pt + pb + bt + bb);
+            return { borderBox: borderBox, sliceBox: sliceBox, textBox: textBox, isFirst: isFirst, isLast: isLast };
+        });
+    };
+    // ---------------------------------------------------------------------------
+    // Lightweight container proxy for per-fragment rendering
+    // ---------------------------------------------------------------------------
+    /**
+     * Creates a minimal ElementContainer-like object (duck-typed) with overridden
+     * `bounds` so that BoundCurves and calculateBackgroundRendering work correctly
+     * on a single inline fragment instead of the full element bounding box.
+     */
+    var makeFragmentContainer = function (original, fragmentBounds) {
+        // We cast — only `styles`, `bounds`, and `textNodes` are accessed by the
+        // rendering helpers we call, and all are present.
+        return Object.create(original, {
+            bounds: { value: fragmentBounds, writable: false },
+        });
+    };
+    // ---------------------------------------------------------------------------
+    // Background painting area
+    // ---------------------------------------------------------------------------
+    var calculateBackgroundCurvedPaintingArea = function (clip, curves) {
+        switch (clip) {
+            case 0 /* BACKGROUND_CLIP.BORDER_BOX */:
+                return calculateBorderBoxPath(curves);
+            case 2 /* BACKGROUND_CLIP.CONTENT_BOX */:
+                return calculateContentBoxPath(curves);
+            case 3 /* BACKGROUND_CLIP.TEXT */:
+                // For background-clip: text, use padding-box as the initial painting area.
+                // The actual text-shape clipping is handled via offscreen canvas compositing.
+                return calculatePaddingBoxPath(curves);
+            case 1 /* BACKGROUND_CLIP.PADDING_BOX */:
+            default:
+                return calculatePaddingBoxPath(curves);
+        }
+    };
+    // ---------------------------------------------------------------------------
+    // Background image (all gradient types + URL images)
+    // ---------------------------------------------------------------------------
+    function renderBackgroundImage(state, container) {
+        return __awaiter(this, void 0, void 0, function () {
+            var index, _i, _a, backgroundImage, blendMode;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        index = container.styles.backgroundImage.length - 1;
+                        _i = 0, _a = container.styles.backgroundImage.slice(0).reverse();
+                        _b.label = 1;
+                    case 1:
+                        if (!(_i < _a.length)) return [3 /*break*/, 4];
+                        backgroundImage = _a[_i];
+                        blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
+                        if (blendMode !== 'source-over') {
+                            state.ctx.globalCompositeOperation = blendMode;
+                        }
+                        return [4 /*yield*/, renderSingleBackgroundImageLayer(state, container, backgroundImage, index)];
+                    case 2:
+                        _b.sent();
+                        index--;
+                        if (blendMode !== 'source-over') {
+                            state.ctx.globalCompositeOperation = 'source-over';
+                        }
+                        _b.label = 3;
+                    case 3:
+                        _i++;
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Renders a single background-image layer (one gradient or url) at the given
+    // layer index. Shared by renderBackgroundImage (single clip) and
+    // renderBackgroundImagePerLayer (multiple clips), so every gradient type is
+    // handled identically regardless of the clipping path.
+    // ---------------------------------------------------------------------------
+    function renderSingleBackgroundImageLayer(state, container, backgroundImage, index) {
+        return __awaiter(this, void 0, void 0, function () {
+            var image, url, e_1, _a, path, x, y, width, height, pattern, _b, path, x, y, width, height, _c, lineLength, x0_1, x1_1, y0_1, y1_1, stops_1, key, canvas, pattern, _d, path, x, y, width, height, _e, lineLength, x0_2, x1_2, y0_2, y1_2, processedStops, tileStart, tileEnd, tileSize, finalStops_1, MAX_ITER, allStops_1, _loop_1, iter, state_1, _loop_2, iter, key, canvas, pattern, _f, path, left, top_2, width, height, position, x, y, _g, rx, ry, radialGradient_1, midX, midY, f, invF, _h, path, left, top_3, width, height, position, x, y, _j, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_1, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_3, iter, state_2, _loop_4, iter, radialGradient_2, _k, path, left, top_4, width, height, position, tileCx_1, tileCy_1, key, canvas, pattern, _l, path, left, top_5, width, height, position, tileCx_2, tileCy_2, processedStops, allStops_3, key, canvas, pattern;
+            return __generator(this, function (_m) {
+                switch (_m.label) {
+                    case 0:
+                        if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
+                        image = void 0;
+                        url = backgroundImage.url;
+                        _m.label = 1;
+                    case 1:
+                        _m.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, state.context.cache.match(url)];
+                    case 2:
+                        image = _m.sent();
+                        return [3 /*break*/, 4];
+                    case 3:
+                        e_1 = _m.sent();
+                        state.context.error("Error loading background-image ".concat(url), e_1);
+                        return [3 /*break*/, 4];
+                    case 4:
+                        if (image && image.width > 0 && image.height > 0) {
+                            _a = calculateBackgroundRendering(container, index, [image.width, image.height, image.width / image.height], state.context.windowBounds), path = _a[0], x = _a[1], y = _a[2], width = _a[3], height = _a[4];
+                            pattern = state.ctx.createPattern(resizeImage(state, image, width, height), 'repeat');
+                            renderRepeat(state, path, pattern, x, y);
+                        }
+                        return [3 /*break*/, 6];
+                    case 5:
+                        if (isLinearGradient(backgroundImage)) {
+                            _b = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _b[0], x = _b[1], y = _b[2], width = _b[3], height = _b[4];
+                            _c = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _c[0], x0_1 = _c[1], x1_1 = _c[2], y0_1 = _c[3], y1_1 = _c[4];
+                            stops_1 = processColorStops(backgroundImage.stops, lineLength || 1);
+                            if (width > 0 && height > 0) {
+                                key = "lin|".concat(x0_1, ",").concat(y0_1, ",").concat(x1_1, ",").concat(y1_1, "|").concat(gradientStopsKey(stops_1), "|").concat(width, "x").concat(height);
+                                canvas = getLinearGradientCanvas(state, key, width, height, function (gCtx, w, h) {
+                                    var gradient = gCtx.createLinearGradient(x0_1, y0_1, x1_1, y1_1);
+                                    prepareStops(stops_1).forEach(function (colorStop) {
+                                        return gradient.addColorStop(colorStop.stop, asString(colorStop.color));
+                                    });
+                                    gCtx.fillStyle = gradient;
+                                    gCtx.fillRect(0, 0, w, h);
+                                });
+                                pattern = state.ctx.createPattern(canvas, 'repeat');
+                                renderRepeat(state, path, pattern, x, y);
+                            }
+                        }
+                        else if (isRepeatingLinearGradient(backgroundImage)) {
+                            _d = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _d[0], x = _d[1], y = _d[2], width = _d[3], height = _d[4];
+                            _e = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _e[0], x0_2 = _e[1], x1_2 = _e[2], y0_2 = _e[3], y1_2 = _e[4];
+                            processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
+                            tileStart = processedStops[0].stop;
+                            tileEnd = processedStops[processedStops.length - 1].stop;
+                            tileSize = tileEnd - tileStart;
+                            finalStops_1 = processedStops;
+                            if (tileSize > 0) {
+                                MAX_ITER = 512;
+                                allStops_1 = [];
+                                _loop_1 = function (iter) {
+                                    var offset = iter * tileSize;
+                                    processedStops.forEach(function (s) {
+                                        allStops_1.push({ stop: Math.max(0, s.stop - offset), color: s.color });
+                                    });
+                                    if (tileStart - offset <= 0)
+                                        return "break";
+                                };
+                                // Tile backward: while the tile still contributes stops >= 0
+                                for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                    state_1 = _loop_1(iter);
+                                    if (state_1 === "break")
+                                        break;
+                                }
+                                processedStops.forEach(function (s) { return allStops_1.push({ stop: s.stop, color: s.color }); });
+                                _loop_2 = function (iter) {
+                                    var offset = iter * tileSize;
+                                    processedStops.forEach(function (s) {
+                                        allStops_1.push({ stop: Math.min(1, s.stop + offset), color: s.color });
+                                    });
+                                };
+                                // Tile forward: while the tile still contributes stops <= 1
+                                for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                    _loop_2(iter);
+                                }
+                                // Clamp edges: ensure 0 and 1 are covered with the boundary stop's colour
+                                if (allStops_1[0].stop > 0) {
+                                    allStops_1.unshift({ stop: 0, color: allStops_1[0].color });
+                                }
+                                if (allStops_1[allStops_1.length - 1].stop < 1) {
+                                    allStops_1.push({ stop: 1, color: allStops_1[allStops_1.length - 1].color });
+                                }
+                                finalStops_1 = allStops_1;
+                            }
+                            if (width > 0 && height > 0) {
+                                key = "rlin|".concat(x0_2, ",").concat(y0_2, ",").concat(x1_2, ",").concat(y1_2, "|").concat(gradientStopsKey(finalStops_1), "|").concat(width, "x").concat(height);
+                                canvas = getLinearGradientCanvas(state, key, width, height, function (gCtx, w, h) {
+                                    var gradient = gCtx.createLinearGradient(x0_2, y0_2, x1_2, y1_2);
+                                    prepareStops(finalStops_1).forEach(function (s) { return gradient.addColorStop(s.stop, asString(s.color)); });
+                                    gCtx.fillStyle = gradient;
+                                    gCtx.fillRect(0, 0, w, h);
+                                });
+                                pattern = state.ctx.createPattern(canvas, 'repeat');
+                                renderRepeat(state, path, pattern, x, y);
+                            }
+                        }
+                        else if (isRadialGradient(backgroundImage)) {
+                            _f = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _f[0], left = _f[1], top_2 = _f[2], width = _f[3], height = _f[4];
+                            position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                            x = getAbsoluteValue(position[0], width);
+                            y = getAbsoluteValue(position[position.length - 1], height);
+                            _g = calculateRadius(backgroundImage, x, y, width, height), rx = _g[0], ry = _g[1];
+                            if (rx > 0 && ry > 0) {
+                                radialGradient_1 = state.ctx.createRadialGradient(left + x, top_2 + y, 0, left + x, top_2 + y, rx);
+                                prepareStops(processColorStops(backgroundImage.stops, rx * 2)).forEach(function (colorStop) {
+                                    return radialGradient_1.addColorStop(colorStop.stop, asString(colorStop.color));
+                                });
+                                canvasPath(state, path);
+                                state.ctx.fillStyle = radialGradient_1;
+                                if (rx !== ry) {
+                                    midX = container.bounds.left + 0.5 * container.bounds.width;
+                                    midY = container.bounds.top + 0.5 * container.bounds.height;
+                                    f = ry / rx;
+                                    invF = 1 / f;
+                                    state.ctx.save();
+                                    state.ctx.translate(midX, midY);
+                                    state.ctx.transform(1, 0, 0, f, 0, 0);
+                                    state.ctx.translate(-midX, -midY);
+                                    state.ctx.fillRect(left, invF * (top_2 - midY) + midY, width, height * invF);
+                                    state.ctx.restore();
+                                }
+                                else {
+                                    state.ctx.fill();
+                                }
+                            }
+                        }
+                        else if (isRepeatingRadialGradient(backgroundImage)) {
+                            _h = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _h[0], left = _h[1], top_3 = _h[2], width = _h[3], height = _h[4];
+                            position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                            x = getAbsoluteValue(position[0], width);
+                            y = getAbsoluteValue(position[position.length - 1], height);
+                            _j = calculateRadius(backgroundImage, x, y, width, height), rx = _j[0], ry = _j[1];
+                            if (rx > 0 && ry > 0) {
+                                cx = left + x;
+                                cy = top_3 + y;
+                                f = rx !== ry ? ry / rx : 1;
+                                invF = rx !== ry ? rx / ry : 1;
+                                maxDistX = Math.max(x, width - x);
+                                maxDistY = Math.max(y, height - y) * invF;
+                                maxRadius = Math.sqrt(Math.pow(maxDistX, 2) + Math.pow(maxDistY, 2));
+                                drawRadius = Math.max(rx, maxRadius);
+                                processedStops = processColorStops(backgroundImage.stops, rx);
+                                scale_1 = rx / drawRadius;
+                                scaledStops = processedStops.map(function (s) { return ({ color: s.color, stop: s.stop * scale_1 }); });
+                                tileStart = scaledStops[0].stop;
+                                tileEnd = scaledStops[scaledStops.length - 1].stop;
+                                tileSize = tileEnd - tileStart;
+                                allStops_2 = [];
+                                if (tileSize > 0) {
+                                    MAX_ITER = 512;
+                                    _loop_3 = function (iter) {
+                                        var offset = iter * tileSize;
+                                        scaledStops.forEach(function (s) {
+                                            allStops_2.push({ color: s.color, stop: Math.max(0, s.stop - offset) });
+                                        });
+                                        if (tileStart - offset <= 0)
+                                            return "break";
+                                    };
+                                    for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                        state_2 = _loop_3(iter);
+                                        if (state_2 === "break")
+                                            break;
+                                    }
+                                    scaledStops.forEach(function (s) { return allStops_2.push({ color: s.color, stop: s.stop }); });
+                                    _loop_4 = function (iter) {
+                                        var offset = iter * tileSize;
+                                        scaledStops.forEach(function (s) {
+                                            allStops_2.push({ color: s.color, stop: Math.min(1, s.stop + offset) });
+                                        });
+                                    };
+                                    for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                        _loop_4(iter);
+                                    }
+                                }
+                                else {
+                                    scaledStops.forEach(function (s) { return allStops_2.push({ stop: s.stop, color: s.color }); });
+                                }
+                                radialGradient_2 = state.ctx.createRadialGradient(cx, cy, 0, cx, cy, drawRadius);
+                                prepareStops(allStops_2).forEach(function (s) { return radialGradient_2.addColorStop(s.stop, asString(s.color)); });
+                                canvasPath(state, path);
+                                state.ctx.fillStyle = radialGradient_2;
+                                if (rx !== ry) {
+                                    // Ellipse
+                                    state.ctx.save();
+                                    state.ctx.clip();
+                                    state.ctx.translate(cx, cy);
+                                    state.ctx.transform(1, 0, 0, f, 0, 0);
+                                    state.ctx.translate(-cx, -cy);
+                                    state.ctx.fillRect(left, invF * (top_3 - cy) + cy, width, height * invF);
+                                    state.ctx.restore();
+                                }
+                                else {
+                                    // Perfect circle
+                                    state.ctx.fill();
+                                }
+                            }
+                        }
+                        else if (isConicGradient(backgroundImage)) {
+                            if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                                typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                                _k = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _k[0], left = _k[1], top_4 = _k[2], width = _k[3], height = _k[4];
+                                if (width > 0 && height > 0) {
+                                    position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                                    tileCx_1 = getAbsoluteValue(position[0], width);
+                                    tileCy_1 = getAbsoluteValue(position[position.length - 1], height);
+                                    key = "conic|".concat(backgroundImage.startAngle, "|").concat(tileCx_1, ",").concat(tileCy_1, "|").concat(gradientStopsKey(processColorStops(backgroundImage.stops, 360)), "|").concat(width, "x").concat(height);
+                                    canvas = getLinearGradientCanvas(state, key, width, height, function (gCtx, w, h) {
+                                        // CSS conic starts at top (12 o'clock); Canvas starts at right (3 o'clock). Subtract π/2.
+                                        var conicGrad = gCtx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, tileCx_1, tileCy_1);
+                                        prepareStops(processColorStops(backgroundImage.stops, 360)).forEach(function (colorStop) {
+                                            return conicGrad.addColorStop(colorStop.stop, asString(colorStop.color));
+                                        });
+                                        gCtx.fillStyle = conicGrad;
+                                        gCtx.fillRect(0, 0, w, h);
+                                    });
+                                    pattern = state.ctx.createPattern(canvas, 'repeat');
+                                    renderRepeat(state, path, pattern, left, top_4);
+                                }
+                            }
+                            else {
+                                state.context.logger.error('conic-gradient is not supported in this browser');
+                            }
+                        }
+                        else if (isRepeatingConicGradient(backgroundImage)) {
+                            if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                                typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                                _l = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _l[0], left = _l[1], top_5 = _l[2], width = _l[3], height = _l[4];
+                                if (width > 0 && height > 0) {
+                                    position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
+                                    tileCx_2 = getAbsoluteValue(position[0], width);
+                                    tileCy_2 = getAbsoluteValue(position[position.length - 1], height);
+                                    processedStops = processColorStops(backgroundImage.stops, 360);
+                                    allStops_3 = tileRepeatingStops(processedStops);
+                                    key = "rconic|".concat(backgroundImage.startAngle, "|").concat(tileCx_2, ",").concat(tileCy_2, "|").concat(gradientStopsKey(allStops_3), "|").concat(width, "x").concat(height);
+                                    canvas = getLinearGradientCanvas(state, key, width, height, function (gCtx, w, h) {
+                                        var conicGrad = gCtx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, tileCx_2, tileCy_2);
+                                        prepareStops(allStops_3).forEach(function (s) { return conicGrad.addColorStop(s.stop, asString(s.color)); });
+                                        gCtx.fillStyle = conicGrad;
+                                        gCtx.fillRect(0, 0, w, h);
+                                    });
+                                    pattern = state.ctx.createPattern(canvas, 'repeat');
+                                    renderRepeat(state, path, pattern, left, top_5);
+                                }
+                            }
+                            else {
+                                state.context.logger.error('repeating-conic-gradient is not supported in this browser');
+                            }
+                        }
+                        _m.label = 6;
+                    case 6: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Per-layer background image rendering with individual curved clips
+    // Used when multiple background-clip values are specified (e.g. padding-box, border-box)
+    // ---------------------------------------------------------------------------
+    function renderBackgroundImagePerLayer(state, paint, container) {
+        return __awaiter(this, void 0, void 0, function () {
+            var index, _i, _a, backgroundImage, clip, clipPath, blendMode;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        index = container.styles.backgroundImage.length - 1;
+                        _i = 0, _a = container.styles.backgroundImage.slice(0).reverse();
+                        _b.label = 1;
+                    case 1:
+                        if (!(_i < _a.length)) return [3 /*break*/, 4];
+                        backgroundImage = _a[_i];
+                        clip = getBackgroundValueForIndex(container.styles.backgroundClip, index);
+                        clipPath = calculateBackgroundCurvedPaintingArea(clip, paint.curves);
+                        state.ctx.save();
+                        canvasPath(state, clipPath);
+                        state.ctx.clip();
+                        blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
+                        if (blendMode !== 'source-over') {
+                            state.ctx.globalCompositeOperation = blendMode;
+                        }
+                        // Delegate to the shared single-layer renderer so every gradient type
+                        // (linear, radial, conic and their repeating variants) is supported.
+                        return [4 /*yield*/, renderSingleBackgroundImageLayer(state, container, backgroundImage, index)];
+                    case 2:
+                        // Delegate to the shared single-layer renderer so every gradient type
+                        // (linear, radial, conic and their repeating variants) is supported.
+                        _b.sent();
+                        if (blendMode !== 'source-over') {
+                            state.ctx.globalCompositeOperation = 'source-over';
+                        }
+                        state.ctx.restore();
+                        index--;
+                        _b.label = 3;
+                    case 3:
+                        _i++;
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // background-clip: text offscreen compositing
+    // ---------------------------------------------------------------------------
+    function renderBackgroundClipText(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _c, _d, textBound, cx, cy, isSidewaysLR, angle, rotatedBounds;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        container = paint.container;
+                        styles = container.styles;
+                        bounds = container.bounds;
+                        if (container.textNodes.length === 0) {
+                            return [2 /*return*/];
+                        }
+                        width = Math.ceil(bounds.width * state.options.scale);
+                        height = Math.ceil(bounds.height * state.options.scale);
+                        if (width <= 0 || height <= 0) {
+                            return [2 /*return*/];
+                        }
+                        offscreen = state.canvasPool.acquire(width, height);
+                        offCtx = offscreen.getContext('2d');
+                        offCtx.scale(state.options.scale, state.options.scale);
+                        offCtx.translate(-bounds.left, -bounds.top);
+                        mainCtx = state.ctx;
+                        state.ctx = offCtx;
+                        if (!isTransparent(styles.backgroundColor)) {
+                            state.ctx.fillStyle = asString(styles.backgroundColor);
+                            state.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+                        }
+                        return [4 /*yield*/, renderBackgroundImage(state, container)];
+                    case 1:
+                        _e.sent();
+                        state.ctx = mainCtx;
+                        maskCanvas = state.canvasPool.acquire(width, height);
+                        maskCtx = maskCanvas.getContext('2d');
+                        maskCtx.scale(state.options.scale, state.options.scale);
+                        maskCtx.translate(-bounds.left, -bounds.top);
+                        _a = createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
+                        maskCtx.font = font;
+                        maskCtx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
+                        maskCtx.textAlign = 'left';
+                        maskCtx.fillStyle = '#000000';
+                        wm = styles.writingMode;
+                        baseline = state.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
+                        isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
+                            wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
+                            wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
+                            wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                        for (_i = 0, _b = container.textNodes; _i < _b.length; _i++) {
+                            textNode = _b[_i];
+                            for (_c = 0, _d = textNode.textBounds; _c < _d.length; _c++) {
+                                textBound = _d[_c];
+                                if (isVertical) {
+                                    cx = textBound.bounds.left + textBound.bounds.width / 2;
+                                    cy = textBound.bounds.top + textBound.bounds.height / 2;
+                                    isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                                    angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+                                    maskCtx.save();
+                                    maskCtx.translate(cx, cy);
+                                    maskCtx.rotate(angle);
+                                    maskCtx.translate(-cx, -cy);
+                                    rotatedBounds = new Bounds(cx - textBound.bounds.height / 2, cy - textBound.bounds.width / 2, textBound.bounds.height, textBound.bounds.width);
+                                    if (!state.isFirefox) {
+                                        maskCtx.textBaseline = 'ideographic';
+                                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + rotatedBounds.height);
+                                    }
+                                    else {
+                                        maskCtx.textBaseline = 'alphabetic';
+                                        maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + baseline);
+                                    }
+                                    maskCtx.restore();
+                                }
+                                else {
+                                    if (styles.letterSpacing === 0 && !state.isFirefox) {
+                                        maskCtx.textBaseline = 'ideographic';
+                                        maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + textBound.bounds.height);
+                                    }
+                                    else {
+                                        // letterSpacing !== 0, or Firefox (which needs the baseline offset).
+                                        maskCtx.textBaseline = 'alphabetic';
+                                        drawTextWithLetterSpacing(maskCtx, textBound.text, textBound.bounds.left, textBound.bounds.top + baseline, styles.letterSpacing);
+                                    }
+                                }
+                            }
+                        }
+                        // Step 3: clip background to text shape with destination-in
+                        // This is a single drawImage call so it clips the entire background at once.
+                        offCtx.globalCompositeOperation = 'destination-in';
+                        offCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pixel-to-pixel copy
+                        offCtx.drawImage(maskCanvas, 0, 0);
+                        // Step 4: Draw the clipped result onto the main canvas
+                        state.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
+                        // Return offscreen canvases to the pool for reuse.
+                        state.canvasPool.release(maskCanvas);
+                        state.canvasPool.release(offscreen);
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Borders
+    // ---------------------------------------------------------------------------
+    function renderSolidBorder(state, color, side, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var paths, fillStyle;
+            return __generator(this, function (_a) {
+                paths = parsePathForBorder(curvePoints, side);
+                fillStyle = asString(color);
+                canvasPath(state, paths);
+                state.ctx.fillStyle = fillStyle;
+                state.ctx.fill();
+                // Each side is filled as a separate trapezoid. Where two differently-coloured
+                // sides meet along a corner's diagonal miter, the two independently
+                // anti-aliased edges do not overlap perfectly and leave a thin lighter/jagged
+                // seam. Stroking the same trapezoid outline in the same colour paints a hairline
+                // that straddles the edge and covers that seam. lineWidth is kept at ~1 device
+                // pixel (divided by scale, since the stroke is applied in the scaled CTM) so it
+                // never visibly thickens the border. Adjacent sides paint over each other in
+                // T→R→B→L order, sealing every diagonal.
+                if (!isTransparent(color)) {
+                    state.ctx.strokeStyle = fillStyle;
+                    state.ctx.lineWidth = 1 / state.options.scale;
+                    state.ctx.lineJoin = 'round';
+                    state.ctx.stroke();
+                }
+                return [2 /*return*/];
+            });
+        });
+    }
+    function renderDoubleBorder(state, color, width, side, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var outerPaths, innerPaths;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!(width < 3)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, renderSolidBorder(state, color, side, curvePoints)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                    case 2:
+                        outerPaths = parsePathForBorderDoubleOuter(curvePoints, side);
+                        canvasPath(state, outerPaths);
+                        state.ctx.fillStyle = asString(color);
+                        state.ctx.fill();
+                        innerPaths = parsePathForBorderDoubleInner(curvePoints, side);
+                        canvasPath(state, innerPaths);
+                        state.ctx.fill();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // 3D border styles (groove / ridge / inset / outset)
+    // ---------------------------------------------------------------------------
+    /**
+     * Extracts the RGBA components from a packed color.
+     */
+    var unpackColor = function (color) { return [
+        0xff & (color >> 24),
+        0xff & (color >> 16),
+        0xff & (color >> 8),
+        0xff & color,
+    ]; };
+    /**
+     * Returns a darker shade of the given color by scaling RGB by `factor` (0..1).
+     * Alpha is preserved. Matches how browsers derive the "dark" side of 3D borders.
+     */
+    var darkenColor = function (color, factor) {
+        var _a = unpackColor(color), r = _a[0], g = _a[1], b = _a[2], a = _a[3];
+        return pack(Math.round(r * factor), Math.round(g * factor), Math.round(b * factor), a / 255);
+    };
+    /**
+     * Resolves the two shades used for 3D borders on a given side.
+     *
+     * Browsers render inset/outset/groove/ridge by lighting the box as if from the
+     * top-left: the top and left sides use one shade, the bottom and right the other.
+     * The base color is used as the "light" shade; a darkened variant (~50%) as the
+     * "dark" shade — this matches the common browser behaviour for a mid-tone base.
+     *
+     * @param side 0=top, 1=right, 2=bottom, 3=left
+     * @returns the color to use for that side's (outer, inner) halves
+     */
+    var resolve3dBorderShades = function (color, style, side) {
+        var light = color;
+        var dark = darkenColor(color, 0.5);
+        var isTopLeft = side === 0 || side === 3;
+        switch (style) {
+            case 7 /* BORDER_STYLE.INSET */:
+                // Top/left dark, bottom/right light (looks pressed in).
+                return { outer: isTopLeft ? dark : light, inner: isTopLeft ? dark : light };
+            case 8 /* BORDER_STYLE.OUTSET */:
+                // Top/left light, bottom/right dark (looks raised).
+                return { outer: isTopLeft ? light : dark, inner: isTopLeft ? light : dark };
+            case 5 /* BORDER_STYLE.GROOVE */:
+                // Carved-in: outer half like inset, inner half like outset.
+                return { outer: isTopLeft ? dark : light, inner: isTopLeft ? light : dark };
+            case 6 /* BORDER_STYLE.RIDGE */:
+                // Raised: outer half like outset, inner half like inset.
+                return { outer: isTopLeft ? light : dark, inner: isTopLeft ? dark : light };
+            default:
+                return { outer: color, inner: color };
+        }
+    };
+    /**
+     * Renders inset/outset borders: a single flat shade per side, chosen by the
+     * lighting model (top/left vs bottom/right).
+     */
+    function renderInsetOutsetBorder(state, color, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var outer;
+            return __generator(this, function (_a) {
+                outer = resolve3dBorderShades(color, style, side).outer;
+                canvasPath(state, parsePathForBorder(curvePoints, side));
+                state.ctx.fillStyle = asString(outer);
+                state.ctx.fill();
+                return [2 /*return*/];
+            });
+        });
+    }
+    /**
+     * Renders groove/ridge borders: the border is split into an outer and inner half
+     * along the border-stroke centre line, each half painted with a different shade
+     * to create the carved (groove) or raised (ridge) 3D effect.
+     */
+    function renderGrooveRidgeBorder(state, color, width, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, outer, inner, fullBorder, strokePath;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!(width < 2)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, renderInsetOutsetBorder(state, color, side, style, curvePoints)];
+                    case 1:
+                        _b.sent();
+                        return [2 /*return*/];
+                    case 2:
+                        _a = resolve3dBorderShades(color, style, side), outer = _a.outer, inner = _a.inner;
+                        fullBorder = parsePathForBorder(curvePoints, side);
+                        strokePath = parsePathForBorderStroke(curvePoints, side);
+                        // Outer half: clip to the full border trapezoid, then fill the region on the
+                        // border-box side of the stroke centre line.
+                        // Inner half: same clip, fill the region on the padding-box side.
+                        // We approximate the two halves using the border-box→stroke and
+                        // stroke→padding-box sub-trapezoids built from the stroke centre line.
+                        // Outer half — border-box edge to stroke centre.
+                        state.ctx.save();
+                        canvasPath(state, fullBorder);
+                        state.ctx.clip();
+                        // Fill outer half: the border-box outer boundary down to the stroke line.
+                        canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'outer', strokePath));
+                        state.ctx.fillStyle = asString(outer);
+                        state.ctx.fill();
+                        // Fill inner half: the stroke line down to the padding-box boundary.
+                        canvasPath(state, _buildHalfBorderPath(curvePoints, side, 'inner', strokePath));
+                        state.ctx.fillStyle = asString(inner);
+                        state.ctx.fill();
+                        state.ctx.restore();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    /**
+     * Builds the path for one half (outer=border-box→stroke, inner=stroke→padding-box)
+     * of a border side, used to paint groove/ridge halves. The stroke centre line is
+     * shared between the two halves so they meet without a gap.
+     */
+    var _buildHalfBorderPath = function (curvePoints, side, half, strokePath) {
+        var border = parsePathForBorder(curvePoints, side);
+        // border = [outerStart, outerEnd, innerEnd, innerStart] (trapezoid corners).
+        // strokePath = [strokeStart, strokeEnd] (centre line of the border).
+        var outerEdge = border.slice(0, 2); // border-box edge (2 points)
+        var innerEdge = border.slice(2, 4); // padding-box edge (2 points)
+        var stroke = strokePath.slice(0, 2);
+        var strokeReversed = [stroke[1], stroke[0]];
+        if (half === 'outer') {
+            // border-box edge → stroke centre (reversed to close the polygon)
+            return __spreadArray(__spreadArray([], outerEdge, true), strokeReversed, true);
+        }
+        // stroke centre → padding-box edge
+        return __spreadArray(__spreadArray([], stroke, true), innerEdge, true);
+    };
+    /**
+     * Fast path for a uniform solid border: all four sides share the same colour
+     * and style, so browsers paint one continuous ring with NO diagonal miter seam
+     * between the sides. html2canvas normally fills the four sides as separate
+     * trapezoids, whose shared diagonal edges get independently anti-aliased and
+     * leave a faint seam (or a double-blended line) at each corner.
+     *
+     * Here we instead paint the whole border as a single closed ring: the outer
+     * border-box path with the inner padding-box path punched out via the even-odd
+     * fill rule. Because it is one fill(), there are no internal edges to anti-alias,
+     * matching the browser's continuous-ring rendering exactly.
+     *
+     * This works for any corner radius (the border-box / padding-box paths already
+     * carry the Bézier curves), so rounded uniform borders benefit too.
+     */
+    function renderUniformSolidBorder(state, color, curvePoints) {
+        var ctx = state.ctx;
+        ctx.beginPath();
+        // Outer contour: border-box.
+        formatPath(ctx, calculateBorderBoxPath(curvePoints));
+        ctx.closePath();
+        // Inner contour: padding-box. With the even-odd rule this becomes a hole
+        // regardless of winding order.
+        formatPath(ctx, calculatePaddingBoxPath(curvePoints));
+        ctx.closePath();
+        ctx.fillStyle = asString(color);
+        ctx.fill('evenodd');
+    }
+    /**
+     * Dispatches border rendering for a single side to the appropriate renderer
+     * based on the border-style. Centralises the style switch so the three border
+     * loops (inline slice fragments, single box, fieldset top) stay in sync.
+     */
+    function renderBorderSide(state, color, width, side, style, curvePoints) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _a = style;
+                        switch (_a) {
+                            case 2 /* BORDER_STYLE.DASHED */: return [3 /*break*/, 1];
+                            case 3 /* BORDER_STYLE.DOTTED */: return [3 /*break*/, 3];
+                            case 4 /* BORDER_STYLE.DOUBLE */: return [3 /*break*/, 5];
+                            case 7 /* BORDER_STYLE.INSET */: return [3 /*break*/, 7];
+                            case 8 /* BORDER_STYLE.OUTSET */: return [3 /*break*/, 7];
+                            case 5 /* BORDER_STYLE.GROOVE */: return [3 /*break*/, 9];
+                            case 6 /* BORDER_STYLE.RIDGE */: return [3 /*break*/, 9];
+                        }
+                        return [3 /*break*/, 11];
+                    case 1: return [4 /*yield*/, renderDashedDottedBorder(state, color, width, side, curvePoints, 2 /* BORDER_STYLE.DASHED */)];
+                    case 2:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 3: return [4 /*yield*/, renderDashedDottedBorder(state, color, width, side, curvePoints, 3 /* BORDER_STYLE.DOTTED */)];
+                    case 4:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 5: return [4 /*yield*/, renderDoubleBorder(state, color, width, side, curvePoints)];
+                    case 6:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 7: return [4 /*yield*/, renderInsetOutsetBorder(state, color, side, style, curvePoints)];
+                    case 8:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 9: return [4 /*yield*/, renderGrooveRidgeBorder(state, color, width, side, style, curvePoints)];
+                    case 10:
+                        _b.sent();
+                        return [3 /*break*/, 13];
+                    case 11: return [4 /*yield*/, renderSolidBorder(state, color, side, curvePoints)];
+                    case 12:
+                        _b.sent();
+                        _b.label = 13;
+                    case 13: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    function renderDashedDottedBorder(state, color, width, side, curvePoints, style) {
+        return __awaiter(this, void 0, void 0, function () {
+            var strokePaths, boxPaths, startX, startY, endX, endY, length, dashLength, spaceLength, useLineDash, multiplier, numberOfDashes, minSpace, maxSpace, path1, path2, path1, path2;
+            return __generator(this, function (_a) {
+                state.ctx.save();
+                strokePaths = parsePathForBorderStroke(curvePoints, side);
+                boxPaths = parsePathForBorder(curvePoints, side);
+                if (style === 2 /* BORDER_STYLE.DASHED */) {
+                    canvasPath(state, boxPaths);
+                    state.ctx.clip();
+                }
+                if (isBezierCurve(boxPaths[0])) {
+                    startX = boxPaths[0].start.x;
+                    startY = boxPaths[0].start.y;
+                }
+                else {
+                    startX = boxPaths[0].x;
+                    startY = boxPaths[0].y;
+                }
+                if (isBezierCurve(boxPaths[1])) {
+                    endX = boxPaths[1].end.x;
+                    endY = boxPaths[1].end.y;
+                }
+                else {
+                    endX = boxPaths[1].x;
+                    endY = boxPaths[1].y;
+                }
+                if (side === 0 || side === 2) {
+                    length = Math.abs(startX - endX);
+                }
+                else {
+                    length = Math.abs(startY - endY);
+                }
+                state.ctx.beginPath();
+                if (style === 3 /* BORDER_STYLE.DOTTED */) {
+                    formatPath(state.ctx, strokePaths);
+                }
+                else {
+                    formatPath(state.ctx, boxPaths.slice(0, 2));
+                }
+                dashLength = width < 3 ? width * 3 : width * 2;
+                spaceLength = width < 3 ? width * 2 : width;
+                if (style === 3 /* BORDER_STYLE.DOTTED */) {
+                    dashLength = width;
+                    spaceLength = width;
+                }
+                useLineDash = true;
+                if (length <= dashLength * 2) {
+                    useLineDash = false;
+                }
+                else if (length <= dashLength * 2 + spaceLength) {
+                    multiplier = length / (2 * dashLength + spaceLength);
+                    dashLength *= multiplier;
+                    spaceLength *= multiplier;
+                }
+                else {
+                    numberOfDashes = Math.floor((length + spaceLength) / (dashLength + spaceLength));
+                    minSpace = (length - numberOfDashes * dashLength) / (numberOfDashes - 1);
+                    maxSpace = (length - (numberOfDashes + 1) * dashLength) / numberOfDashes;
+                    spaceLength =
+                        maxSpace <= 0 || Math.abs(spaceLength - minSpace) < Math.abs(spaceLength - maxSpace) ? minSpace : maxSpace;
+                }
+                if (useLineDash) {
+                    if (style === 3 /* BORDER_STYLE.DOTTED */) {
+                        state.ctx.setLineDash([0, dashLength + spaceLength]);
+                    }
+                    else {
+                        state.ctx.setLineDash([dashLength, spaceLength]);
+                    }
+                }
+                if (style === 3 /* BORDER_STYLE.DOTTED */) {
+                    state.ctx.lineCap = 'round';
+                    state.ctx.lineWidth = width;
+                }
+                else {
+                    state.ctx.lineWidth = width * 2 + 1.1;
+                }
+                state.ctx.strokeStyle = asString(color);
+                state.ctx.stroke();
+                state.ctx.setLineDash([]);
+                // dashed round edge gap
+                if (style === 2 /* BORDER_STYLE.DASHED */) {
+                    if (isBezierCurve(boxPaths[0])) {
+                        path1 = boxPaths[3];
+                        path2 = boxPaths[0];
+                        state.ctx.beginPath();
+                        formatPath(state.ctx, [new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
+                        state.ctx.stroke();
+                    }
+                    if (isBezierCurve(boxPaths[1])) {
+                        path1 = boxPaths[1];
+                        path2 = boxPaths[2];
+                        state.ctx.beginPath();
+                        formatPath(state.ctx, [new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
+                        state.ctx.stroke();
+                    }
+                }
+                state.ctx.restore();
+                return [2 /*return*/];
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Full background + borders node rendering
+    // ---------------------------------------------------------------------------
+    function renderNodeBackgroundAndBorders(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var styles, isInline, fragments, _i, fragments_1, fragment, fragContainer, fragCurves, fragPaint;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        styles = paint.container.styles;
+                        isInline = styles.display === 4 /* DISPLAY.INLINE */;
+                        if (!(isInline && styles.boxDecorationBreak === 1 /* BOX_DECORATION_BREAK.CLONE */)) return [3 /*break*/, 5];
+                        fragments = getInlineFragmentBounds(paint.container);
+                        if (!(fragments && fragments.length > 0)) return [3 /*break*/, 5];
+                        _i = 0, fragments_1 = fragments;
+                        _a.label = 1;
+                    case 1:
+                        if (!(_i < fragments_1.length)) return [3 /*break*/, 4];
+                        fragment = fragments_1[_i];
+                        fragContainer = makeFragmentContainer(paint.container, fragment.borderBox);
+                        fragCurves = new BoundCurves(fragContainer);
+                        fragPaint = Object.create(paint, {
+                            container: { value: fragContainer },
+                            curves: { value: fragCurves },
+                        });
+                        return [4 /*yield*/, _renderSingleBoxBackgroundAndBorders(state, fragPaint)];
+                    case 2:
+                        _a.sent();
+                        _a.label = 3;
+                    case 3:
+                        _i++;
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
+                    case 5:
+                        if (!(isInline && styles.boxDecorationBreak !== 1 /* BOX_DECORATION_BREAK.CLONE */ && paint.container.textNodes.length > 0)) return [3 /*break*/, 7];
+                        return [4 /*yield*/, _renderInlineSlice(state, paint)];
+                    case 6:
+                        _a.sent();
+                        return [2 /*return*/];
+                    case 7: return [4 /*yield*/, _renderSingleBoxBackgroundAndBorders(state, paint)];
+                    case 8:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Inline slice renderer (box-decoration-break: slice — the default)
+    // ---------------------------------------------------------------------------
+    function _renderInlineSlice(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var styles, hasBackground, hasBorders, fragments, isBackgroundClipText, hasBackgroundImage, totalWidth, fragOffsets, _i, fragments_2, f, i, fragment, sliceContainer, fragCurves, backgroundPaintingArea, virtualLeft, virtualBounds, virtualContainer, _a, fragments_3, fragment, sliceContainer, fragCurves, fragPaint, borders, _b, fragments_4, fragment, sliceContainer, fragCurves, side, _c, borders_1, border, skipRight, skipLeft;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        styles = paint.container.styles;
+                        hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
+                        hasBorders = (styles.borderTopStyle !== 0 /* BORDER_STYLE.NONE */ && styles.borderTopWidth > 0) ||
+                            (styles.borderRightStyle !== 0 /* BORDER_STYLE.NONE */ && styles.borderRightWidth > 0) ||
+                            (styles.borderBottomStyle !== 0 /* BORDER_STYLE.NONE */ && styles.borderBottomWidth > 0) ||
+                            (styles.borderLeftStyle !== 0 /* BORDER_STYLE.NONE */ && styles.borderLeftWidth > 0);
+                        if (!hasBackground && !styles.boxShadow.length && !hasBorders) {
+                            return [2 /*return*/];
+                        }
+                        fragments = getInlineFragmentBounds(paint.container);
+                        if (!(!fragments || fragments.length === 0)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, _renderSingleBoxBackgroundAndBorders(state, paint)];
+                    case 1:
+                        _d.sent();
+                        return [2 /*return*/];
+                    case 2:
+                        if (!hasBackground) return [3 /*break*/, 9];
+                        isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */;
+                        if (!isBackgroundClipText) return [3 /*break*/, 4];
+                        return [4 /*yield*/, renderBackgroundClipText(state, paint)];
+                    case 3:
+                        _d.sent();
+                        return [3 /*break*/, 9];
+                    case 4:
+                        hasBackgroundImage = styles.backgroundImage.length > 0;
+                        totalWidth = 0;
+                        fragOffsets = [];
+                        for (_i = 0, fragments_2 = fragments; _i < fragments_2.length; _i++) {
+                            f = fragments_2[_i];
+                            fragOffsets.push(totalWidth);
+                            totalWidth += f.sliceBox.width;
+                        }
+                        i = 0;
+                        _d.label = 5;
+                    case 5:
+                        if (!(i < fragments.length)) return [3 /*break*/, 9];
+                        fragment = fragments[i];
+                        sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+                        fragCurves = new BoundCurves(sliceContainer);
+                        backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(getBackgroundValueForIndex(styles.backgroundClip, 0), fragCurves);
+                        state.ctx.save();
+                        canvasPath(state, backgroundPaintingArea);
+                        state.ctx.clip();
+                        if (!isTransparent(styles.backgroundColor)) {
+                            state.ctx.fillStyle = asString(styles.backgroundColor);
+                            state.ctx.fill();
+                        }
+                        if (!hasBackgroundImage) return [3 /*break*/, 7];
+                        virtualLeft = fragment.sliceBox.left - fragOffsets[i];
+                        virtualBounds = new Bounds(virtualLeft, fragment.sliceBox.top, totalWidth, fragment.sliceBox.height);
+                        virtualContainer = makeFragmentContainer(paint.container, virtualBounds);
+                        return [4 /*yield*/, renderBackgroundImage(state, virtualContainer)];
+                    case 6:
+                        _d.sent();
+                        _d.label = 7;
+                    case 7:
+                        state.ctx.restore();
+                        _d.label = 8;
+                    case 8:
+                        i++;
+                        return [3 /*break*/, 5];
+                    case 9:
+                        // box-shadow per fragment using sliceBox.
+                        if (styles.boxShadow.length) {
+                            for (_a = 0, fragments_3 = fragments; _a < fragments_3.length; _a++) {
+                                fragment = fragments_3[_a];
+                                sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+                                fragCurves = new BoundCurves(sliceContainer);
+                                fragPaint = Object.create(paint, {
+                                    container: { value: sliceContainer },
+                                    curves: { value: fragCurves },
+                                });
+                                _renderBoxShadows(state, fragPaint);
+                            }
+                        }
+                        if (!hasBorders) return [3 /*break*/, 16];
+                        borders = [
+                            { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
+                            { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
+                            { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
+                            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
+                        ];
+                        _b = 0, fragments_4 = fragments;
+                        _d.label = 10;
+                    case 10:
+                        if (!(_b < fragments_4.length)) return [3 /*break*/, 16];
+                        fragment = fragments_4[_b];
+                        sliceContainer = _makeSliceFragmentContainer(paint.container, fragment);
+                        fragCurves = new BoundCurves(sliceContainer);
+                        side = 0;
+                        _c = 0, borders_1 = borders;
+                        _d.label = 11;
+                    case 11:
+                        if (!(_c < borders_1.length)) return [3 /*break*/, 15];
+                        border = borders_1[_c];
+                        skipRight = side === 1 && !fragment.isLast;
+                        skipLeft = side === 3 && !fragment.isFirst;
+                        if (!(!skipRight &&
+                            !skipLeft &&
+                            border.style !== 0 /* BORDER_STYLE.NONE */ &&
+                            !isTransparent(border.color) &&
+                            border.width > 0)) return [3 /*break*/, 13];
+                        return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, fragCurves)];
+                    case 12:
+                        _d.sent();
+                        _d.label = 13;
+                    case 13:
+                        side++;
+                        _d.label = 14;
+                    case 14:
+                        _c++;
+                        return [3 /*break*/, 11];
+                    case 15:
+                        _b++;
+                        return [3 /*break*/, 10];
+                    case 16: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Helper: builds a container with radii suppressed for slice middle fragments
+    // ---------------------------------------------------------------------------
+    /** A zero-value LengthPercentageTuple used to suppress border-radius on slice fragments. */
+    var ZERO_RADIUS = [ZERO_LENGTH, ZERO_LENGTH];
+    function _makeSliceFragmentContainer(original, fragment) {
+        if (fragment.isFirst && fragment.isLast) {
+            // Single-line element — keep all radii, use sliceBox (= full border-box).
+            return makeFragmentContainer(original, fragment.sliceBox);
+        }
+        // Suppress radii on the sides that are in the "middle" of the slice.
+        // isFirst → keep TL + BL; isLast → keep TR + BR; middle → no radii.
+        var fragContainer = makeFragmentContainer(original, fragment.sliceBox);
+        var overrideStyles = Object.create(original.styles, {
+            borderTopLeftRadius: { value: fragment.isFirst ? original.styles.borderTopLeftRadius : ZERO_RADIUS },
+            borderBottomLeftRadius: { value: fragment.isFirst ? original.styles.borderBottomLeftRadius : ZERO_RADIUS },
+            borderTopRightRadius: { value: fragment.isLast ? original.styles.borderTopRightRadius : ZERO_RADIUS },
+            borderBottomRightRadius: { value: fragment.isLast ? original.styles.borderBottomRightRadius : ZERO_RADIUS },
+        });
+        return Object.create(fragContainer, {
+            styles: { value: overrideStyles },
+            bounds: { value: fragment.sliceBox },
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Helper: render box-shadows for a single paint box
+    // ---------------------------------------------------------------------------
+    function _renderBoxShadows(state, paint) {
+        var styles = paint.container.styles;
+        styles.boxShadow
+            .slice(0)
+            .reverse()
+            .forEach(function (shadow) {
+            state.ctx.save();
+            var borderBoxArea = calculateBorderBoxPath(paint.curves);
+            var effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
+            var shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map(function (p) {
+                return p.add(shadow.offsetX.number, shadow.offsetY.number);
+            });
+            if (shadow.inset) {
+                canvasPath(state, borderBoxArea);
+                state.ctx.clip();
+                canvasMask(state, shadowPaintingArea);
+            }
+            else {
+                canvasMask(state, borderBoxArea);
+                state.ctx.clip();
+                canvasPath(state, shadowPaintingArea);
+            }
+            state.ctx.fillStyle = asString(shadow.color);
+            if (shadow.blur.number) {
+                state.ctx.filter = "blur(".concat(shadow.blur.number / 2, "px)");
+            }
+            state.ctx.fill();
+            state.ctx.restore();
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Border-image 9-slice rendering
+    // ---------------------------------------------------------------------------
+    /**
+     * Resolves a border-image source to an HTMLImageElement or HTMLCanvasElement.
+     * For URL images, fetches from the cache. For gradients, renders to an offscreen canvas.
+     */
+    /**
+     * Applies color stops to a CanvasGradient for a repeating-linear-gradient,
+     * tiling the stops across [0,1] the same way `renderBackgroundImage` does.
+     */
+    function _applyRepeatingLinearStops(gradient, rawStops, lineLength) {
+        var processedStops = processColorStops(rawStops, lineLength);
+        var tileStart = processedStops[0].stop;
+        var tileEnd = processedStops[processedStops.length - 1].stop;
+        var tileSize = tileEnd - tileStart;
+        if (tileSize <= 0) {
+            processedStops.forEach(function (s) { return gradient.addColorStop(s.stop, asString(s.color)); });
+            return;
+        }
+        var MAX_ITER = 512;
+        var allStops = [];
+        var _loop_5 = function (iter) {
+            var offset = iter * tileSize;
+            processedStops.forEach(function (s) { return allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color }); });
+            if (tileStart - offset <= 0)
+                return "break";
+        };
+        for (var iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+            var state_3 = _loop_5(iter);
+            if (state_3 === "break")
+                break;
+        }
+        processedStops.forEach(function (s) { return allStops.push({ stop: s.stop, color: s.color }); });
+        var _loop_6 = function (iter) {
+            var offset = iter * tileSize;
+            processedStops.forEach(function (s) { return allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color }); });
+        };
+        for (var iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+            _loop_6(iter);
+        }
+        if (allStops[0].stop > 0)
+            allStops.unshift({ stop: 0, color: allStops[0].color });
+        if (allStops[allStops.length - 1].stop < 1)
+            allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
+        allStops.forEach(function (s) { return gradient.addColorStop(s.stop, asString(s.color)); });
+    }
+    function _resolveBorderImageSource(state, source, width, height) {
+        return __awaiter(this, void 0, void 0, function () {
+            var url, e_2, canvas, ctx, _a, lineLength, x0, x1, y0, y1, gradient_1, position, x, y, _b, rx, ry, gradient_2, position, cx, cy, conicGrad_1;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
+                    case 0:
+                        if (!(source.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 4];
+                        url = source.url;
+                        _c.label = 1;
+                    case 1:
+                        _c.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, state.context.cache.match(url)];
+                    case 2: return [2 /*return*/, _c.sent()];
+                    case 3:
+                        e_2 = _c.sent();
+                        state.context.error("Error loading border-image-source ".concat(url), e_2);
+                        return [2 /*return*/, null];
+                    case 4:
+                        // For gradients, render to an offscreen canvas at the border-image area size
+                        if (width <= 0 || height <= 0) {
+                            return [2 /*return*/, null];
+                        }
+                        canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.ceil(width));
+                        canvas.height = Math.max(1, Math.ceil(height));
+                        ctx = canvas.getContext('2d');
+                        if (isLinearGradient(source) || isRepeatingLinearGradient(source)) {
+                            _a = calculateGradientDirection(source.angle, width, height), lineLength = _a[0], x0 = _a[1], x1 = _a[2], y0 = _a[3], y1 = _a[4];
+                            gradient_1 = ctx.createLinearGradient(x0, y0, x1, y1);
+                            if (isRepeatingLinearGradient(source)) {
+                                _applyRepeatingLinearStops(gradient_1, source.stops, lineLength || 1);
+                            }
+                            else {
+                                prepareStops(processColorStops(source.stops, lineLength || 1)).forEach(function (cs) {
+                                    return gradient_1.addColorStop(cs.stop, asString(cs.color));
+                                });
+                            }
+                            ctx.fillStyle = gradient_1;
+                            ctx.fillRect(0, 0, width, height);
+                        }
+                        else if (isRadialGradient(source) || isRepeatingRadialGradient(source)) {
+                            position = source.position.length === 0 ? [FIFTY_PERCENT] : source.position;
+                            x = getAbsoluteValue(position[0], width);
+                            y = getAbsoluteValue(position[position.length - 1], height);
+                            _b = calculateRadius(source, x, y, width, height), rx = _b[0], ry = _b[1];
+                            if (rx > 0 && ry > 0) {
+                                gradient_2 = ctx.createRadialGradient(x, y, 0, x, y, rx);
+                                prepareStops(processColorStops(source.stops, rx * 2)).forEach(function (cs) {
+                                    return gradient_2.addColorStop(cs.stop, asString(cs.color));
+                                });
+                                ctx.fillStyle = gradient_2;
+                                ctx.fillRect(0, 0, width, height);
+                            }
+                        }
+                        else if (isConicGradient(source) || isRepeatingConicGradient(source)) {
+                            if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                                typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                                position = source.position.length === 0 ? [FIFTY_PERCENT] : source.position;
+                                cx = getAbsoluteValue(position[0], width);
+                                cy = getAbsoluteValue(position[position.length - 1], height);
+                                conicGrad_1 = ctx.createConicGradient(source.startAngle - Math.PI / 2, cx, cy);
+                                prepareStops(processColorStops(source.stops, 360)).forEach(function (cs) {
+                                    return conicGrad_1.addColorStop(cs.stop, asString(cs.color));
+                                });
+                                ctx.fillStyle = conicGrad_1;
+                                ctx.fillRect(0, 0, width, height);
+                            }
+                        }
+                        return [2 /*return*/, canvas];
+                }
+            });
+        });
+    }
+    /**
+     * Resolves a border-image-width value to an absolute pixel size.
+     */
+    function _resolveBorderImageWidth(val, borderWidth, borderImageAreaSize, sliceValue) {
+        switch (val.type) {
+            case 'length':
+                return val.value;
+            case 'percentage':
+                return (val.value / 100) * borderImageAreaSize;
+            case 'number':
+                return val.value * borderWidth;
+            case 'auto':
+                // 'auto' uses the corresponding slice value
+                return sliceValue;
+        }
+    }
+    /**
+     * Renders the border-image for an element using the CSS 9-slice algorithm.
+     *
+     * Per the CSS spec, when border-image-source is set and loads successfully,
+     * it replaces the normal border drawing entirely.
+     *
+     * @returns true if border-image was rendered (callers should skip normal borders)
+     */
+    function _renderBorderImage(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var styles, source, bounds, outset, outsetTop, outsetRight, outsetBottom, outsetLeft, areaLeft, areaTop, areaWidth, areaHeight, img, imgW, imgH, slice, sliceTop, sliceRight, sliceBottom, sliceLeft, biw, widthTop, widthRight, widthBottom, widthLeft, _a, repeatH, repeatV, srcMiddleW, srcMiddleH, dstMiddleW, dstMiddleH, ctx, _corner, _makeTile, _edge, tileWforH, tileHforH, tileWforHB, tileHforHB, tileWforV, tileHforV, tileWforVR, tileHforVR, scaleW;
+            var _this = this;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        styles = paint.container.styles;
+                        source = styles.borderImageSource;
+                        if (!source) {
+                            return [2 /*return*/, false];
+                        }
+                        bounds = paint.container.bounds;
+                        outset = styles.borderImageOutset;
+                        outsetTop = outset[0].type === 'number' ? outset[0].value * styles.borderTopWidth : outset[0].value;
+                        outsetRight = outset[1].type === 'number' ? outset[1].value * styles.borderRightWidth : outset[1].value;
+                        outsetBottom = outset[2].type === 'number' ? outset[2].value * styles.borderBottomWidth : outset[2].value;
+                        outsetLeft = outset[3].type === 'number' ? outset[3].value * styles.borderLeftWidth : outset[3].value;
+                        areaLeft = bounds.left - outsetLeft;
+                        areaTop = bounds.top - outsetTop;
+                        areaWidth = bounds.width + outsetLeft + outsetRight;
+                        areaHeight = bounds.height + outsetTop + outsetBottom;
+                        return [4 /*yield*/, _resolveBorderImageSource(state, source, areaWidth, areaHeight)];
+                    case 1:
+                        img = _b.sent();
+                        if (!img || img.width <= 0 || img.height <= 0) {
+                            return [2 /*return*/, false];
+                        }
+                        imgW = img.width;
+                        imgH = img.height;
+                        slice = styles.borderImageSlice;
+                        sliceTop = slice.percentages[0] ? (slice.values[0] / 100) * imgH : Math.min(slice.values[0], imgH);
+                        sliceRight = slice.percentages[1] ? (slice.values[1] / 100) * imgW : Math.min(slice.values[1], imgW);
+                        sliceBottom = slice.percentages[2] ? (slice.values[2] / 100) * imgH : Math.min(slice.values[2], imgH);
+                        sliceLeft = slice.percentages[3] ? (slice.values[3] / 100) * imgW : Math.min(slice.values[3], imgW);
+                        biw = styles.borderImageWidth;
+                        widthTop = _resolveBorderImageWidth(biw[0], styles.borderTopWidth, areaHeight, sliceTop);
+                        widthRight = _resolveBorderImageWidth(biw[1], styles.borderRightWidth, areaWidth, sliceRight);
+                        widthBottom = _resolveBorderImageWidth(biw[2], styles.borderBottomWidth, areaHeight, sliceBottom);
+                        widthLeft = _resolveBorderImageWidth(biw[3], styles.borderLeftWidth, areaWidth, sliceLeft);
+                        _a = styles.borderImageRepeat, repeatH = _a[0], repeatV = _a[1];
+                        srcMiddleW = imgW - sliceLeft - sliceRight;
+                        srcMiddleH = imgH - sliceTop - sliceBottom;
+                        dstMiddleW = areaWidth - widthLeft - widthRight;
+                        dstMiddleH = areaHeight - widthTop - widthBottom;
+                        ctx = state.ctx;
+                        _corner = function (sx, sy, sw, sh, dx, dy, dw, dh) {
+                            if (sw > 0 && sh > 0 && dw > 0 && dh > 0) {
+                                ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                            }
+                        };
+                        _corner(0, 0, sliceLeft, sliceTop, areaLeft, areaTop, widthLeft, widthTop);
+                        _corner(imgW - sliceRight, 0, sliceRight, sliceTop, areaLeft + areaWidth - widthRight, areaTop, widthRight, widthTop);
+                        _corner(imgW - sliceRight, imgH - sliceBottom, sliceRight, sliceBottom, areaLeft + areaWidth - widthRight, areaTop + areaHeight - widthBottom, widthRight, widthBottom);
+                        _corner(0, imgH - sliceBottom, sliceLeft, sliceBottom, areaLeft, areaTop + areaHeight - widthBottom, widthLeft, widthBottom);
+                        _makeTile = function (sx, sy, sw, sh, tileW, tileH) { return __awaiter(_this, void 0, void 0, function () {
+                            var c, cCtx;
+                            return __generator(this, function (_a) {
+                                c = state.canvasPool.acquire(Math.round(tileW), Math.round(tileH));
+                                cCtx = c.getContext('2d');
+                                // Always extract from the full source image (img) and scale to tile size.
+                                // This preserves gradient continuity and angle between corners and edges —
+                                // the same approach Chromium uses (uniform tile_scale from one source image).
+                                cCtx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+                                return [2 /*return*/, c];
+                            });
+                        }); };
+                        _edge = function (sx, sy, sw, sh, dx, dy, dw, dh, repeat, tileW, tileH, isHorizontal) { return __awaiter(_this, void 0, void 0, function () {
+                            var finalTileW, finalTileH, n, m, tileCanvas, nx, ny, gapX, gapY, startX, startY, row, y, col, x, y, x, offsetX, offsetY, pm, pat, mat;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0 || tileW <= 0 || tileH <= 0)
+                                            return [2 /*return*/];
+                                        if (repeat === 0 /* BORDER_IMAGE_REPEAT.STRETCH */) {
+                                            ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                                            return [2 /*return*/];
+                                        }
+                                        finalTileW = tileW;
+                                        finalTileH = tileH;
+                                        if (repeat === 2 /* BORDER_IMAGE_REPEAT.ROUND */) {
+                                            if (isHorizontal) {
+                                                n = Math.max(1, Math.round(dw / tileW));
+                                                finalTileW = dw / n;
+                                                finalTileH = dh;
+                                            }
+                                            else {
+                                                m = Math.max(1, Math.round(dh / tileH));
+                                                finalTileH = dh / m;
+                                                finalTileW = dw;
+                                            }
+                                        }
+                                        return [4 /*yield*/, _makeTile(sx, sy, sw, sh, finalTileW, finalTileH)];
+                                    case 1:
+                                        tileCanvas = _a.sent();
+                                        ctx.save();
+                                        ctx.beginPath();
+                                        ctx.rect(dx, dy, dw, dh);
+                                        ctx.clip();
+                                        if (repeat === 3 /* BORDER_IMAGE_REPEAT.SPACE */) {
+                                            nx = Math.floor(dw / finalTileW);
+                                            ny = Math.floor(dh / finalTileH);
+                                            if (nx <= 0 || ny <= 0) {
+                                                // Tile larger than destination — don't draw (per Chromium behavior)
+                                                ctx.restore();
+                                                state.canvasPool.release(tileCanvas);
+                                                return [2 /*return*/];
+                                            }
+                                            gapX = nx > 1 ? (dw - nx * finalTileW) / (nx - 1) : 0;
+                                            gapY = ny > 1 ? (dh - ny * finalTileH) / (ny - 1) : 0;
+                                            startX = nx <= 1 ? (dw - finalTileW) / 2 : 0;
+                                            startY = ny <= 1 ? (dh - finalTileH) / 2 : 0;
+                                            for (row = 0; row < ny; row++) {
+                                                y = startY + row * (finalTileH + gapY);
+                                                for (col = 0; col < nx; col++) {
+                                                    x = startX + col * (finalTileW + gapX);
+                                                    ctx.drawImage(tileCanvas, dx + x, dy + y, finalTileW, finalTileH);
+                                                }
+                                            }
+                                        }
+                                        else if (repeat === 2 /* BORDER_IMAGE_REPEAT.ROUND */) {
+                                            for (y = 0; y < dh - 0.5; y += finalTileH) {
+                                                for (x = 0; x < dw - 0.5; x += finalTileW) {
+                                                    ctx.drawImage(tileCanvas, dx + x, dy + y, finalTileW, finalTileH);
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            offsetX = 0;
+                                            offsetY = 0;
+                                            if (isHorizontal) {
+                                                offsetX = (dw % finalTileW) / 2 - finalTileW;
+                                            }
+                                            else {
+                                                offsetY = (dh % finalTileH) / 2 - finalTileH;
+                                            }
+                                            pm = state.canvasPool.acquire(Math.round(finalTileW), Math.round(finalTileH));
+                                            pm.getContext('2d').drawImage(tileCanvas, 0, 0, pm.width, pm.height);
+                                            pat = ctx.createPattern(pm, 'repeat');
+                                            if (pat) {
+                                                mat = new DOMMatrix();
+                                                mat.translateSelf(dx + offsetX, dy + offsetY);
+                                                pat.setTransform(mat);
+                                                ctx.fillStyle = pat;
+                                                // createPattern sampled pm synchronously; fillRect consumes it now,
+                                                // so the pattern source can be recycled after this fill.
+                                                ctx.fillRect(dx, dy, dw, dh);
+                                            }
+                                            state.canvasPool.release(pm);
+                                        }
+                                        ctx.restore();
+                                        // Recycle the tile canvas now that all draws referencing it are done.
+                                        state.canvasPool.release(tileCanvas);
+                                        return [2 /*return*/];
+                                }
+                            });
+                        }); };
+                        tileWforH = sliceTop > 0 ? srcMiddleW * (widthTop / sliceTop) : srcMiddleW;
+                        tileHforH = widthTop;
+                        tileWforHB = sliceBottom > 0 ? srcMiddleW * (widthBottom / sliceBottom) : srcMiddleW;
+                        tileHforHB = widthBottom;
+                        tileWforV = widthLeft;
+                        tileHforV = sliceLeft > 0 ? srcMiddleH * (widthLeft / sliceLeft) : srcMiddleH;
+                        tileWforVR = widthRight;
+                        tileHforVR = sliceRight > 0 ? srcMiddleH * (widthRight / sliceRight) : srcMiddleH;
+                        if (!(srcMiddleW > 0 && sliceTop > 0 && dstMiddleW > 0 && widthTop > 0)) return [3 /*break*/, 3];
+                        return [4 /*yield*/, _edge(sliceLeft, 0, srcMiddleW, sliceTop, areaLeft + widthLeft, areaTop, dstMiddleW, widthTop, repeatH, tileWforH, tileHforH, true)];
+                    case 2:
+                        _b.sent();
+                        _b.label = 3;
+                    case 3:
+                        if (!(srcMiddleW > 0 && sliceBottom > 0 && dstMiddleW > 0 && widthBottom > 0)) return [3 /*break*/, 5];
+                        return [4 /*yield*/, _edge(sliceLeft, imgH - sliceBottom, srcMiddleW, sliceBottom, areaLeft + widthLeft, areaTop + areaHeight - widthBottom, dstMiddleW, widthBottom, repeatH, tileWforHB, tileHforHB, true)];
+                    case 4:
+                        _b.sent();
+                        _b.label = 5;
+                    case 5:
+                        if (!(sliceRight > 0 && srcMiddleH > 0 && widthRight > 0 && dstMiddleH > 0)) return [3 /*break*/, 7];
+                        return [4 /*yield*/, _edge(imgW - sliceRight, sliceTop, sliceRight, srcMiddleH, areaLeft + areaWidth - widthRight, areaTop + widthTop, widthRight, dstMiddleH, repeatV, tileWforVR, tileHforVR, false)];
+                    case 6:
+                        _b.sent();
+                        _b.label = 7;
+                    case 7:
+                        if (!(sliceLeft > 0 && srcMiddleH > 0 && widthLeft > 0 && dstMiddleH > 0)) return [3 /*break*/, 9];
+                        return [4 /*yield*/, _edge(0, sliceTop, sliceLeft, srcMiddleH, areaLeft, areaTop + widthTop, widthLeft, dstMiddleH, repeatV, tileWforV, tileHforV, false)];
+                    case 8:
+                        _b.sent();
+                        _b.label = 9;
+                    case 9:
+                        if (!(slice.fill && srcMiddleW > 0 && srcMiddleH > 0 && dstMiddleW > 0 && dstMiddleH > 0)) return [3 /*break*/, 11];
+                        scaleW = sliceTop > 0 ? widthTop / sliceTop : 1;
+                        return [4 /*yield*/, _edge(sliceLeft, sliceTop, srcMiddleW, srcMiddleH, areaLeft + widthLeft, areaTop + widthTop, dstMiddleW, dstMiddleH, repeatH, srcMiddleW * scaleW, srcMiddleH * scaleW, true)];
+                    case 10:
+                        _b.sent();
+                        _b.label = 11;
+                    case 11: return [2 /*return*/, true];
+                }
+            });
+        });
+    }
+    // ---------------------------------------------------------------------------
+    // Single-box background + borders renderer (block elements & clone fragments)
+    // ---------------------------------------------------------------------------
+    function _renderSingleBoxBackgroundAndBorders(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var styles, hasBackground, borders, broadestClip, i, clip, backgroundPaintingArea, isBackgroundClipText, hasMultipleClips, borderImageRendered, side, _i, borders_2, border, legendBounds;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        styles = paint.container.styles;
+                        hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
+                        borders = [
+                            { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
+                            { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
+                            { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
+                            { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
+                        ];
+                        broadestClip = getBackgroundValueForIndex(styles.backgroundClip, 0);
+                        for (i = 1; i < styles.backgroundClip.length; i++) {
+                            clip = styles.backgroundClip[i];
+                            if (clip === 0 /* BACKGROUND_CLIP.BORDER_BOX */) {
+                                broadestClip = 0 /* BACKGROUND_CLIP.BORDER_BOX */;
+                                break;
+                            }
+                            if (clip === 1 /* BACKGROUND_CLIP.PADDING_BOX */ && broadestClip !== 0 /* BACKGROUND_CLIP.BORDER_BOX */) {
+                                broadestClip = 1 /* BACKGROUND_CLIP.PADDING_BOX */;
+                            }
+                        }
+                        backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(broadestClip, paint.curves);
+                        if (!(hasBackground || styles.boxShadow.length)) return [3 /*break*/, 7];
+                        isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */;
+                        if (!(isBackgroundClipText && hasBackground)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, renderBackgroundClipText(state, paint)];
+                    case 1:
+                        _a.sent();
+                        return [3 /*break*/, 6];
+                    case 2:
+                        if (!hasBackground) return [3 /*break*/, 6];
+                        // Background color: clip to the broadest area
+                        if (!isTransparent(styles.backgroundColor)) {
+                            state.ctx.save();
+                            canvasPath(state, backgroundPaintingArea);
+                            state.ctx.clip();
+                            state.ctx.fillStyle = asString(styles.backgroundColor);
+                            state.ctx.fill();
+                            state.ctx.restore();
+                        }
+                        hasMultipleClips = styles.backgroundClip.length > 1;
+                        if (!hasMultipleClips) return [3 /*break*/, 4];
+                        // Render each layer individually with its own curved clip
+                        return [4 /*yield*/, renderBackgroundImagePerLayer(state, paint, paint.container)];
+                    case 3:
+                        // Render each layer individually with its own curved clip
+                        _a.sent();
+                        return [3 /*break*/, 6];
+                    case 4:
+                        // Single clip for all layers (common case, more efficient)
+                        state.ctx.save();
+                        canvasPath(state, backgroundPaintingArea);
+                        state.ctx.clip();
+                        return [4 /*yield*/, renderBackgroundImage(state, paint.container)];
+                    case 5:
+                        _a.sent();
+                        state.ctx.restore();
+                        _a.label = 6;
+                    case 6:
+                        _renderBoxShadows(state, paint);
+                        _a.label = 7;
+                    case 7: return [4 /*yield*/, _renderBorderImage(state, paint)];
+                    case 8:
+                        borderImageRendered = _a.sent();
+                        if (!!borderImageRendered) return [3 /*break*/, 16];
+                        if (!(_isUniformSolidBorder(borders) && !paint.container.legendBounds)) return [3 /*break*/, 9];
+                        renderUniformSolidBorder(state, borders[0].color, paint.curves);
+                        return [3 /*break*/, 16];
+                    case 9:
+                        side = 0;
+                        _i = 0, borders_2 = borders;
+                        _a.label = 10;
+                    case 10:
+                        if (!(_i < borders_2.length)) return [3 /*break*/, 16];
+                        border = borders_2[_i];
+                        if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 14];
+                        legendBounds = side === 0 ? paint.container.legendBounds : undefined;
+                        if (!legendBounds) return [3 /*break*/, 12];
+                        return [4 /*yield*/, _renderFieldsetTopBorder(state, paint, border, legendBounds)];
+                    case 11:
+                        _a.sent();
+                        return [3 /*break*/, 14];
+                    case 12: return [4 /*yield*/, renderBorderSide(state, border.color, border.width, side, border.style, paint.curves)];
+                    case 13:
+                        _a.sent();
+                        _a.label = 14;
+                    case 14:
+                        side++;
+                        _a.label = 15;
+                    case 15:
+                        _i++;
+                        return [3 /*break*/, 10];
+                    case 16: return [2 /*return*/];
+                }
+            });
+        });
+    }
+    /**
+     * True when all four borders are solid, visible, and share the same colour and
+     * width — the case a browser paints as one continuous ring. Only then is it safe
+     * to replace the four per-side fills with a single ring fill.
+     */
+    function _isUniformSolidBorder(borders) {
+        var top = borders[0], right = borders[1], bottom = borders[2], left = borders[3];
+        return (top.style === 1 /* BORDER_STYLE.SOLID */ &&
+            right.style === 1 /* BORDER_STYLE.SOLID */ &&
+            bottom.style === 1 /* BORDER_STYLE.SOLID */ &&
+            left.style === 1 /* BORDER_STYLE.SOLID */ &&
+            top.width > 0 &&
+            right.width > 0 &&
+            bottom.width > 0 &&
+            left.width > 0 &&
+            !isTransparent(top.color) &&
+            top.color === right.color &&
+            top.color === bottom.color &&
+            top.color === left.color &&
+            top.width === right.width &&
+            top.width === bottom.width &&
+            top.width === left.width);
+    }
+    // ---------------------------------------------------------------------------
+    // Fieldset top-border with legend gap
+    // ---------------------------------------------------------------------------
+    /**
+     * Renders the top border of a <fieldset> with a gap punched out where the
+     * <legend> sits, matching how browsers wrap the border around the legend.
+     *
+     * Strategy: apply an even-odd clip built from two rects — the full canvas area
+     * (outer) and the legend gap (inner). The evenodd fill rule turns the inner rect
+     * into a hole, so the border paints everywhere except behind the legend. The clip
+     * is scoped by ctx.save()/ctx.restore() so it does not affect subsequent drawing.
+     */
+    function _renderFieldsetTopBorder(state, paint, border, legendBounds) {
+        return __awaiter(this, void 0, void 0, function () {
+            var ctx, scale, borderTopY, gap, gapLeft, gapWidth, gapTop, gapHeight, pageW, pageH, outerLeft, outerTop;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        ctx = state.ctx;
+                        scale = state.options.scale;
+                        borderTopY = legendBounds.top + legendBounds.height / 2 - border.width / 2;
+                        gap = border.width / 2;
+                        gapLeft = legendBounds.left - gap;
+                        gapWidth = legendBounds.width + gap * 2;
+                        gapTop = borderTopY - 1;
+                        gapHeight = border.width + 2;
+                        pageW = state.canvas.width / scale;
+                        pageH = state.canvas.height / scale;
+                        outerLeft = state.options.x - 1;
+                        outerTop = state.options.y - 1;
+                        ctx.save();
+                        // Build an even-odd clip with two rects: the full canvas area (outer) and the
+                        // legend gap (inner). With the evenodd fill rule the inner rect becomes a hole,
+                        // so the border is drawn everywhere except behind the legend. We use the direct
+                        // ctx.beginPath()/ctx.rect() path API (a Path2D-based clip did not behave
+                        // consistently across Chromium versions here).
+                        ctx.beginPath();
+                        ctx.rect(outerLeft, outerTop, pageW + 2, pageH + 2);
+                        ctx.rect(gapLeft, gapTop, gapWidth, gapHeight);
+                        ctx.clip('evenodd');
+                        return [4 /*yield*/, renderBorderSide(state, border.color, border.width, 0, border.style, paint.curves)];
+                    case 1:
+                        _a.sent();
+                        ctx.restore();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+
+    var calculateObjectFitBounds = function (objectFit, naturalWidth, naturalHeight, clientWidth, clientHeight, objectPositionX, objectPositionY) {
+        if (objectPositionX === void 0) { objectPositionX = 0.5; }
+        if (objectPositionY === void 0) { objectPositionY = 0.5; }
+        var naturalRatio = naturalWidth / naturalHeight;
+        var clientRatio = clientWidth / clientHeight;
+        var srcX, srcY, srcWidth, srcHeight, destX, destY, destWidth, destHeight;
+        if (objectFit === "scale-down" /* OBJECT_FIT.SCALE_DOWN */) {
+            objectFit =
+                naturalWidth < clientWidth && naturalHeight < clientHeight
+                    ? "none" /* OBJECT_FIT.NONE */
+                    : "contain" /* OBJECT_FIT.CONTAIN */; // at least one axis is greater or equal in size
+        }
+        switch (objectFit) {
+            case "contain" /* OBJECT_FIT.CONTAIN */:
+                srcX = 0;
+                srcY = 0;
+                srcWidth = naturalWidth;
+                srcHeight = naturalHeight;
+                if (naturalRatio < clientRatio) {
+                    // snap to top/bottom
+                    destY = 0;
+                    destHeight = clientHeight;
+                    destWidth = destHeight * naturalRatio;
+                    destX = (clientWidth - destWidth) * objectPositionX;
+                }
+                else {
+                    // snap to left/right
+                    destX = 0;
+                    destWidth = clientWidth;
+                    destHeight = destWidth / naturalRatio;
+                    destY = (clientHeight - destHeight) * objectPositionY;
+                }
+                break;
+            case "cover" /* OBJECT_FIT.COVER */:
+                destX = 0;
+                destY = 0;
+                destWidth = clientWidth;
+                destHeight = clientHeight;
+                if (naturalRatio < clientRatio) {
+                    // fill left/right
+                    srcX = 0;
+                    srcWidth = naturalWidth;
+                    srcHeight = clientHeight * (naturalWidth / clientWidth);
+                    srcY = (naturalHeight - srcHeight) * objectPositionY;
+                }
+                else {
+                    // fill top/bottom
+                    srcY = 0;
+                    srcHeight = naturalHeight;
+                    srcWidth = clientWidth * (naturalHeight / clientHeight);
+                    srcX = (naturalWidth - srcWidth) * objectPositionX;
+                }
+                break;
+            case "none" /* OBJECT_FIT.NONE */:
+                if (naturalWidth < clientWidth) {
+                    srcX = 0;
+                    srcWidth = naturalWidth;
+                    destX = (clientWidth - naturalWidth) * objectPositionX;
+                    destWidth = naturalWidth;
+                }
+                else {
+                    srcX = (naturalWidth - clientWidth) * objectPositionX;
+                    srcWidth = clientWidth;
+                    destX = 0;
+                    destWidth = clientWidth;
+                }
+                if (naturalHeight < clientHeight) {
+                    srcY = 0;
+                    srcHeight = naturalHeight;
+                    destY = (clientHeight - naturalHeight) * objectPositionY;
+                    destHeight = naturalHeight;
+                }
+                else {
+                    srcY = (naturalHeight - clientHeight) * objectPositionY;
+                    srcHeight = clientHeight;
+                    destY = 0;
+                    destHeight = clientHeight;
+                }
+                break;
+            case "fill" /* OBJECT_FIT.FILL */:
+            default:
+                srcX = 0;
+                srcY = 0;
+                srcWidth = naturalWidth;
+                srcHeight = naturalHeight;
+                destX = 0;
+                destY = 0;
+                destWidth = clientWidth;
+                destHeight = clientHeight;
+                break;
+        }
+        return {
+            src: new Bounds(srcX, srcY, srcWidth, srcHeight),
+            dest: new Bounds(destX, destY, destWidth, destHeight),
+        };
+    };
+
+    // ---------------------------------------------------------------------------
+    // Replaced elements (img, canvas, svg, iframe handled separately in orchestrator)
+    // ---------------------------------------------------------------------------
+    function renderReplacedElement(state, container, curves, image) {
+        var _a;
+        if (image) {
+            var isContainerWSizes = container.intrinsicWidth > 0 && container.intrinsicHeight > 0;
+            var isSVGContainer = container instanceof SVGElementContainer || (container instanceof ImageElementContainer && container.isSVG);
+            if (isContainerWSizes || isSVGContainer) {
+                var box = contentBox(container);
+                var path = calculatePaddingBoxPath(curves);
+                canvasPath(state, path);
+                var _b = calculateObjectFitBounds(container.styles.objectFit, container.intrinsicWidth, container.intrinsicHeight, box.width, box.height, getAbsoluteValue(container.styles.objectPosition[0], box.width) / box.width, getAbsoluteValue((_a = container.styles.objectPosition[1]) !== null && _a !== void 0 ? _a : container.styles.objectPosition[0], box.height) /
+                    box.height), src = _b.src, dest = _b.dest;
+                state.ctx.save();
+                state.ctx.clip();
+                // Honour the element's image-rendering (unless forceImageQuality
+                // overrides it). Scoped to this save()/restore() so it does not leak
+                // to sibling elements.
+                var smoothing = resolveImageSmoothing(state, container.styles.imageRendering);
+                state.ctx.imageSmoothingEnabled = smoothing.enabled;
+                state.ctx.imageSmoothingQuality = smoothing.quality;
+                if (isContainerWSizes) {
+                    state.ctx.drawImage(image, src.left, src.top, src.width, src.height, box.left + dest.left, box.top + dest.top, dest.width, dest.height);
+                }
+                else {
+                    // As usual it won't work in FF. https://bugzilla.mozilla.org/show_bug.cgi?id=700533
+                    state.ctx.drawImage(image, box.left, box.top, box.width, box.height);
+                }
+                state.ctx.restore();
+            }
+        }
+    }
+    // ---------------------------------------------------------------------------
+    // Checkbox / Radio / Range
+    // ---------------------------------------------------------------------------
+    function renderCheckbox(state, container) {
+        if (!container.checked)
+            return;
+        var bounds = container.bounds;
+        var size = Math.min(bounds.width, bounds.height);
+        state.ctx.save();
+        canvasPath(state, [
+            new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
+            new Vector(bounds.left + size * 0.16, bounds.top + size * 0.5549),
+            new Vector(bounds.left + size * 0.27347, bounds.top + size * 0.44071),
+            new Vector(bounds.left + size * 0.39694, bounds.top + size * 0.5649),
+            new Vector(bounds.left + size * 0.72983, bounds.top + size * 0.23),
+            new Vector(bounds.left + size * 0.84, bounds.top + size * 0.34085),
+            new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
+        ]);
+        state.ctx.fillStyle = asString(INPUT_COLOR);
+        state.ctx.fill();
+        state.ctx.restore();
+    }
+    function renderRadio(state, container) {
+        if (!container.checked)
+            return;
+        var bounds = container.bounds;
+        var size = Math.min(bounds.width, bounds.height);
+        state.ctx.save();
+        state.ctx.beginPath();
+        state.ctx.arc(bounds.left + size / 2, bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
+        state.ctx.fillStyle = asString(INPUT_COLOR);
+        state.ctx.fill();
+        state.ctx.restore();
+    }
+    function renderRange(state, container) {
+        var bounds = container.bounds;
+        var ratio = container.max > container.min ? (container.valueAsNumber - container.min) / (container.max - container.min) : 0;
+        var isHorizontal = bounds.width >= bounds.height;
+        var trackThickness = 4;
+        var thumbRadius = Math.min(bounds.width, bounds.height) * 0.35;
+        state.ctx.save();
+        if (isHorizontal) {
+            // Track
+            var trackY = bounds.top + bounds.height / 2 - trackThickness / 2;
+            var trackLeft = bounds.left + thumbRadius;
+            var trackWidth = bounds.width - thumbRadius * 2;
+            state.ctx.fillStyle = '#c0c0c0';
+            state.ctx.fillRect(trackLeft, trackY, trackWidth, trackThickness);
+            // Filled portion
+            state.ctx.fillStyle = '#0075ff';
+            state.ctx.fillRect(trackLeft, trackY, trackWidth * ratio, trackThickness);
+            // Thumb
+            var thumbX = trackLeft + trackWidth * ratio;
+            var thumbY = bounds.top + bounds.height / 2;
+            state.ctx.beginPath();
+            state.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+            state.ctx.fillStyle = '#ffffff';
+            state.ctx.fill();
+            state.ctx.strokeStyle = '#0075ff';
+            state.ctx.lineWidth = 2;
+            state.ctx.stroke();
+        }
+        else {
+            // Vertical track
+            var trackX = bounds.left + bounds.width / 2 - trackThickness / 2;
+            var trackTop = bounds.top + thumbRadius;
+            var trackHeight = bounds.height - thumbRadius * 2;
+            state.ctx.fillStyle = '#c0c0c0';
+            state.ctx.fillRect(trackX, trackTop, trackThickness, trackHeight);
+            // Filled portion (bottom to value)
+            var filledHeight = trackHeight * ratio;
+            state.ctx.fillStyle = '#0075ff';
+            state.ctx.fillRect(trackX, trackTop + trackHeight - filledHeight, trackThickness, filledHeight);
+            // Thumb
+            var thumbX = bounds.left + bounds.width / 2;
+            var thumbY = trackTop + trackHeight * (1 - ratio);
+            state.ctx.beginPath();
+            state.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
+            state.ctx.fillStyle = '#ffffff';
+            state.ctx.fill();
+            state.ctx.strokeStyle = '#0075ff';
+            state.ctx.lineWidth = 2;
+            state.ctx.stroke();
+        }
+        state.ctx.restore();
+    }
+    // ---------------------------------------------------------------------------
+    // Progress / Meter
+    // ---------------------------------------------------------------------------
+    function renderProgress(state, container) {
+        var bounds = container.bounds;
+        var ratio = container.ratio;
+        var borderRadius = Math.min(bounds.height / 2, 4);
+        state.ctx.save();
+        state.ctx.beginPath();
+        state.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+        state.ctx.fillStyle = '#e6e6e6';
+        state.ctx.fill();
+        if (ratio > 0) {
+            var fillWidth = bounds.width * ratio;
+            state.ctx.beginPath();
+            state.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+            state.ctx.fillStyle = '#0075ff';
+            state.ctx.fill();
+        }
+        state.ctx.restore();
+    }
+    function renderMeter(state, container) {
+        var bounds = container.bounds;
+        var ratio = container.ratio;
+        var state2 = container.state;
+        var borderRadius = Math.min(bounds.height / 2, 4);
+        var fillColor;
+        switch (state2) {
+            case 0 /* METER_STATE.OPTIMUM */:
+                fillColor = '#30b030';
+                break;
+            case 1 /* METER_STATE.SUBOPTIMUM */:
+                fillColor = '#daa520';
+                break;
+            case 2 /* METER_STATE.CRITICAL */:
+            default:
+                fillColor = '#e04040';
+                break;
+        }
+        state.ctx.save();
+        state.ctx.beginPath();
+        state.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
+        state.ctx.fillStyle = '#e6e6e6';
+        state.ctx.fill();
+        if (ratio > 0) {
+            var fillWidth = bounds.width * ratio;
+            state.ctx.beginPath();
+            state.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
+            state.ctx.fillStyle = fillColor;
+            state.ctx.fill();
+        }
+        state.ctx.restore();
+    }
+    // ---------------------------------------------------------------------------
+    // Text input elements (input, textarea, select)
+    // ---------------------------------------------------------------------------
+    var canvasTextAlign = function (textAlign) {
+        switch (textAlign) {
+            case 1 /* TEXT_ALIGN.CENTER */:
+                return 'center';
+            case 2 /* TEXT_ALIGN.RIGHT */:
+                return 'right';
+            case 0 /* TEXT_ALIGN.LEFT */:
+            default:
+                return 'left';
+        }
+    };
+    var isTextInputElement = function (container) {
+        if (container instanceof TextareaElementContainer) {
+            return true;
+        }
+        else if (container instanceof SelectElementContainer) {
+            return true;
+        }
+        else if (container instanceof InputElementContainer &&
+            container.type !== RADIO &&
+            container.type !== CHECKBOX &&
+            container.type !== RANGE) {
+            return true;
+        }
+        return false;
+    };
+    function renderTextInputElement(state, container, styles) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, font, fontFamily, fontSize, baseline, isPlaceholder, phStyles, parts, bounds;
+            var _b, _c;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        _a = createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
+                        baseline = state.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
+                        state.ctx.font = font;
+                        isPlaceholder = (container instanceof InputElementContainer || container instanceof TextareaElementContainer) &&
+                            container.isPlaceholder;
+                        phStyles = isPlaceholder
+                            ? container.placeholderStyles
+                            : null;
+                        if (phStyles) {
+                            // Color
+                            state.ctx.fillStyle = (_b = phStyles['color']) !== null && _b !== void 0 ? _b : asString(styles.color);
+                            // Opacity
+                            if (phStyles['opacity']) {
+                                state.ctx.globalAlpha = parseFloat(phStyles['opacity']);
+                            }
+                            // Font-weight / font-style: rebuild font string with overrides
+                            if (phStyles['font-weight'] || phStyles['font-style']) {
+                                parts = font.split(' ');
+                                // font string format: "style variant weight size family"
+                                if (phStyles['font-style'])
+                                    parts[0] = phStyles['font-style'];
+                                if (phStyles['font-weight'])
+                                    parts[2] = phStyles['font-weight'];
+                                state.ctx.font = parts.join(' ');
+                            }
+                        }
+                        else {
+                            state.ctx.fillStyle = asString(styles.color);
+                        }
+                        state.ctx.textBaseline = 'alphabetic';
+                        state.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
+                        bounds = contentBox(container);
+                        // Draw placeholder background-color behind the text area if specified.
+                        if ((phStyles === null || phStyles === void 0 ? void 0 : phStyles['background-color']) && phStyles['background-color'] !== 'rgba(0, 0, 0, 0)') {
+                            state.ctx.save();
+                            state.ctx.fillStyle = phStyles['background-color'];
+                            state.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
+                            state.ctx.restore();
+                            // Restore text fillStyle after drawing background.
+                            state.ctx.fillStyle = (_c = phStyles['color']) !== null && _c !== void 0 ? _c : asString(styles.color);
+                        }
+                        state.ctx.save();
+                        canvasPath(state, [
+                            new Vector(bounds.left, bounds.top),
+                            new Vector(bounds.left + bounds.width, bounds.top),
+                            new Vector(bounds.left + bounds.width, bounds.top + bounds.height),
+                            new Vector(bounds.left, bounds.top + bounds.height),
+                        ]);
+                        state.ctx.clip();
+                        if (!(container instanceof TextareaElementContainer)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, _renderTextarea(state, container, styles, bounds, baseline)];
+                    case 1:
+                        _d.sent();
+                        return [3 /*break*/, 3];
+                    case 2:
+                        if (container instanceof SelectElementContainer && container.isListBox) {
+                            // The parser no longer descends into <option> children (see parseNodeTree),
+                            // so the list-box content is drawn solely here, consistently across engines.
+                            _renderListBoxSelect(state, container, styles, bounds);
+                        }
+                        else {
+                            _renderSingleLineInput(state, container, styles, bounds);
+                        }
+                        _d.label = 3;
+                    case 3:
+                        state.ctx.restore();
+                        state.ctx.textBaseline = 'alphabetic';
+                        state.ctx.textAlign = 'left';
+                        // Restore globalAlpha if it was changed for ::placeholder opacity.
+                        if (phStyles === null || phStyles === void 0 ? void 0 : phStyles['opacity']) {
+                            state.ctx.globalAlpha = 1;
+                        }
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    function _renderTextarea(state, container, styles, bounds, baseline, _fontFamily, _fontSize) {
+        return __awaiter(this, void 0, void 0, function () {
+            var fontSizeNumber, lineHeight, scrollTop, xOffset, originX, letterSpacing, measureWidth, wrapParagraph, paragraphs, wrappedLines, _i, paragraphs_1, paragraph, _a, _b, line;
+            var _c;
+            return __generator(this, function (_d) {
+                fontSizeNumber = getNumber(styles.fontSize);
+                lineHeight = computeLineHeight(styles.lineHeight, fontSizeNumber);
+                scrollTop = (_c = container.scrollTop) !== null && _c !== void 0 ? _c : 0;
+                xOffset = 0;
+                switch (container.styles.textAlign) {
+                    case 1 /* TEXT_ALIGN.CENTER */:
+                        xOffset = bounds.width / 2;
+                        break;
+                    case 2 /* TEXT_ALIGN.RIGHT */:
+                        xOffset = bounds.width;
+                        break;
+                }
+                originX = bounds.left + xOffset;
+                letterSpacing = styles.letterSpacing;
+                measureWidth = function (text) {
+                    if (letterSpacing !== 0 && text.length > 0) {
+                        var graphemeCount = segmentGraphemes(text).length;
+                        // Measure the full string at once so that kerning between
+                        // character pairs is accounted for (ctx.measureText on a single
+                        // glyph misses kerning with its neighbours).  Then add
+                        // letter-spacing gaps: (n-1) gaps because the browser does not
+                        // count trailing letter-spacing in the wrap budget.
+                        var glyphsWidth = state.ctx.measureText(text).width / state.options.scale;
+                        return glyphsWidth + (letterSpacing - 1) * (graphemeCount - 1);
+                    }
+                    return state.ctx.measureText(text).width / state.options.scale;
+                };
+                wrapParagraph = function (paragraph, maxWidth) {
+                    var _a, _b;
+                    var lines = [];
+                    // Helper: break a single unsplittable chunk character-by-character.
+                    var breakChunk = function (chunk) {
+                        var graphemes = segmentGraphemes(chunk);
+                        var current = '';
+                        for (var _i = 0, graphemes_1 = graphemes; _i < graphemes_1.length; _i++) {
+                            var g = graphemes_1[_i];
+                            var candidate = current + g;
+                            if (current.length > 0 && measureWidth(candidate) > maxWidth) {
+                                lines.push(current);
+                                current = g;
+                            }
+                            else {
+                                current = candidate;
+                            }
+                        }
+                        if (current.length > 0) {
+                            lines.push(current);
+                        }
+                    };
+                    // Tokenise on whitespace AND after hyphens so that hyphenated
+                    // compounds ("many-manymany") can break after the dash, matching
+                    // the browser's default line-breaking behaviour for textareas.
+                    var tokens = paragraph.split(/(\s+|(?<=-+))/);
+                    var currentLine = '';
+                    for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+                        var token = tokens_1[_i];
+                        if (token === '')
+                            continue;
+                        var candidate = currentLine + token;
+                        if (currentLine.length > 0 && measureWidth(candidate) > maxWidth) {
+                            lines.push(currentLine);
+                            var trimmed = token.trimStart();
+                            if (trimmed.length > 0 && measureWidth(trimmed) > maxWidth) {
+                                breakChunk(trimmed);
+                                currentLine = (_a = lines.pop()) !== null && _a !== void 0 ? _a : '';
+                            }
+                            else {
+                                currentLine = trimmed;
+                            }
+                        }
+                        else {
+                            if (currentLine.length === 0 && measureWidth(token.trimStart()) > maxWidth) {
+                                var trimmed = token.trimStart();
+                                breakChunk(trimmed);
+                                currentLine = (_b = lines.pop()) !== null && _b !== void 0 ? _b : '';
+                            }
+                            else {
+                                currentLine = candidate;
+                            }
+                        }
+                    }
+                    if (currentLine.length > 0) {
+                        lines.push(currentLine);
+                    }
+                    return lines;
+                };
+                paragraphs = container.value.split('\n');
+                wrappedLines = [];
+                for (_i = 0, paragraphs_1 = paragraphs; _i < paragraphs_1.length; _i++) {
+                    paragraph = paragraphs_1[_i];
+                    if (paragraph.length === 0) {
+                        // Preserve blank lines produced by consecutive newlines.
+                        wrappedLines.push('');
+                        continue;
+                    }
+                    for (_a = 0, _b = wrapParagraph(paragraph, bounds.width); _a < _b.length; _a++) {
+                        line = _b[_a];
+                        wrappedLines.push(line);
+                    }
+                }
+                wrappedLines.forEach(function (line, index) {
+                    var lineTop = index * lineHeight - scrollTop;
+                    // Skip lines that are completely outside the content box.
+                    if (lineTop + lineHeight < 0 || lineTop > bounds.height) {
+                        return;
+                    }
+                    var lineBounds = new Bounds(originX, bounds.top + lineTop, bounds.width, lineHeight);
+                    renderTextWithLetterSpacing(state, new TextBounds(line, lineBounds), styles.letterSpacing, baseline);
+                });
+                return [2 /*return*/];
+            });
+        });
+    }
+    function _renderSingleLineInput(state, container, styles, bounds, _baseline) {
+        var x = 0;
+        switch (container.styles.textAlign) {
+            case 1 /* TEXT_ALIGN.CENTER */:
+                x += bounds.width / 2;
+                break;
+            case 2 /* TEXT_ALIGN.RIGHT */:
+                x += bounds.width;
+                break;
+        }
+        // Draw text using textBaseline='middle' centred in the padding-box.
+        // We bypass renderTextWithLetterSpacing because its 'ideographic' baseline
+        // mode (Chromium) positions the text too high in small input elements,
+        // causing the ascenders to be clipped by the overflow:hidden clip that
+        // Chromium applies to <input> elements by default.
+        var pBounds = paddingBox(container);
+        state.ctx.textBaseline = 'middle';
+        var midY = pBounds.top + pBounds.height / 2 + 1;
+        var startX = bounds.left + x;
+        drawTextWithLetterSpacing(state.ctx, container.value, startX, midY, styles.letterSpacing);
+    }
+    /**
+     * Renders a multi-line list-box `<select>` (i.e. `multiple` or `size > 1`):
+     * one option per line, with selected options drawn on a highlight background.
+     *
+     * The highlight colour approximates the browser default selection colour; the
+     * text colour on a selected row switches to white for contrast, matching how
+     * browsers paint selected list-box rows.
+     */
+    function _renderListBoxSelect(state, container, styles, bounds, baseline) {
+        var _a;
+        var textColor = asString(styles.color);
+        // Default browser highlight for selected list-box rows (Chromium's is a blue
+        // similar to #0069d9 / rgb(0,105,217)); white text keeps contrast.
+        var HIGHLIGHT_BG = 'rgb(0, 105, 217)';
+        var HIGHLIGHT_TEXT = 'rgb(255, 255, 255)';
+        var xOffset = 0;
+        switch (container.styles.textAlign) {
+            case 1 /* TEXT_ALIGN.CENTER */:
+                xOffset = bounds.width / 2;
+                break;
+            case 2 /* TEXT_ALIGN.RIGHT */:
+                xOffset = bounds.width;
+                break;
+        }
+        var originX = bounds.left + xOffset;
+        // The browser auto-scrolls the list so the selected option is visible; apply
+        // the same offset so we render the same visible slice of options.
+        var scrollTop = (_a = container.scrollTop) !== null && _a !== void 0 ? _a : 0;
+        // Position rows relative to the FIRST option rather than using each option's
+        // absolute offsetTop added to the border box. offsetTop is measured from the
+        // select's border box and includes an internal UA gap (~10px on Chromium)
+        // that the browser absorbs when laying out the visible rows, so adding it to
+        // the border-box top pushes every row down by that gap and overflows the box.
+        // Anchoring the first option to the content-box top and spacing subsequent
+        // rows by their offsetTop delta reproduces the native layout on both engines.
+        var firstOffsetTop = container.options.length > 0 ? container.options[0].offsetTop : 0;
+        var rowsOrigin = bounds.top;
+        var clipTop = bounds.top;
+        var clipBottom = bounds.top + bounds.height;
+        // Draw option text with textBaseline='middle' centred in each row. This
+        // bypasses renderTextWithLetterSpacing's engine-specific baseline handling
+        // (ideographic on Chromium, measured baseline on Firefox) which caused the
+        // text to drift relative to the row in Firefox. Centering on the row's
+        // vertical middle places the text correctly on both engines.
+        var startX = originX;
+        var previousBaseline = state.ctx.textBaseline;
+        container.options.forEach(function (option) {
+            var rowTop = rowsOrigin + (option.offsetTop - firstOffsetTop) - scrollTop;
+            var rowHeight = option.offsetHeight;
+            // Skip rows fully outside the content box.
+            if (rowTop + rowHeight < clipTop || rowTop > clipBottom) {
+                return;
+            }
+            if (option.selected) {
+                state.ctx.save();
+                state.ctx.fillStyle = HIGHLIGHT_BG;
+                state.ctx.fillRect(bounds.left, rowTop, bounds.width, rowHeight);
+                state.ctx.restore();
+            }
+            state.ctx.fillStyle = option.selected ? HIGHLIGHT_TEXT : textColor;
+            state.ctx.textBaseline = 'middle';
+            var midY = rowTop + rowHeight / 2 + 1;
+            drawTextWithLetterSpacing(state.ctx, option.text, startX, midY, styles.letterSpacing);
+        });
+        state.ctx.textBaseline = previousBaseline;
+    }
+    // ---------------------------------------------------------------------------
+    // List markers
+    // ---------------------------------------------------------------------------
+    function renderListMarker(state, paint, styles) {
+        return __awaiter(this, void 0, void 0, function () {
+            var container, fontFamily, wm, isVerticalList, markerStyles, _a, itemFontFamily, itemFontSize, markerFontFamily, markerFontSize, markerFont, markerFontMetrics;
+            var _b, _c;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        container = paint.container;
+                        if (!contains(container.styles.display, 2048 /* DISPLAY.LIST_ITEM */))
+                            return [2 /*return*/];
+                        if (!(!paint.listValue || container.styles.listStyleType === -1 /* LIST_STYLE_TYPE.NONE */)) return [3 /*break*/, 3];
+                        if (!(container.styles.listStyleImage !== null)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, _renderListStyleImage(state, container, styles)];
+                    case 1:
+                        _d.sent();
+                        _d.label = 2;
+                    case 2: return [2 /*return*/];
+                    case 3:
+                        if (!(container.styles.listStyleImage !== null)) return [3 /*break*/, 5];
+                        return [4 /*yield*/, _renderListStyleImage(state, container, styles)];
+                    case 4:
+                        _d.sent();
+                        return [2 /*return*/];
+                    case 5:
+                        fontFamily = createFontStyle(styles)[0];
+                        wm = styles.writingMode;
+                        isVerticalList = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
+                            wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
+                            wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
+                            wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+                        markerStyles = container instanceof LIElementContainer ? container.markerStyles : null;
+                        _a = createFontStyle(styles), itemFontFamily = _a[1], itemFontSize = _a[2];
+                        markerFontFamily = (markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['font-family'])
+                            ? fontFamily.replace(/("[^"]+"|[^,\s]+)(\s*,\s*("[^"]+"|[^,\s]+))*/, markerStyles['font-family'])
+                            : fontFamily;
+                        markerFontSize = (_b = markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['font-size']) !== null && _b !== void 0 ? _b : itemFontSize;
+                        markerFont = markerFontFamily.replace(itemFontSize, markerFontSize);
+                        state.ctx.font = markerFont;
+                        state.ctx.fillStyle = (_c = markerStyles === null || markerStyles === void 0 ? void 0 : markerStyles['color']) !== null && _c !== void 0 ? _c : asString(styles.color);
+                        markerFontMetrics = { fontFamily: itemFontFamily, fontSize: markerFontSize };
+                        if (isVerticalList && container.styles.listStylePosition === 1 /* LIST_STYLE_POSITION.OUTSIDE */) {
+                            _renderVerticalListMarkerOutside(state, paint, styles, wm);
+                        }
+                        else if (isVerticalList && container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
+                            _renderVerticalListMarkerInside(state, paint, styles, wm);
+                        }
+                        else {
+                            _renderHorizontalListMarker(state, paint, styles, markerFontMetrics);
+                        }
+                        state.ctx.textBaseline = 'bottom';
+                        state.ctx.textAlign = 'left';
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    function _renderListStyleImage(state, container, styles) {
+        return __awaiter(this, void 0, void 0, function () {
+            var img, url, image, e_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        img = container.styles.listStyleImage;
+                        if (!img)
+                            return [2 /*return*/];
+                        if (!(img.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
+                        url = img.url;
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, state.context.cache.match(url)];
+                    case 2:
+                        image = _a.sent();
+                        state.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
+                        return [3 /*break*/, 4];
+                    case 3:
+                        e_1 = _a.sent();
+                        state.context.error("Error loading list-style-image ".concat(url), e_1);
+                        return [3 /*break*/, 4];
+                    case 4: return [2 /*return*/];
+                    case 5:
+                        if (isLinearGradient(img) || isRepeatingLinearGradient(img)) {
+                            _renderListStyleGradientImage(state, container, styles, img);
+                        }
+                        return [2 /*return*/];
+                }
+            });
+        });
+    }
+    // A gradient list-style-image is painted into a small square (~1em) placed like
+    // the marker: at the start of the content for `inside`, or to the left of it for
+    // `outside`. Only linear gradients are handled; other image types fall back to
+    // the normal marker/text rendering.
+    var LIST_MARKER_IMAGE_SCALE = 0.44;
+    function _renderListStyleGradientImage(state, container, styles, img) {
+        // Chromium draws a gradient list marker in a small square roughly 0.44em wide
+        // (about 7px at a 16px font size), not a full 1em box.
+        var fontSize = getNumber(styles.fontSize);
+        var size = Math.round(fontSize * LIST_MARKER_IMAGE_SCALE);
+        if (size <= 0)
+            return;
+        var _a = calculateGradientDirection(img.angle, size, size), lineLength = _a[0], x0 = _a[1], x1 = _a[2], y0 = _a[3], y1 = _a[4];
+        var stops = processColorStops(img.stops, lineLength || 1);
+        var key = "list-lin|".concat(x0, ",").concat(y0, ",").concat(x1, ",").concat(y1, "|").concat(stops.map(function (s) { return "".concat(s.color, "@").concat(s.stop); }).join(','), "|").concat(size, "x").concat(size);
+        var gradientCanvas = getLinearGradientCanvas(state, key, size, size, function (gCtx, w, h) {
+            var gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+            stops.forEach(function (colorStop) {
+                return gradient.addColorStop(Math.max(0, Math.min(1, colorStop.stop)), asString(colorStop.color));
+            });
+            gCtx.fillStyle = gradient;
+            gCtx.fillRect(0, 0, w, h);
+        });
+        // Vertical placement: center the small square on the first text line box.
+        var firstLineBox = _firstTextLineBox(container);
+        var lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+        var lineTop = firstLineBox !== null
+            ? firstLineBox.top
+            : container.bounds.top +
+                getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
+                Math.max(0, lineHeight - fontSize) / 2;
+        var lineBoxHeight = firstLineBox !== null ? firstLineBox.height : fontSize;
+        var boxTop = Math.round(lineTop + (lineBoxHeight - size) / 2);
+        var boxLeft;
+        if (container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
+            var paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+            boxLeft = container.bounds.left + paddingLeft;
+        }
+        else {
+            // Outside: to the left of the content box, with a small gap.
+            boxLeft = container.bounds.left - size - Math.round(size * 0.35);
+        }
+        state.ctx.drawImage(gradientCanvas, boxLeft, boxTop);
+    }
+    function _renderVerticalListMarkerOutside(state, paint, styles, wm) {
+        var container = paint.container;
+        var fontSize = getNumber(styles.fontSize);
+        var isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+        var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+        // First column center x = container.left + paddingLeft + fontSize/2
+        var markerX = container.bounds.left + getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) + fontSize / 2;
+        // Inline-start differs by writing mode:
+        //   sideways-lr: inline-start is bottom → marker below content
+        //   vertical-rl/lr, sideways-rl: inline-start is top → marker above content
+        var markerY;
+        if (isSidewaysLR) {
+            markerY = container.bounds.top + container.bounds.height + fontSize;
+        }
+        else {
+            markerY = container.bounds.top - fontSize / 2;
+        }
+        state.ctx.save();
+        state.ctx.translate(markerX, markerY);
+        state.ctx.rotate(angle);
+        state.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+        state.ctx.textAlign = 'center';
+        state.ctx.fillText(paint.listValue, 0, 0);
+        state.ctx.restore();
+    }
+    function _renderVerticalListMarkerInside(state, paint, styles, wm) {
+        var container = paint.container;
+        var fontSize = getNumber(styles.fontSize);
+        var isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
+        var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
+        var markerX = container.bounds.left + getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) + fontSize / 2;
+        var markerY;
+        if (isSidewaysLR) {
+            // sideways-lr: text goes bottom→top, so inline-start = bottom of content
+            markerY =
+                container.bounds.top +
+                    container.bounds.height -
+                    getAbsoluteValue(container.styles.paddingBottom, container.bounds.height) -
+                    fontSize / 2;
+        }
+        else {
+            // vertical-rl/lr: text goes top→bottom, so inline-start = top of content
+            markerY =
+                container.bounds.top +
+                    getAbsoluteValue(container.styles.paddingTop, container.bounds.height) +
+                    fontSize / 2;
+        }
+        state.ctx.save();
+        state.ctx.translate(markerX, markerY);
+        state.ctx.rotate(angle);
+        state.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
+        state.ctx.textAlign = 'right';
+        state.ctx.fillText(paint.listValue, 0, 0);
+        state.ctx.restore();
+    }
+    /**
+     * Returns the first text line box (top + height) inside the list item, searching
+     * its own text nodes first, then descendants in tree order, or null when the item
+     * has no text content. Used to align the marker with the first line exactly the
+     * same way the text renderer positions that line.
+     */
+    function _firstTextLineBox(container) {
+        var box = null;
+        for (var _i = 0, _a = container.textNodes; _i < _a.length; _i++) {
+            var textNode = _a[_i];
+            for (var _b = 0, _c = textNode.textBounds; _b < _c.length; _b++) {
+                var textBound = _c[_b];
+                if (textBound.text.trim().length && (box === null || textBound.bounds.top < box.top)) {
+                    box = { top: textBound.bounds.top, height: textBound.bounds.height };
+                }
+            }
+        }
+        if (box !== null)
+            return box;
+        for (var _d = 0, _e = container.elements; _d < _e.length; _d++) {
+            var child = _e[_d];
+            var childBox = _firstTextLineBox(child);
+            if (childBox !== null && (box === null || childBox.top < box.top)) {
+                box = childBox;
+            }
+        }
+        return box;
+    }
+    function _renderHorizontalListMarker(state, paint, styles, markerFont) {
+        var container = paint.container;
+        var _a = createFontStyle(styles), itemFontFamily = _a[1], itemFontSize = _a[2];
+        // A ::marker font-size that differs from the item's means the marker glyph is
+        // scaled but still sits on the item's first-line baseline. In that case align
+        // by baseline (alphabetic) rather than by the item line-box bottom.
+        var markerHasOwnSize = markerFont.fontSize !== itemFontSize;
+        // Align the marker with the first line of the item's text using the same
+        // positioning strategy as the text renderer, so there is no vertical drift.
+        // The text renderer, in the common (non-Firefox, no letter-spacing) path, uses
+        // textBaseline 'ideographic' at bounds.top + bounds.height; otherwise
+        // 'alphabetic' at bounds.top + baseline. A differently-sized marker must use
+        // the baseline path so its larger/smaller glyph grows around the same baseline.
+        var useIdeographic = !state.isFirefox && !markerHasOwnSize;
+        var baseline = state.fontMetrics.getMetrics(itemFontFamily, itemFontSize).baseline;
+        var firstLineBox = _firstTextLineBox(container);
+        var markerY;
+        if (firstLineBox !== null) {
+            markerY = useIdeographic ? firstLineBox.top + firstLineBox.height : firstLineBox.top + baseline;
+        }
+        else {
+            // No text content: reconstruct the first line box from padding + leading.
+            var lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
+            var leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
+            var lineTop = container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width) + leading / 2;
+            markerY = useIdeographic ? lineTop + lineHeight - leading / 2 : lineTop + baseline;
+        }
+        state.ctx.textBaseline = useIdeographic ? 'ideographic' : 'alphabetic';
+        if (container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
+            // Inside markers are drawn at the start of the content area, left-aligned
+            var paddingLeft = getAbsoluteValue(container.styles.paddingLeft, container.bounds.width);
+            state.ctx.textAlign = 'left';
+            state.ctx.fillText(paint.listValue, container.bounds.left + paddingLeft, markerY);
+        }
+        else {
+            // Outside markers are drawn to the left of the content area, right-aligned
+            state.ctx.textAlign = 'right';
+            state.ctx.fillText(paint.listValue, container.bounds.left, markerY);
+        }
+    }
+
+    /**
+     * Reusable pool of offscreen HTMLCanvasElement objects.
+     *
+     * The renderer allocates many short-lived temporary canvases (CSS filters,
+     * text shadows, gradients, background-clip:text, image resizing, border-image
+     * tiling). Each `document.createElement('canvas')` allocates GPU/CPU backing
+     * store that is then discarded, creating GC pressure and visible jank on
+     * documents with many filtered/shadowed elements.
+     *
+     * `CanvasPool` recycles canvases instead. Callers `acquire()` a canvas at the
+     * size they need and `release()` it when done. Released canvases are reset
+     * (transform + full clear) before being handed out again so no state leaks
+     * between uses.
+     */
+    var CanvasPool = /** @class */ (function () {
+        function CanvasPool(_ownerDocument) {
+            if (_ownerDocument === void 0) { _ownerDocument = document; }
+            this._ownerDocument = _ownerDocument;
+            this._pool = [];
+        }
+        /**
+         * Get a canvas sized to `width` x `height`. Reuses a pooled canvas when
+         * available, otherwise creates a new one. Dimensions are clamped to a
+         * minimum of 1px (a 0-sized canvas throws in some browsers).
+         */
+        CanvasPool.prototype.acquire = function (width, height) {
+            var _a;
+            var w = Math.max(1, Math.floor(width));
+            var h = Math.max(1, Math.floor(height));
+            var canvas = (_a = this._pool.pop()) !== null && _a !== void 0 ? _a : this._ownerDocument.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            return canvas;
+        };
+        /**
+         * Return a canvas to the pool. Resets the 2D context transform and clears
+         * the full bitmap so stale pixels/state are never visible on next use.
+         */
+        CanvasPool.prototype.release = function (canvas) {
+            var ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.filter = 'none';
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            this._pool.push(canvas);
+        };
+        /**
+         * Drop all pooled canvases. Call when the renderer is done so the backing
+         * memory can be reclaimed.
+         */
+        CanvasPool.prototype.clear = function () {
+            this._pool.length = 0;
+        };
+        return CanvasPool;
+    }());
+
+    /**
+     * Margin (in output pixels) added around the viewport when deciding whether an
+     * element can be culled. Absorbs rounding and outset effects such as box
+     * shadows and outlines that paint slightly beyond the element's bounds.
+     */
+    var CULL_MARGIN = 4;
+    /**
+     * Pure geometry test: returns true when `bounds` lies entirely outside the
+     * output viewport rect (x, y, width, height), expanded by CULL_MARGIN.
+     *
+     * All coordinates are in page space (the same space as element bounds).
+     */
+    var isOutsideViewport = function (bounds, x, y, width, height) {
+        var vpLeft = x - CULL_MARGIN;
+        var vpTop = y - CULL_MARGIN;
+        var vpRight = x + width + CULL_MARGIN;
+        var vpBottom = y + height + CULL_MARGIN;
+        return (bounds.left > vpRight ||
+            bounds.left + bounds.width < vpLeft ||
+            bounds.top > vpBottom ||
+            bounds.top + bounds.height < vpTop);
+    };
+
     var CanvasRenderer = /** @class */ (function (_super) {
         __extends(CanvasRenderer, _super);
         function CanvasRenderer(context, options) {
+            var _a, _b, _c;
             var _this = _super.call(this, context, options) || this;
             _this._activeEffects = [];
-            _this._fontStyleCache = new WeakMap();
-            _this.canvas = options.canvas ? options.canvas : document.createElement('canvas');
-            _this.ctx = _this.canvas.getContext('2d');
+            /**
+             * Group-opacity effects currently applied once at composition time (during
+             * offscreen rendering of opacity stacking contexts). While an effect is in
+             * this set, applyEffect() ignores it so it is not re-applied per descendant
+             * draw (which would double-composite overlapping children, and — for nested
+             * opacity groups — double-apply an ancestor's opacity inside a child's own
+             * offscreen). Nested groups add/remove their own effect around the subtree.
+             */
+            _this._suppressedOpacity = new Set();
+            var canvas = options.canvas ? options.canvas : document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
             if (!options.canvas) {
-                _this.canvas.width = Math.floor(options.width * options.scale);
-                _this.canvas.height = Math.floor(options.height * options.scale);
-                _this.canvas.style.width = "".concat(options.width, "px");
-                _this.canvas.style.height = "".concat(options.height, "px");
+                canvas.width = Math.floor(options.width * options.scale);
+                canvas.height = Math.floor(options.height * options.scale);
+                canvas.style.width = "".concat(options.width, "px");
+                canvas.style.height = "".concat(options.height, "px");
             }
-            _this._isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
-            _this.fontMetrics = new FontMetrics(document, _this._isFirefox ? 1 : 2);
+            var isFirefox = navigator.userAgent.indexOf('Firefox') !== -1;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            _this._isChrome = !!window.chrome;
-            _this.ctx.scale(_this.options.scale, _this.options.scale);
-            _this.ctx.translate(-options.x, -options.y);
-            _this.ctx.textBaseline = 'bottom';
+            var isChrome = !!window.chrome;
+            _this.state = {
+                canvas: canvas,
+                ctx: ctx,
+                options: options,
+                context: context,
+                fontMetrics: new FontMetrics(document, isFirefox ? 1 : 2),
+                isFirefox: isFirefox,
+                isChrome: isChrome,
+                canvasPool: new CanvasPool((_a = canvas.ownerDocument) !== null && _a !== void 0 ? _a : document),
+                resizeCache: new Map(),
+                gradientCanvasCache: new Map(),
+            };
+            ctx.scale(options.scale, options.scale);
+            ctx.translate(-options.x, -options.y);
+            ctx.textBaseline = 'bottom';
+            // Apply the global image-smoothing default to the main context. Per-element
+            // CSS image-rendering may override this at each image draw (see
+            // resolveImageSmoothing), unless forceImageQuality is set.
+            ctx.imageSmoothingEnabled = (_b = options.imageSmoothing) !== null && _b !== void 0 ? _b : true;
+            ctx.imageSmoothingQuality = (_c = options.imageSmoothingQuality) !== null && _c !== void 0 ? _c : 'low';
             _this._activeEffects = [];
-            _this.context.logger.debug("Canvas renderer initialized (".concat(options.width, "x").concat(options.height, ") with scale ").concat(options.scale));
+            context.logger.debug("Canvas renderer initialized (".concat(options.width, "x").concat(options.height, ") with scale ").concat(options.scale));
             return _this;
         }
+        Object.defineProperty(CanvasRenderer.prototype, "canvas", {
+            // Convenience accessors that stay in sync via state
+            get: function () {
+                return this.state.canvas;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        Object.defineProperty(CanvasRenderer.prototype, "ctx", {
+            get: function () {
+                return this.state.ctx;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        // -------------------------------------------------------------------------
+        // Effect stack
+        // -------------------------------------------------------------------------
         CanvasRenderer.prototype.applyEffects = function (effects) {
             var _this = this;
             while (this._activeEffects.length) {
@@ -15700,47 +20450,55 @@
         };
         CanvasRenderer.prototype.applyEffect = function (effect) {
             var _a;
-            this.ctx.save();
+            this.state.ctx.save();
             if (isOpacityEffect(effect)) {
-                this.ctx.globalAlpha = effect.opacity;
+                // Skip the group-opacity effect that is applied once at composition
+                // time; applying it here too would double-darken overlapping children.
+                if (!this._suppressedOpacity.has(effect)) {
+                    this.state.ctx.globalAlpha = effect.opacity;
+                }
             }
             if (isTransformEffect(effect)) {
-                this.ctx.translate(effect.offsetX, effect.offsetY);
-                this.ctx.transform(effect.matrix[0], effect.matrix[1], effect.matrix[2], effect.matrix[3], effect.matrix[4], effect.matrix[5]);
-                this.ctx.translate(-effect.offsetX, -effect.offsetY);
+                this.state.ctx.translate(effect.offsetX, effect.offsetY);
+                this.state.ctx.transform(effect.matrix[0], effect.matrix[1], effect.matrix[2], effect.matrix[3], effect.matrix[4], effect.matrix[5]);
+                this.state.ctx.translate(-effect.offsetX, -effect.offsetY);
             }
             if (isClipEffect(effect)) {
-                this.path(effect.path);
-                this.ctx.clip(effect.fillRule);
+                canvasPath(this.state, effect.path);
+                this.state.ctx.clip(effect.fillRule);
             }
             if (isOverflowClipEffect(effect)) {
-                this.path(effect.path);
-                this.ctx.clip();
+                canvasPath(this.state, effect.path);
+                this.state.ctx.clip();
             }
             if (isPath2DClipEffect(effect)) {
-                this.ctx.clip(effect.path2d, (_a = effect.fillRule) !== null && _a !== void 0 ? _a : 'nonzero');
+                this.state.ctx.clip(effect.path2d, (_a = effect.fillRule) !== null && _a !== void 0 ? _a : 'nonzero');
             }
             if (isFilterEffect(effect)) ;
             if (isMixBlendModeEffect(effect)) {
-                this.ctx.globalCompositeOperation = mixBlendModeToComposite[effect.mixBlendMode];
+                this.state.ctx.globalCompositeOperation = mixBlendModeToComposite[effect.mixBlendMode];
             }
             this._activeEffects.push(effect);
         };
         CanvasRenderer.prototype.popEffect = function () {
             this._activeEffects.pop();
-            this.ctx.restore();
+            this.state.ctx.restore();
         };
+        // -------------------------------------------------------------------------
+        // Stack rendering
+        // -------------------------------------------------------------------------
         CanvasRenderer.prototype.renderStack = function (stack) {
             return __awaiter(this, void 0, void 0, function () {
-                var styles, offscreenFilters;
+                var styles, offscreenFilters, rootOpacity;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
                             styles = stack.element.container.styles;
                             if (!styles.isVisible()) return [3 /*break*/, 4];
                             offscreenFilters = this._getOffscreenFilters(stack);
-                            if (!offscreenFilters) return [3 /*break*/, 2];
-                            return [4 /*yield*/, this._renderStackWithOffscreenFilters(stack, offscreenFilters)];
+                            rootOpacity = stack.element.effects.find(isOpacityEffect);
+                            if (!(offscreenFilters || rootOpacity)) return [3 /*break*/, 2];
+                            return [4 /*yield*/, this._renderStackOffscreen(stack, offscreenFilters, rootOpacity)];
                         case 1:
                             _a.sent();
                             return [3 /*break*/, 4];
@@ -15754,9 +20512,9 @@
             });
         };
         /**
-         * Returns the ctx.filter string for all filters if the stacking context's own
-         * effects include them, or null if there are none.
-         * Offscreen rendering is needed because ctx.filter interacts badly with ctx.clip().
+         * Returns the ctx.filter string if the stacking context has filter effects,
+         * or null if there are none. Offscreen rendering is needed because ctx.filter
+         * interacts badly with ctx.clip().
          */
         CanvasRenderer.prototype._getOffscreenFilters = function (stack) {
             var filterStrings = [];
@@ -15803,59 +20561,237 @@
             return filterStrings.length > 0 ? filterStrings.join(' ') : null;
         };
         /**
-         * Renders a stacking context into an offscreen canvas, then draws it onto the
-         * main canvas with the drop-shadow/blur filter applied. This prevents the filter
-         * from being clipped by the element's own clip region.
-         */
-        /**
-         * Renders a stacking context into an offscreen canvas, composites it onto the
-         * main canvas with the CSS filter applied.
+         * Renders a stacking context into an offscreen canvas, then composites it
+         * onto the main canvas with the CSS filter and/or group opacity applied.
+         *
+         * Group opacity is applied to the flattened subtree (single globalAlpha at
+         * composition) rather than per descendant draw, so overlapping children do
+         * not darken in the overlap region.
          *
          * Note: when clip-path and filter are combined on the same element, the Canvas 2D
          * API applies the clip before the filter (clip → render → filter). The CSS spec
          * order would be render → filter → clip, which is not achievable with Canvas 2D
          * clip primitives alone. This is a known Canvas 2D limitation.
          */
-        CanvasRenderer.prototype._renderStackWithOffscreenFilters = function (stack, filterString) {
+        CanvasRenderer.prototype._renderStackOffscreen = function (stack, filterString, rootOpacity) {
             return __awaiter(this, void 0, void 0, function () {
-                var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, activeCount, i;
+                var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, ancestorClips, activeCount, i, filtered, filteredCtx, _i, ancestorClips_1, clip;
                 var _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
+                var _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
                         case 0:
-                            mainCanvas = this.canvas;
-                            mainCtx = this.ctx;
+                            mainCanvas = this.state.canvas;
+                            mainCtx = this.state.ctx;
                             savedActiveEffects = this._activeEffects.splice(0);
-                            offscreen = document.createElement('canvas');
-                            offscreen.width = mainCanvas.width;
-                            offscreen.height = mainCanvas.height;
+                            // Suppress the root opacity while rendering the subtree offscreen so it is
+                            // not applied per-node (which would double-composite overlaps). It is
+                            // instead applied once at composition below. Descendant opacities remain
+                            // untouched. Nested opacity groups save/restore this flag recursively.
+                            if (rootOpacity) {
+                                this._suppressedOpacity.add(rootOpacity);
+                            }
+                            offscreen = this.state.canvasPool.acquire(mainCanvas.width, mainCanvas.height);
                             offCtx = offscreen.getContext('2d');
                             offCtx.scale(this.options.scale, this.options.scale);
                             offCtx.translate(-this.options.x, -this.options.y);
                             offCtx.textBaseline = 'bottom';
-                            this.canvas = offscreen;
-                            this.ctx = offCtx;
-                            return [4 /*yield*/, this.renderStackContent(stack)];
+                            // Swap to offscreen — mutate in place so sub-renderers see the new target
+                            this.state.canvas = offscreen;
+                            this.state.ctx = offCtx;
+                            _c.label = 1;
                         case 1:
-                            _b.sent();
-                            this.canvas = mainCanvas;
-                            this.ctx = mainCtx;
+                            _c.trys.push([1, , 3, 4]);
+                            return [4 /*yield*/, this.renderStackContent(stack)];
+                        case 2:
+                            _c.sent();
+                            return [3 /*break*/, 4];
+                        case 3:
+                            // Restore main canvas and stop suppressing this group's opacity, even
+                            // if subtree rendering throws.
+                            this.state.canvas = mainCanvas;
+                            this.state.ctx = mainCtx;
+                            if (rootOpacity) {
+                                this._suppressedOpacity.delete(rootOpacity);
+                            }
+                            return [7 /*endfinally*/];
+                        case 4:
                             (_a = this._activeEffects).push.apply(_a, savedActiveEffects);
+                            ancestorClips = savedActiveEffects.filter(function (effect) { return isClipEffect(effect) || isOverflowClipEffect(effect) || isPath2DClipEffect(effect); });
                             activeCount = this._activeEffects.length;
                             for (i = 0; i < activeCount; i++) {
-                                this.ctx.restore();
+                                this.state.ctx.restore();
                             }
                             this._activeEffects.length = 0;
-                            this.ctx.save();
-                            this.ctx.filter = filterString;
-                            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-                            this.ctx.drawImage(offscreen, 0, 0);
-                            this.ctx.restore();
+                            filtered = null;
+                            if (filterString && rootOpacity) {
+                                filtered = this.state.canvasPool.acquire(offscreen.width, offscreen.height);
+                                filteredCtx = filtered.getContext('2d');
+                                filteredCtx.filter = filterString;
+                                filteredCtx.drawImage(offscreen, 0, 0);
+                            }
+                            this.state.ctx.save();
+                            // Re-apply ancestor clips in device space. Their paths are in CSS (world)
+                            // coordinates, so lay them down under the base scale/translate transform;
+                            // the resulting clip region persists after we switch to identity for the
+                            // device-aligned drawImage.
+                            if (ancestorClips.length) {
+                                this.state.ctx.setTransform(this.options.scale, 0, 0, this.options.scale, -this.options.x * this.options.scale, -this.options.y * this.options.scale);
+                                for (_i = 0, ancestorClips_1 = ancestorClips; _i < ancestorClips_1.length; _i++) {
+                                    clip = ancestorClips_1[_i];
+                                    if (isPath2DClipEffect(clip)) {
+                                        this.state.ctx.clip(clip.path2d, (_b = clip.fillRule) !== null && _b !== void 0 ? _b : 'nonzero');
+                                    }
+                                    else {
+                                        canvasPath(this.state, clip.path);
+                                        this.state.ctx.clip(isClipEffect(clip) ? clip.fillRule : 'nonzero');
+                                    }
+                                }
+                            }
+                            if (filtered) {
+                                // Second pass: opacity only, over the already-filtered surface.
+                                this.state.ctx.globalAlpha = rootOpacity ? rootOpacity.opacity : 1;
+                            }
+                            else {
+                                if (filterString) {
+                                    this.state.ctx.filter = filterString;
+                                }
+                                if (rootOpacity) {
+                                    this.state.ctx.globalAlpha = rootOpacity.opacity;
+                                }
+                            }
+                            this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                            this.state.ctx.drawImage(filtered !== null && filtered !== void 0 ? filtered : offscreen, 0, 0);
+                            this.state.ctx.restore();
+                            // Return the offscreen canvases to the pool for reuse.
+                            if (filtered) {
+                                this.state.canvasPool.release(filtered);
+                            }
+                            this.state.canvasPool.release(offscreen);
                             return [2 /*return*/];
                     }
                 });
             });
         };
+        CanvasRenderer.prototype.renderStackContent = function (stack) {
+            return __awaiter(this, void 0, void 0, function () {
+                var _i, _a, child, _b, _c, child, _d, _f, child, _g, _h, child, _j, _k, child, _l, _m, child, _o, _p, child;
+                return __generator(this, function (_q) {
+                    switch (_q.label) {
+                        case 0:
+                            if (contains(stack.element.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
+                                debugger;
+                            }
+                            // https://www.w3.org/TR/css-position-3/#painting-order
+                            // 1. the background and borders of the element forming the stacking context.
+                            return [4 /*yield*/, this.renderNodeBackgroundAndBorders(stack.element)];
+                        case 1:
+                            // https://www.w3.org/TR/css-position-3/#painting-order
+                            // 1. the background and borders of the element forming the stacking context.
+                            _q.sent();
+                            _i = 0, _a = stack.negativeZIndex;
+                            _q.label = 2;
+                        case 2:
+                            if (!(_i < _a.length)) return [3 /*break*/, 5];
+                            child = _a[_i];
+                            return [4 /*yield*/, this.renderStack(child)];
+                        case 3:
+                            _q.sent();
+                            _q.label = 4;
+                        case 4:
+                            _i++;
+                            return [3 /*break*/, 2];
+                        case 5: 
+                        // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
+                        return [4 /*yield*/, this.renderNodeContent(stack.element)];
+                        case 6:
+                            // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
+                            _q.sent();
+                            _b = 0, _c = stack.nonInlineLevel;
+                            _q.label = 7;
+                        case 7:
+                            if (!(_b < _c.length)) return [3 /*break*/, 10];
+                            child = _c[_b];
+                            return [4 /*yield*/, this.renderNode(child)];
+                        case 8:
+                            _q.sent();
+                            _q.label = 9;
+                        case 9:
+                            _b++;
+                            return [3 /*break*/, 7];
+                        case 10:
+                            _d = 0, _f = stack.nonPositionedFloats;
+                            _q.label = 11;
+                        case 11:
+                            if (!(_d < _f.length)) return [3 /*break*/, 14];
+                            child = _f[_d];
+                            return [4 /*yield*/, this.renderStack(child)];
+                        case 12:
+                            _q.sent();
+                            _q.label = 13;
+                        case 13:
+                            _d++;
+                            return [3 /*break*/, 11];
+                        case 14:
+                            _g = 0, _h = stack.nonPositionedInlineLevel;
+                            _q.label = 15;
+                        case 15:
+                            if (!(_g < _h.length)) return [3 /*break*/, 18];
+                            child = _h[_g];
+                            return [4 /*yield*/, this.renderStack(child)];
+                        case 16:
+                            _q.sent();
+                            _q.label = 17;
+                        case 17:
+                            _g++;
+                            return [3 /*break*/, 15];
+                        case 18:
+                            _j = 0, _k = stack.inlineLevel;
+                            _q.label = 19;
+                        case 19:
+                            if (!(_j < _k.length)) return [3 /*break*/, 22];
+                            child = _k[_j];
+                            return [4 /*yield*/, this.renderNode(child)];
+                        case 20:
+                            _q.sent();
+                            _q.label = 21;
+                        case 21:
+                            _j++;
+                            return [3 /*break*/, 19];
+                        case 22:
+                            _l = 0, _m = stack.zeroOrAutoZIndexOrTransformedOrOpacity;
+                            _q.label = 23;
+                        case 23:
+                            if (!(_l < _m.length)) return [3 /*break*/, 26];
+                            child = _m[_l];
+                            return [4 /*yield*/, this.renderStack(child)];
+                        case 24:
+                            _q.sent();
+                            _q.label = 25;
+                        case 25:
+                            _l++;
+                            return [3 /*break*/, 23];
+                        case 26:
+                            _o = 0, _p = stack.positiveZIndex;
+                            _q.label = 27;
+                        case 27:
+                            if (!(_o < _p.length)) return [3 /*break*/, 30];
+                            child = _p[_o];
+                            return [4 /*yield*/, this.renderStack(child)];
+                        case 28:
+                            _q.sent();
+                            _q.label = 29;
+                        case 29:
+                            _o++;
+                            return [3 /*break*/, 27];
+                        case 30: return [2 /*return*/];
+                    }
+                });
+            });
+        };
+        // -------------------------------------------------------------------------
+        // Node rendering
+        // -------------------------------------------------------------------------
         CanvasRenderer.prototype.renderNode = function (paint) {
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
@@ -15864,7 +20800,7 @@
                             if (contains(paint.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
                                 debugger;
                             }
-                            if (!paint.container.styles.isVisible()) return [3 /*break*/, 3];
+                            if (!(paint.container.styles.isVisible() && !this._isCulled(paint))) return [3 /*break*/, 3];
                             return [4 /*yield*/, this.renderNodeBackgroundAndBorders(paint)];
                         case 1:
                             _a.sent();
@@ -15877,415 +20813,141 @@
                 });
             });
         };
-        CanvasRenderer.prototype.renderTextWithLetterSpacing = function (text, letterSpacing, baseline, writingMode, useStroke) {
-            var _this = this;
-            if (writingMode === void 0) { writingMode = 0 /* WRITING_MODE.HORIZONTAL_TB */; }
-            if (useStroke === void 0) { useStroke = false; }
-            var isVertical = writingMode === 1 /* WRITING_MODE.VERTICAL_RL */ ||
-                writingMode === 2 /* WRITING_MODE.VERTICAL_LR */ ||
-                writingMode === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
-                writingMode === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-            var drawText = useStroke
-                ? function (t, x, y) { return _this.ctx.strokeText(t, x, y); }
-                : function (t, x, y) { return _this.ctx.fillText(t, x, y); };
-            if (isVertical) {
-                // For vertical writing modes the browser already positions the text bounds correctly.
-                // We rotate the canvas ±90° around the centre of the text bounds so that fillText
-                // draws along the right axis, then restore.
-                var isSidewaysLR = writingMode === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                // sideways-lr rotates -90°; all other vertical modes rotate +90°
-                var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
-                var cx = text.bounds.left + text.bounds.width / 2;
-                var cy = text.bounds.top + text.bounds.height / 2;
-                this.ctx.save();
-                this.ctx.translate(cx, cy);
-                this.ctx.rotate(angle);
-                this.ctx.translate(-cx, -cy);
-                // After rotation the "visual" width and height swap, so we need to
-                // paint as if the text was horizontal with swapped bounds.
-                var rotatedBounds = new Bounds(cx - text.bounds.height / 2, cy - text.bounds.width / 2, text.bounds.height, text.bounds.width);
-                var rotatedText_1 = new TextBounds(text.text, rotatedBounds);
-                if (letterSpacing === 0) {
-                    if (!this._isFirefox) {
-                        this.ctx.textBaseline = 'ideographic';
-                        drawText(rotatedText_1.text, rotatedText_1.bounds.left, rotatedText_1.bounds.top + rotatedText_1.bounds.height);
-                    }
-                    else {
-                        drawText(rotatedText_1.text, rotatedText_1.bounds.left, rotatedText_1.bounds.top + baseline);
-                    }
-                }
-                else {
-                    var letters_1 = segmentGraphemes(rotatedText_1.text);
-                    letters_1.reduce(function (left, letter, index) {
-                        drawText(letter, left, rotatedText_1.bounds.top + baseline);
-                        var isLast = index === letters_1.length - 1;
-                        return left + _this.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-                    }, rotatedText_1.bounds.left);
-                }
-                this.ctx.restore();
-            }
-            else {
-                if (letterSpacing === 0) {
-                    // Fixed an issue with characters moving up in non-Firefox.
-                    // https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-692462900
-                    if (!this._isFirefox) {
-                        this.ctx.textBaseline = 'ideographic';
-                        drawText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
-                    }
-                    else {
-                        drawText(text.text, text.bounds.left, text.bounds.top + baseline);
-                    }
-                }
-                else {
-                    var letters_2 = segmentGraphemes(text.text);
-                    letters_2.reduce(function (left, letter, index) {
-                        drawText(letter, left, text.bounds.top + baseline);
-                        var isLast = index === letters_2.length - 1;
-                        return left + _this.ctx.measureText(letter).width + (isLast ? 0 : letterSpacing - 1);
-                    }, text.bounds.left);
-                }
-            }
-        };
-        CanvasRenderer.prototype.createFontStyle = function (styles) {
-            var cached = this._fontStyleCache.get(styles);
-            if (cached) {
-                return cached;
-            }
-            var fontVariant = styles.fontVariant
-                .filter(function (variant) { return variant === 'normal' || variant === 'small-caps'; })
-                .join('');
-            var fontFamily = fixIOSSystemFonts(styles.fontFamily).join(', ');
-            var fontSize = isDimensionToken(styles.fontSize)
-                ? "".concat(getNumber(styles.fontSize)).concat(styles.fontSize.unit)
-                : "".concat(getNumber(styles.fontSize), "px");
-            var result = [
-                [styles.fontStyle, fontVariant, styles.fontWeight, fontSize, fontFamily].join(' '),
-                fontFamily,
-                fontSize,
-            ];
-            this._fontStyleCache.set(styles, result);
-            return result;
-        };
         /**
-         * Draws a single text-decoration line segment using the given style.
-         * For horizontal text:  x, y = top-left corner, w = length along text, h = line thickness.
-         * For vertical text:    x, y = top-left corner, w = line thickness,   h = length along text.
-         * The `isVertical` flag swaps the semantics of w/h for dotted/dashed segment sizing.
+         * Returns true if `paint` can be safely skipped because it lies entirely
+         * outside the output viewport.
+         *
+         * Conservative by design — returns false (i.e. do NOT cull) whenever the
+         * node's painted position may differ from its bounds:
+         *  - culling disabled via options,
+         *  - the node or any ancestor has a CSS transform,
+         *  - the node is fixed/sticky positioned.
+         * A small margin absorbs rounding and outset effects (shadows, outlines).
          */
-        CanvasRenderer.prototype.renderDecorationLine = function (style, x, y, w, h, isVertical, textDecorationLine) {
-            switch (style) {
-                case 1 /* TEXT_DECORATION_STYLE.DOUBLE */: {
-                    // For double, `h` (or `w` in vertical) is the thickness of each individual line.
-                    // Gap between the two lines = max(1, round(thickness / 2)).
-                    if (isVertical) {
-                        var lineW = Math.max(1, w);
-                        var gap = Math.max(1, Math.round(w / 2));
-                        this.ctx.fillRect(x, y, lineW, h);
-                        if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
-                            this.ctx.fillRect(x - lineW - gap, y, lineW, h);
-                        }
-                        else {
-                            this.ctx.fillRect(x + lineW + gap, y, lineW, h);
-                        }
-                    }
-                    else {
-                        var lineH = Math.max(1, h);
-                        var gap = Math.max(1, Math.trunc(h / 2));
-                        this.ctx.fillRect(x, y, w, lineH);
-                        if (textDecorationLine === 2 /* TEXT_DECORATION_LINE.OVERLINE */) {
-                            this.ctx.fillRect(x, y - lineH - gap, w, lineH);
-                        }
-                        else {
-                            this.ctx.fillRect(x, y + lineH + gap, w, lineH);
-                        }
-                    }
-                    break;
-                }
-                case 2 /* TEXT_DECORATION_STYLE.DOTTED */: {
-                    // Dots (squares) with diameter = thickness, spaced by one dot width.
-                    var dotSize = isVertical ? w : h;
-                    var length_1 = isVertical ? h : w;
-                    var step = dotSize * 2;
-                    for (var pos = 0; pos < length_1; pos += step) {
-                        if (isVertical) {
-                            this.ctx.fillRect(x, y + pos, w, Math.min(dotSize, length_1 - pos));
-                        }
-                        else {
-                            this.ctx.fillRect(x + pos, y, Math.min(dotSize, length_1 - pos), h);
-                        }
-                    }
-                    break;
-                }
-                case 3 /* TEXT_DECORATION_STYLE.DASHED */: {
-                    // Dashes 3× the thickness long, with a gap equal to the dash length.
-                    var thickness = isVertical ? w : h;
-                    var dashLen = thickness * 3;
-                    var length_2 = isVertical ? h : w;
-                    var step = dashLen * 2;
-                    for (var pos = 0; pos < length_2; pos += step) {
-                        if (isVertical) {
-                            this.ctx.fillRect(x, y + pos, w, Math.min(dashLen, length_2 - pos));
-                        }
-                        else {
-                            this.ctx.fillRect(x + pos, y, Math.min(dashLen, length_2 - pos), h);
-                        }
-                    }
-                    break;
-                }
-                case 0 /* TEXT_DECORATION_STYLE.SOLID */:
-                case 4 /* TEXT_DECORATION_STYLE.WAVY */:
-                default:
-                    // solid (and unimplemented wavy) fall back to a simple filled rectangle.
-                    this.ctx.fillRect(x, y, w, h);
-                    break;
+        CanvasRenderer.prototype._isCulled = function (paint) {
+            if (!this.options.cullOffscreen) {
+                return false;
             }
+            var position = paint.container.styles.position;
+            if (position === 3 /* POSITION.FIXED */ || position === 4 /* POSITION.STICKY */) {
+                return false;
+            }
+            // A transform on the node or any ancestor moves the painted pixels away
+            // from the layout bounds, so bounds-based culling is unsafe.
+            for (var node = paint; node; node = node.parent) {
+                if (node.container.styles.isTransformed()) {
+                    return false;
+                }
+            }
+            return isOutsideViewport(paint.container.bounds, this.options.x, this.options.y, this.options.width, this.options.height);
         };
-        CanvasRenderer.prototype.renderTextNode = function (text, styles) {
+        CanvasRenderer.prototype.renderNodeBackgroundAndBorders = function (paint) {
             return __awaiter(this, void 0, void 0, function () {
-                var _a, font, fontFamily, fontSize, paintOrder, wm, isVertical, baseline;
-                var _this = this;
-                return __generator(this, function (_b) {
-                    _a = this.createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
-                    this.ctx.font = font;
-                    this.ctx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
-                    this.ctx.textAlign = 'left';
-                    this.ctx.textBaseline = 'alphabetic';
-                    paintOrder = styles.paintOrder;
-                    wm = styles.writingMode;
-                    isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
-                        wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
-                        wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
-                        wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                    baseline = this.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
-                    text.textBounds.forEach(function (text) {
-                        paintOrder.forEach(function (paintOrderLayer) {
-                            switch (paintOrderLayer) {
-                                case 0 /* PAINT_ORDER_LAYER.FILL */:
-                                    // When background-clip: text is active, the text fill is handled
-                                    // by the background compositing — skip normal text rendering.
-                                    if (getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */) {
-                                        break;
-                                    }
-                                    _this.ctx.fillStyle = asString(styles.color);
-                                    var textShadows = styles.textShadow;
-                                    if (textShadows.length && text.text.trim().length) {
-                                        // Render each shadow manually: draw the text in the shadow color
-                                        // at the shadow offset on an isolated offscreen canvas, then apply
-                                        // a CSS blur filter before compositing onto the main canvas.
-                                        // This bypasses the Canvas shadow API entirely, which cannot handle
-                                        // transparent text or multiple independent blur radii.
-                                        var w_1 = _this.canvas.width;
-                                        var h_1 = _this.canvas.height;
-                                        var scale_1 = _this.options.scale;
-                                        var ox_1 = _this.options.x;
-                                        var oy_1 = _this.options.y;
-                                        textShadows
-                                            .slice(0)
-                                            .reverse()
-                                            .forEach(function (textShadow) {
-                                            var shadowCanvas = document.createElement('canvas');
-                                            shadowCanvas.width = w_1;
-                                            shadowCanvas.height = h_1;
-                                            var shadowCtx = shadowCanvas.getContext('2d');
-                                            shadowCtx.scale(scale_1, scale_1);
-                                            // Incorporate the shadow offset into the translate so the
-                                            // text is drawn at the correct position on the offscreen.
-                                            shadowCtx.translate(-ox_1 + textShadow.offsetX.number, -oy_1 + textShadow.offsetY.number);
-                                            shadowCtx.font = _this.ctx.font;
-                                            shadowCtx.direction = _this.ctx.direction;
-                                            shadowCtx.textAlign = _this.ctx.textAlign;
-                                            shadowCtx.textBaseline = _this.ctx.textBaseline;
-                                            shadowCtx.fillStyle = asString(textShadow.color);
-                                            var mainCtx = _this.ctx;
-                                            _this.ctx = shadowCtx;
-                                            _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
-                                            _this.ctx = mainCtx;
-                                            // Apply blur via ctx.filter on the main canvas drawImage call.
-                                            if (textShadow.blur.number > 0) {
-                                                _this.ctx.save();
-                                                _this.ctx.filter = "blur(".concat(textShadow.blur.number / 2, "px)");
-                                            }
-                                            _this.ctx.drawImage(shadowCanvas, 0, 0, w_1, h_1, ox_1, oy_1, w_1 / scale_1, h_1 / scale_1);
-                                            if (textShadow.blur.number > 0) {
-                                                _this.ctx.restore();
-                                            }
-                                        });
-                                        // Draw the real text on top of all shadows.
-                                        // Skipped for transparent text — shadows are the only visual.
-                                        if (!isTransparent(styles.color)) {
-                                            _this.ctx.save();
-                                            _this.ctx.fillStyle = asString(styles.color);
-                                            _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
-                                            _this.ctx.restore();
-                                        }
-                                    }
-                                    else if (!isTransparent(styles.color)) {
-                                        _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm);
-                                    }
-                                    if (styles.textDecorationLine.length) {
-                                        _this.ctx.fillStyle = asString(isTransparent(styles.textDecorationColor) ? styles.color : styles.textDecorationColor);
-                                        // Resolve line thickness: explicit value or 1px fallback for auto/from-font.
-                                        var thickness_1 = typeof styles.textDecorationThickness === 'number' ? styles.textDecorationThickness : 1;
-                                        styles.textDecorationLine.forEach(function (textDecorationLine) {
-                                            if (isVertical) {
-                                                var underlineOnLeft = wm === 2 /* WRITING_MODE.VERTICAL_LR */ || wm === 1 /* WRITING_MODE.VERTICAL_RL */;
-                                                var lineX = void 0;
-                                                switch (textDecorationLine) {
-                                                    case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
-                                                        lineX = underlineOnLeft
-                                                            ? text.bounds.left
-                                                            : text.bounds.left + text.bounds.width - thickness_1;
-                                                        break;
-                                                    case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
-                                                        lineX = underlineOnLeft
-                                                            ? text.bounds.left + text.bounds.width - thickness_1
-                                                            : text.bounds.left;
-                                                        break;
-                                                    case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
-                                                    default:
-                                                        lineX = text.bounds.left + text.bounds.width / 2 - thickness_1 / 2;
-                                                        break;
-                                                }
-                                                _this.renderDecorationLine(styles.textDecorationStyle, lineX, text.bounds.top, thickness_1, text.bounds.height, true, textDecorationLine);
-                                            }
-                                            else {
-                                                // baseline = distance from bounds.top to the alphabetic baseline.
-                                                // Use it to position decorations relative to actual glyph positions
-                                                // rather than the full line-height bounding box.
-                                                var baselineY = text.bounds.top + baseline;
-                                                var lineY = void 0;
-                                                switch (textDecorationLine) {
-                                                    case 1 /* TEXT_DECORATION_LINE.UNDERLINE */:
-                                                        lineY = baselineY + 2;
-                                                        break;
-                                                    case 2 /* TEXT_DECORATION_LINE.OVERLINE */:
-                                                        lineY = Math.round(text.bounds.top + (text.bounds.height - baseline) * 0.1);
-                                                        break;
-                                                    case 3 /* TEXT_DECORATION_LINE.LINE_THROUGH */:
-                                                    default:
-                                                        lineY = Math.round(baselineY - baseline * 0.4) + 2;
-                                                        break;
-                                                }
-                                                _this.renderDecorationLine(styles.textDecorationStyle, text.bounds.left, lineY, text.bounds.width, thickness_1, false, textDecorationLine);
-                                            }
-                                        });
-                                    }
-                                    break;
-                                case 1 /* PAINT_ORDER_LAYER.STROKE */:
-                                    if (styles.webkitTextStrokeWidth && text.text.trim().length) {
-                                        _this.ctx.strokeStyle = asString(styles.webkitTextStrokeColor);
-                                        _this.ctx.lineWidth = styles.webkitTextStrokeWidth;
-                                        _this.ctx.lineJoin = _this._isChrome ? 'miter' : 'round';
-                                        _this.renderTextWithLetterSpacing(text, styles.letterSpacing, baseline, wm, true);
-                                    }
-                                    _this.ctx.strokeStyle = '';
-                                    _this.ctx.lineWidth = 0;
-                                    _this.ctx.lineJoin = 'miter';
-                                    break;
-                            }
-                        });
-                    });
-                    return [2 /*return*/];
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            this.applyEffects(paint.getEffects(2 /* EffectTarget.BACKGROUND_BORDERS */));
+                            return [4 /*yield*/, renderNodeBackgroundAndBorders(this.state, paint)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/];
+                    }
                 });
             });
         };
-        CanvasRenderer.prototype.renderReplacedElement = function (container, curves, image) {
-            if (image) {
-                var isContainerWSizes = container.intrinsicWidth > 0 && container.intrinsicHeight > 0;
-                var isSVGContainer = container instanceof SVGElementContainer ||
-                    (container instanceof ImageElementContainer && container.isSVG);
-                if (isContainerWSizes || isSVGContainer) {
-                    var box = contentBox(container);
-                    var path = calculatePaddingBoxPath(curves);
-                    this.path(path);
-                    var _a = calculateObjectFitBounds(container.styles.objectFit, container.intrinsicWidth, container.intrinsicHeight, box.width, box.height), src = _a.src, dest = _a.dest;
-                    this.ctx.save();
-                    this.ctx.clip();
-                    if (isContainerWSizes) {
-                        this.ctx.drawImage(image, src.left, src.top, src.width, src.height, box.left + dest.left, box.top + dest.top, dest.width, dest.height);
-                    }
-                    else {
-                        // As usual it won't work in FF. https://bugzilla.mozilla.org/show_bug.cgi?id=700533
-                        this.ctx.drawImage(image, box.left, box.top, box.width, box.height);
-                    }
-                    this.ctx.restore();
-                }
-            }
-        };
         CanvasRenderer.prototype.renderNodeContent = function (paint) {
             return __awaiter(this, void 0, void 0, function () {
-                var container, curves, styles, _i, _a, child, image, e_1, image, image, iframeRenderer, canvas, size, bounds, ratio, isHorizontal, trackThickness, thumbRadius, trackY, trackLeft, trackWidth, thumbX, thumbY, trackX, trackTop, trackHeight, filledHeight, thumbX, thumbY, bounds, ratio, borderRadius, fillWidth, bounds, ratio, state, borderRadius, fillColor, fillWidth, _b, font, fontFamily, fontSize, baseline_1, bounds_1, fontSizeNumber, lineHeight_1, scrollTop_1, xOffset, originX_1, letterSpacing_1, measureWidth_1, wrapParagraph, paragraphs, wrappedLines, _c, paragraphs_1, paragraph, _d, _e, line, x, textBounds, img, image, url, fontFamily, wm, isVerticalList, fontSize, isSidewaysLR, angle, markerX, markerY, fontSize, isSidewaysLR, angle, markerX, markerY, _f, fontFamily_1, fontSize, baseline, lineHeight, leading, markerY;
-                var _this = this;
-                var _g;
-                return __generator(this, function (_h) {
-                    switch (_h.label) {
+                var container, curves, styles, _i, _a, child, image, e_1, image, _e_1, image, e_2, image, e_3, iframeRenderer, canvas, isListBoxSelect;
+                var _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
                         case 0:
                             this.applyEffects(paint.getEffects(4 /* EffectTarget.CONTENT */));
                             container = paint.container;
                             curves = paint.curves;
                             styles = container.styles;
                             _i = 0, _a = container.textNodes;
-                            _h.label = 1;
+                            _c.label = 1;
                         case 1:
                             if (!(_i < _a.length)) return [3 /*break*/, 4];
                             child = _a[_i];
-                            return [4 /*yield*/, this.renderTextNode(child, styles)];
+                            return [4 /*yield*/, renderTextNode(this.state, child, styles, (_b = container.firstLineStyles) !== null && _b !== void 0 ? _b : undefined)];
                         case 2:
-                            _h.sent();
-                            _h.label = 3;
+                            _c.sent();
+                            _c.label = 3;
                         case 3:
                             _i++;
                             return [3 /*break*/, 1];
                         case 4:
                             if (!(container instanceof ImageElementContainer)) return [3 /*break*/, 14];
-                            _h.label = 5;
+                            _c.label = 5;
                         case 5:
-                            _h.trys.push([5, 8, , 14]);
+                            _c.trys.push([5, 8, , 14]);
                             return [4 /*yield*/, this.context.cache.match(container.src)];
                         case 6:
-                            image = _h.sent();
+                            image = _c.sent();
                             return [4 /*yield*/, container.setup(image)];
                         case 7:
-                            _h.sent();
-                            this.renderReplacedElement(container, curves, image);
+                            _c.sent();
+                            renderReplacedElement(this.state, container, curves, image);
                             return [3 /*break*/, 14];
                         case 8:
-                            e_1 = _h.sent();
-                            _h.label = 9;
+                            e_1 = _c.sent();
+                            _c.label = 9;
                         case 9:
-                            _h.trys.push([9, 12, , 13]);
+                            _c.trys.push([9, 12, , 13]);
                             if (!(this.context.cache.deleteImage(container.src) && e_1.type === 'error')) return [3 /*break*/, 11];
                             this.context.cache.addImage(container.src);
                             return [4 /*yield*/, this.context.cache.match(container.src)];
                         case 10:
-                            image = _h.sent();
-                            this.renderReplacedElement(container, curves, image);
-                            _h.label = 11;
+                            image = _c.sent();
+                            renderReplacedElement(this.state, container, curves, image);
+                            _c.label = 11;
                         case 11: return [3 /*break*/, 13];
                         case 12:
-                            _h.sent();
-                            this.context.logger.error("Error loading image ".concat(container.src));
+                            _e_1 = _c.sent();
+                            this.context.error("Error loading image ".concat(container.src), _e_1);
                             return [3 /*break*/, 13];
                         case 13: return [3 /*break*/, 14];
                         case 14:
                             if (container instanceof CanvasElementContainer) {
-                                this.renderReplacedElement(container, curves, container.canvas);
+                                renderReplacedElement(this.state, container, curves, container.canvas);
                             }
                             if (!(container instanceof SVGElementContainer)) return [3 /*break*/, 18];
-                            _h.label = 15;
+                            _c.label = 15;
                         case 15:
-                            _h.trys.push([15, 17, , 18]);
+                            _c.trys.push([15, 17, , 18]);
                             return [4 /*yield*/, this.context.cache.match(container.svg)];
                         case 16:
-                            image = _h.sent();
-                            this.renderReplacedElement(container, curves, image);
+                            image = _c.sent();
+                            renderReplacedElement(this.state, container, curves, image);
                             return [3 /*break*/, 18];
                         case 17:
-                            _h.sent();
-                            this.context.logger.error("Error loading svg ".concat(container.svg.substring(0, 255)));
+                            e_2 = _c.sent();
+                            this.context.error("Error loading svg ".concat(container.svg.substring(0, 255)), e_2);
                             return [3 /*break*/, 18];
                         case 18:
-                            if (!(container instanceof IFrameElementContainer && container.tree)) return [3 /*break*/, 20];
+                            if (!(container instanceof ObjectElementContainer)) return [3 /*break*/, 22];
+                            _c.label = 19;
+                        case 19:
+                            _c.trys.push([19, 21, , 22]);
+                            return [4 /*yield*/, this.context.cache.match(container.src)];
+                        case 20:
+                            image = _c.sent();
+                            if (image) {
+                                container.intrinsicWidth = image.naturalWidth || image.width;
+                                container.intrinsicHeight = image.naturalHeight || image.height;
+                                if (container.hasLoadedImage()) {
+                                    renderReplacedElement(this.state, container, curves, image);
+                                }
+                            }
+                            return [3 /*break*/, 22];
+                        case 21:
+                            e_3 = _c.sent();
+                            this.context.error("Error loading object data ".concat(container.src), e_3);
+                            return [3 /*break*/, 22];
+                        case 22:
+                            if (!(container instanceof IFrameElementContainer && container.tree)) return [3 /*break*/, 24];
                             iframeRenderer = new CanvasRenderer(this.context, {
                                 scale: this.options.scale,
                                 backgroundColor: container.backgroundColor,
@@ -16295,1316 +20957,64 @@
                                 height: container.height,
                             });
                             return [4 /*yield*/, iframeRenderer.render(container.tree)];
-                        case 19:
-                            canvas = _h.sent();
+                        case 23:
+                            canvas = _c.sent();
                             if (container.width && container.height) {
-                                this.ctx.drawImage(canvas, 0, 0, container.width, container.height, container.bounds.left, container.bounds.top, container.bounds.width, container.bounds.height);
+                                this.state.ctx.drawImage(canvas, 0, 0, container.width, container.height, container.bounds.left, container.bounds.top, container.bounds.width, container.bounds.height);
                             }
-                            _h.label = 20;
-                        case 20:
+                            _c.label = 24;
+                        case 24:
+                            // Form controls
                             if (container instanceof InputElementContainer) {
-                                size = Math.min(container.bounds.width, container.bounds.height);
                                 if (container.type === CHECKBOX) {
-                                    if (container.checked) {
-                                        this.ctx.save();
-                                        this.path([
-                                            new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79),
-                                            new Vector(container.bounds.left + size * 0.16, container.bounds.top + size * 0.5549),
-                                            new Vector(container.bounds.left + size * 0.27347, container.bounds.top + size * 0.44071),
-                                            new Vector(container.bounds.left + size * 0.39694, container.bounds.top + size * 0.5649),
-                                            new Vector(container.bounds.left + size * 0.72983, container.bounds.top + size * 0.23),
-                                            new Vector(container.bounds.left + size * 0.84, container.bounds.top + size * 0.34085),
-                                            new Vector(container.bounds.left + size * 0.39363, container.bounds.top + size * 0.79),
-                                        ]);
-                                        this.ctx.fillStyle = asString(INPUT_COLOR);
-                                        this.ctx.fill();
-                                        this.ctx.restore();
-                                    }
+                                    renderCheckbox(this.state, container);
                                 }
                                 else if (container.type === RADIO) {
-                                    if (container.checked) {
-                                        this.ctx.save();
-                                        this.ctx.beginPath();
-                                        this.ctx.arc(container.bounds.left + size / 2, container.bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
-                                        this.ctx.fillStyle = asString(INPUT_COLOR);
-                                        this.ctx.fill();
-                                        this.ctx.restore();
-                                    }
+                                    renderRadio(this.state, container);
                                 }
                                 else if (container.type === RANGE) {
-                                    bounds = container.bounds;
-                                    ratio = container.max > container.min
-                                        ? (container.valueAsNumber - container.min) / (container.max - container.min)
-                                        : 0;
-                                    isHorizontal = bounds.width >= bounds.height;
-                                    trackThickness = 4;
-                                    thumbRadius = Math.min(bounds.width, bounds.height) * 0.35;
-                                    this.ctx.save();
-                                    if (isHorizontal) {
-                                        trackY = bounds.top + bounds.height / 2 - trackThickness / 2;
-                                        trackLeft = bounds.left + thumbRadius;
-                                        trackWidth = bounds.width - thumbRadius * 2;
-                                        this.ctx.fillStyle = '#c0c0c0';
-                                        this.ctx.fillRect(trackLeft, trackY, trackWidth, trackThickness);
-                                        // Filled portion
-                                        this.ctx.fillStyle = '#0075ff';
-                                        this.ctx.fillRect(trackLeft, trackY, trackWidth * ratio, trackThickness);
-                                        thumbX = trackLeft + trackWidth * ratio;
-                                        thumbY = bounds.top + bounds.height / 2;
-                                        this.ctx.beginPath();
-                                        this.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
-                                        this.ctx.fillStyle = '#ffffff';
-                                        this.ctx.fill();
-                                        this.ctx.strokeStyle = '#0075ff';
-                                        this.ctx.lineWidth = 2;
-                                        this.ctx.stroke();
-                                    }
-                                    else {
-                                        trackX = bounds.left + bounds.width / 2 - trackThickness / 2;
-                                        trackTop = bounds.top + thumbRadius;
-                                        trackHeight = bounds.height - thumbRadius * 2;
-                                        this.ctx.fillStyle = '#c0c0c0';
-                                        this.ctx.fillRect(trackX, trackTop, trackThickness, trackHeight);
-                                        filledHeight = trackHeight * ratio;
-                                        this.ctx.fillStyle = '#0075ff';
-                                        this.ctx.fillRect(trackX, trackTop + trackHeight - filledHeight, trackThickness, filledHeight);
-                                        thumbX = bounds.left + bounds.width / 2;
-                                        thumbY = trackTop + trackHeight * (1 - ratio);
-                                        this.ctx.beginPath();
-                                        this.ctx.arc(thumbX, thumbY, thumbRadius, 0, Math.PI * 2);
-                                        this.ctx.fillStyle = '#ffffff';
-                                        this.ctx.fill();
-                                        this.ctx.strokeStyle = '#0075ff';
-                                        this.ctx.lineWidth = 2;
-                                        this.ctx.stroke();
-                                    }
-                                    this.ctx.restore();
+                                    renderRange(this.state, container);
                                 }
                             }
                             if (container instanceof ProgressElementContainer) {
-                                bounds = container.bounds;
-                                ratio = container.ratio;
-                                borderRadius = Math.min(bounds.height / 2, 4);
-                                this.ctx.save();
-                                // Track background
-                                this.ctx.beginPath();
-                                this.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
-                                this.ctx.fillStyle = '#e6e6e6';
-                                this.ctx.fill();
-                                // Filled bar
-                                if (ratio > 0) {
-                                    fillWidth = bounds.width * ratio;
-                                    this.ctx.beginPath();
-                                    this.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
-                                    this.ctx.fillStyle = '#0075ff';
-                                    this.ctx.fill();
-                                }
-                                this.ctx.restore();
+                                renderProgress(this.state, container);
                             }
                             if (container instanceof MeterElementContainer) {
-                                bounds = container.bounds;
-                                ratio = container.ratio;
-                                state = container.state;
-                                borderRadius = Math.min(bounds.height / 2, 4);
-                                fillColor = void 0;
-                                switch (state) {
-                                    case 0 /* METER_STATE.OPTIMUM */:
-                                        fillColor = '#30b030';
-                                        break;
-                                    case 1 /* METER_STATE.SUBOPTIMUM */:
-                                        fillColor = '#daa520';
-                                        break;
-                                    case 2 /* METER_STATE.CRITICAL */:
-                                    default:
-                                        fillColor = '#e04040';
-                                        break;
-                                }
-                                this.ctx.save();
-                                // Track background
-                                this.ctx.beginPath();
-                                this.ctx.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, borderRadius);
-                                this.ctx.fillStyle = '#e6e6e6';
-                                this.ctx.fill();
-                                // Filled bar
-                                if (ratio > 0) {
-                                    fillWidth = bounds.width * ratio;
-                                    this.ctx.beginPath();
-                                    this.ctx.roundRect(bounds.left, bounds.top, fillWidth, bounds.height, borderRadius);
-                                    this.ctx.fillStyle = fillColor;
-                                    this.ctx.fill();
-                                }
-                                this.ctx.restore();
+                                renderMeter(this.state, container);
                             }
-                            if (isTextInputElement(container) && container.value.length) {
-                                _b = this.createFontStyle(styles), font = _b[0], fontFamily = _b[1], fontSize = _b[2];
-                                baseline_1 = this.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
-                                this.ctx.font = font;
-                                this.ctx.fillStyle = asString(styles.color);
-                                this.ctx.textBaseline = 'alphabetic';
-                                this.ctx.textAlign = canvasTextAlign(container.styles.textAlign);
-                                bounds_1 = contentBox(container);
-                                this.ctx.save();
-                                this.path([
-                                    new Vector(bounds_1.left, bounds_1.top),
-                                    new Vector(bounds_1.left + bounds_1.width, bounds_1.top),
-                                    new Vector(bounds_1.left + bounds_1.width, bounds_1.top + bounds_1.height),
-                                    new Vector(bounds_1.left, bounds_1.top + bounds_1.height),
-                                ]);
-                                this.ctx.clip();
-                                if (container instanceof TextareaElementContainer) {
-                                    fontSizeNumber = getNumber(styles.fontSize);
-                                    lineHeight_1 = computeLineHeight(styles.lineHeight, fontSizeNumber);
-                                    scrollTop_1 = (_g = container.scrollTop) !== null && _g !== void 0 ? _g : 0;
-                                    xOffset = 0;
-                                    switch (container.styles.textAlign) {
-                                        case 1 /* TEXT_ALIGN.CENTER */:
-                                            xOffset = bounds_1.width / 2;
-                                            break;
-                                        case 2 /* TEXT_ALIGN.RIGHT */:
-                                            xOffset = bounds_1.width;
-                                            break;
-                                    }
-                                    originX_1 = bounds_1.left + xOffset;
-                                    letterSpacing_1 = styles.letterSpacing;
-                                    measureWidth_1 = function (text) {
-                                        if (letterSpacing_1 !== 0 && text.length > 0) {
-                                            var graphemeCount = segmentGraphemes(text).length;
-                                            // Measure the full string at once so that kerning between
-                                            // character pairs is accounted for (ctx.measureText on a single
-                                            // glyph misses kerning with its neighbours).  Then add
-                                            // letter-spacing gaps: (n-1) gaps because the browser does not
-                                            // count trailing letter-spacing in the wrap budget.
-                                            var glyphsWidth = _this.ctx.measureText(text).width / _this.options.scale;
-                                            return glyphsWidth + (letterSpacing_1 - 1) * (graphemeCount - 1);
-                                        }
-                                        return _this.ctx.measureText(text).width / _this.options.scale;
-                                    };
-                                    wrapParagraph = function (paragraph, maxWidth) {
-                                        var _a, _b;
-                                        var lines = [];
-                                        // Helper: break a single unsplittable chunk character-by-character.
-                                        var breakChunk = function (chunk) {
-                                            var graphemes = segmentGraphemes(chunk);
-                                            var current = '';
-                                            for (var _i = 0, graphemes_1 = graphemes; _i < graphemes_1.length; _i++) {
-                                                var g = graphemes_1[_i];
-                                                var candidate = current + g;
-                                                if (current.length > 0 && measureWidth_1(candidate) > maxWidth) {
-                                                    lines.push(current);
-                                                    current = g;
-                                                }
-                                                else {
-                                                    current = candidate;
-                                                }
-                                            }
-                                            if (current.length > 0) {
-                                                lines.push(current);
-                                            }
-                                        };
-                                        // Tokenise on whitespace AND after hyphens so that hyphenated
-                                        // compounds ("many-manymany") can break after the dash, matching
-                                        // the browser's default line-breaking behaviour for textareas.
-                                        var tokens = paragraph.split(/(\s+|(?<=-+))/);
-                                        var currentLine = '';
-                                        for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
-                                            var token = tokens_1[_i];
-                                            if (token === '')
-                                                continue;
-                                            var candidate = currentLine + token;
-                                            if (currentLine.length > 0 && measureWidth_1(candidate) > maxWidth) {
-                                                // Flush the current line.
-                                                lines.push(currentLine);
-                                                var trimmed = token.trimStart();
-                                                // If the token itself is wider than the box, break it
-                                                // character by character rather than leaving it on one line.
-                                                if (trimmed.length > 0 && measureWidth_1(trimmed) > maxWidth) {
-                                                    breakChunk(trimmed);
-                                                    currentLine = (_a = lines.pop()) !== null && _a !== void 0 ? _a : '';
-                                                }
-                                                else {
-                                                    currentLine = trimmed;
-                                                }
-                                            }
-                                            else {
-                                                // First token on a new line: if it alone exceeds the width,
-                                                // break it character by character right away.
-                                                if (currentLine.length === 0 && measureWidth_1(token.trimStart()) > maxWidth) {
-                                                    var trimmed = token.trimStart();
-                                                    breakChunk(trimmed);
-                                                    currentLine = (_b = lines.pop()) !== null && _b !== void 0 ? _b : '';
-                                                }
-                                                else {
-                                                    currentLine = candidate;
-                                                }
-                                            }
-                                        }
-                                        if (currentLine.length > 0) {
-                                            lines.push(currentLine);
-                                        }
-                                        return lines;
-                                    };
-                                    paragraphs = container.value.split('\n');
-                                    wrappedLines = [];
-                                    for (_c = 0, paragraphs_1 = paragraphs; _c < paragraphs_1.length; _c++) {
-                                        paragraph = paragraphs_1[_c];
-                                        if (paragraph.length === 0) {
-                                            // Preserve blank lines produced by consecutive newlines.
-                                            wrappedLines.push('');
-                                            continue;
-                                        }
-                                        for (_d = 0, _e = wrapParagraph(paragraph, bounds_1.width); _d < _e.length; _d++) {
-                                            line = _e[_d];
-                                            wrappedLines.push(line);
-                                        }
-                                    }
-                                    // Render each wrapped line at the appropriate vertical position,
-                                    // accounting for scrollTop so only visible lines are painted.
-                                    wrappedLines.forEach(function (line, index) {
-                                        var lineTop = index * lineHeight_1 - scrollTop_1;
-                                        // Skip lines that are completely outside the content box.
-                                        if (lineTop + lineHeight_1 < 0 || lineTop > bounds_1.height) {
-                                            return;
-                                        }
-                                        var lineBounds = new Bounds(originX_1, bounds_1.top + lineTop, bounds_1.width, lineHeight_1);
-                                        _this.renderTextWithLetterSpacing(new TextBounds(line, lineBounds), styles.letterSpacing, baseline_1);
-                                    });
-                                }
-                                else {
-                                    x = 0;
-                                    switch (container.styles.textAlign) {
-                                        case 1 /* TEXT_ALIGN.CENTER */:
-                                            x += bounds_1.width / 2;
-                                            break;
-                                        case 2 /* TEXT_ALIGN.RIGHT */:
-                                            x += bounds_1.width;
-                                            break;
-                                    }
-                                    textBounds = bounds_1.add(x, 0, 0, -bounds_1.height / 2 + 1);
-                                    this.renderTextWithLetterSpacing(new TextBounds(container.value, textBounds), styles.letterSpacing, baseline_1);
-                                }
-                                this.ctx.restore();
-                                this.ctx.textBaseline = 'alphabetic';
-                                this.ctx.textAlign = 'left';
-                            }
-                            if (!contains(container.styles.display, 2048 /* DISPLAY.LIST_ITEM */)) return [3 /*break*/, 26];
-                            if (!(container.styles.listStyleImage !== null)) return [3 /*break*/, 25];
-                            img = container.styles.listStyleImage;
-                            if (!(img.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 24];
-                            image = void 0;
-                            url = img.url;
-                            _h.label = 21;
-                        case 21:
-                            _h.trys.push([21, 23, , 24]);
-                            return [4 /*yield*/, this.context.cache.match(url)];
-                        case 22:
-                            image = _h.sent();
-                            this.ctx.drawImage(image, container.bounds.left - (image.width + 10), container.bounds.top);
-                            return [3 /*break*/, 24];
-                        case 23:
-                            _h.sent();
-                            this.context.logger.error("Error loading list-style-image ".concat(url));
-                            return [3 /*break*/, 24];
-                        case 24: return [3 /*break*/, 26];
+                            if (!isTextInputElement(container)) return [3 /*break*/, 26];
+                            isListBoxSelect = container instanceof SelectElementContainer && container.isListBox && container.options.length > 0;
+                            if (!(container.value.length || isListBoxSelect)) return [3 /*break*/, 26];
+                            return [4 /*yield*/, renderTextInputElement(this.state, container, styles)];
                         case 25:
-                            if (paint.listValue && container.styles.listStyleType !== -1 /* LIST_STYLE_TYPE.NONE */) {
-                                fontFamily = this.createFontStyle(styles)[0];
-                                wm = styles.writingMode;
-                                isVerticalList = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
-                                    wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
-                                    wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
-                                    wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                                this.ctx.font = fontFamily;
-                                this.ctx.fillStyle = asString(styles.color);
-                                if (isVerticalList && container.styles.listStylePosition === 1 /* LIST_STYLE_POSITION.OUTSIDE */) {
-                                    fontSize = getNumber(styles.fontSize);
-                                    isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                                    angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
-                                    markerX = container.bounds.left +
-                                        getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) +
-                                        fontSize / 2;
-                                    markerY = void 0;
-                                    if (isSidewaysLR) {
-                                        markerY = container.bounds.top + container.bounds.height + fontSize;
-                                    }
-                                    else {
-                                        markerY = container.bounds.top - fontSize / 2;
-                                    }
-                                    this.ctx.save();
-                                    this.ctx.translate(markerX, markerY);
-                                    this.ctx.rotate(angle);
-                                    this.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
-                                    this.ctx.textAlign = 'center';
-                                    this.ctx.fillText(paint.listValue, 0, 0);
-                                    this.ctx.restore();
-                                }
-                                else if (isVerticalList && container.styles.listStylePosition === 0 /* LIST_STYLE_POSITION.INSIDE */) {
-                                    fontSize = getNumber(styles.fontSize);
-                                    isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                                    angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
-                                    markerX = container.bounds.left +
-                                        getAbsoluteValue(container.styles.paddingLeft, container.bounds.width) +
-                                        fontSize / 2;
-                                    markerY = void 0;
-                                    if (isSidewaysLR) {
-                                        // sideways-lr: text goes bottom→top, so inline-start = bottom of content
-                                        markerY =
-                                            container.bounds.top +
-                                                container.bounds.height -
-                                                getAbsoluteValue(container.styles.paddingBottom, container.bounds.height) -
-                                                fontSize / 2;
-                                    }
-                                    else {
-                                        // vertical-rl/lr: text goes top→bottom, so inline-start = top of content
-                                        markerY =
-                                            container.bounds.top +
-                                                getAbsoluteValue(container.styles.paddingTop, container.bounds.height) +
-                                                fontSize / 2;
-                                    }
-                                    this.ctx.save();
-                                    this.ctx.translate(markerX, markerY);
-                                    this.ctx.rotate(angle);
-                                    this.ctx.textBaseline = isSidewaysLR ? 'hanging' : 'alphabetic';
-                                    this.ctx.textAlign = 'right';
-                                    this.ctx.fillText(paint.listValue, 0, 0);
-                                    this.ctx.restore();
-                                }
-                                else {
-                                    this.ctx.textBaseline = 'alphabetic';
-                                    this.ctx.textAlign = 'right';
-                                    _f = this.createFontStyle(styles), fontFamily_1 = _f[1], fontSize = _f[2];
-                                    baseline = this.fontMetrics.getRawMetrics(fontFamily_1, fontSize).baseline;
-                                    lineHeight = computeLineHeight(styles.lineHeight, getNumber(styles.fontSize));
-                                    leading = Math.max(0, lineHeight - getNumber(styles.fontSize));
-                                    markerY = Math.floor(container.bounds.top +
-                                        getAbsoluteValue(container.styles.paddingTop, container.bounds.width) +
-                                        leading / 2 +
-                                        baseline) - (this._isFirefox ? 1 : 0);
-                                    this.ctx.fillText(paint.listValue, container.bounds.left, markerY);
-                                }
-                                this.ctx.textBaseline = 'bottom';
-                                this.ctx.textAlign = 'left';
-                            }
-                            _h.label = 26;
-                        case 26: return [2 /*return*/];
+                            _c.sent();
+                            _c.label = 26;
+                        case 26: 
+                        // List markers
+                        return [4 /*yield*/, renderListMarker(this.state, paint, styles)];
+                        case 27:
+                            // List markers
+                            _c.sent();
+                            return [2 /*return*/];
                     }
                 });
             });
         };
-        CanvasRenderer.prototype.renderStackContent = function (stack) {
-            return __awaiter(this, void 0, void 0, function () {
-                var _i, _a, child, _b, _c, child, _d, _e, child, _f, _g, child, _h, _j, child, _k, _l, child, _m, _o, child;
-                return __generator(this, function (_p) {
-                    switch (_p.label) {
-                        case 0:
-                            if (contains(stack.element.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
-                                debugger;
-                            }
-                            // https://www.w3.org/TR/css-position-3/#painting-order
-                            // 1. the background and borders of the element forming the stacking context.
-                            return [4 /*yield*/, this.renderNodeBackgroundAndBorders(stack.element)];
-                        case 1:
-                            // https://www.w3.org/TR/css-position-3/#painting-order
-                            // 1. the background and borders of the element forming the stacking context.
-                            _p.sent();
-                            _i = 0, _a = stack.negativeZIndex;
-                            _p.label = 2;
-                        case 2:
-                            if (!(_i < _a.length)) return [3 /*break*/, 5];
-                            child = _a[_i];
-                            return [4 /*yield*/, this.renderStack(child)];
-                        case 3:
-                            _p.sent();
-                            _p.label = 4;
-                        case 4:
-                            _i++;
-                            return [3 /*break*/, 2];
-                        case 5: 
-                        // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
-                        return [4 /*yield*/, this.renderNodeContent(stack.element)];
-                        case 6:
-                            // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
-                            _p.sent();
-                            _b = 0, _c = stack.nonInlineLevel;
-                            _p.label = 7;
-                        case 7:
-                            if (!(_b < _c.length)) return [3 /*break*/, 10];
-                            child = _c[_b];
-                            return [4 /*yield*/, this.renderNode(child)];
-                        case 8:
-                            _p.sent();
-                            _p.label = 9;
-                        case 9:
-                            _b++;
-                            return [3 /*break*/, 7];
-                        case 10:
-                            _d = 0, _e = stack.nonPositionedFloats;
-                            _p.label = 11;
-                        case 11:
-                            if (!(_d < _e.length)) return [3 /*break*/, 14];
-                            child = _e[_d];
-                            return [4 /*yield*/, this.renderStack(child)];
-                        case 12:
-                            _p.sent();
-                            _p.label = 13;
-                        case 13:
-                            _d++;
-                            return [3 /*break*/, 11];
-                        case 14:
-                            _f = 0, _g = stack.nonPositionedInlineLevel;
-                            _p.label = 15;
-                        case 15:
-                            if (!(_f < _g.length)) return [3 /*break*/, 18];
-                            child = _g[_f];
-                            return [4 /*yield*/, this.renderStack(child)];
-                        case 16:
-                            _p.sent();
-                            _p.label = 17;
-                        case 17:
-                            _f++;
-                            return [3 /*break*/, 15];
-                        case 18:
-                            _h = 0, _j = stack.inlineLevel;
-                            _p.label = 19;
-                        case 19:
-                            if (!(_h < _j.length)) return [3 /*break*/, 22];
-                            child = _j[_h];
-                            return [4 /*yield*/, this.renderNode(child)];
-                        case 20:
-                            _p.sent();
-                            _p.label = 21;
-                        case 21:
-                            _h++;
-                            return [3 /*break*/, 19];
-                        case 22:
-                            _k = 0, _l = stack.zeroOrAutoZIndexOrTransformedOrOpacity;
-                            _p.label = 23;
-                        case 23:
-                            if (!(_k < _l.length)) return [3 /*break*/, 26];
-                            child = _l[_k];
-                            return [4 /*yield*/, this.renderStack(child)];
-                        case 24:
-                            _p.sent();
-                            _p.label = 25;
-                        case 25:
-                            _k++;
-                            return [3 /*break*/, 23];
-                        case 26:
-                            _m = 0, _o = stack.positiveZIndex;
-                            _p.label = 27;
-                        case 27:
-                            if (!(_m < _o.length)) return [3 /*break*/, 30];
-                            child = _o[_m];
-                            return [4 /*yield*/, this.renderStack(child)];
-                        case 28:
-                            _p.sent();
-                            _p.label = 29;
-                        case 29:
-                            _m++;
-                            return [3 /*break*/, 27];
-                        case 30: return [2 /*return*/];
-                    }
-                });
-            });
+        // -------------------------------------------------------------------------
+        // Low-level path helpers (kept as instance methods for backwards compat)
+        // -------------------------------------------------------------------------
+        CanvasRenderer.prototype.path = function (paths) {
+            canvasPath(this.state, paths);
         };
         CanvasRenderer.prototype.mask = function (paths) {
-            this.ctx.beginPath();
-            this.ctx.save();
-            // reset tranform to identity
-            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-            this.ctx.moveTo(0, 0);
-            this.ctx.lineTo(this.canvas.width, 0);
-            this.ctx.lineTo(this.canvas.width, this.canvas.height);
-            this.ctx.lineTo(0, this.canvas.height);
-            this.ctx.lineTo(0, 0);
-            this.ctx.restore();
-            this.formatPath(reversePath(paths));
-            this.ctx.closePath();
-        };
-        CanvasRenderer.prototype.path = function (paths) {
-            this.ctx.beginPath();
-            this.formatPath(paths);
-            this.ctx.closePath();
+            canvasMask(this.state, paths);
         };
         CanvasRenderer.prototype.formatPath = function (paths) {
-            var _this = this;
-            paths.forEach(function (point, index) {
-                var start = isBezierCurve(point) ? point.start : point;
-                if (index === 0) {
-                    _this.ctx.moveTo(start.x, start.y);
-                }
-                else {
-                    _this.ctx.lineTo(start.x, start.y);
-                }
-                if (isBezierCurve(point)) {
-                    _this.ctx.bezierCurveTo(point.startControl.x, point.startControl.y, point.endControl.x, point.endControl.y, point.end.x, point.end.y);
-                }
-            });
+            formatPath(this.state.ctx, paths);
         };
-        CanvasRenderer.prototype.renderRepeat = function (path, pattern, offsetX, offsetY) {
-            this.path(path);
-            this.ctx.fillStyle = pattern;
-            this.ctx.translate(offsetX, offsetY);
-            this.ctx.fill();
-            this.ctx.translate(-offsetX, -offsetY);
-        };
-        CanvasRenderer.prototype.resizeImage = function (image, width, height) {
-            // Commented out to solve "Operation is insecure" on safari
-            // if (image.width === width && image.height === height) {
-            //     return image;
-            // }
-            var _a;
-            var ownerDocument = (_a = this.canvas.ownerDocument) !== null && _a !== void 0 ? _a : document;
-            var canvas = ownerDocument.createElement('canvas');
-            canvas.width = Math.max(1, width);
-            canvas.height = Math.max(1, height);
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
-            return canvas;
-        };
-        CanvasRenderer.prototype.renderBackgroundImage = function (container) {
-            return __awaiter(this, void 0, void 0, function () {
-                var index, _loop_1, this_1, _i, _a, backgroundImage;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            index = container.styles.backgroundImage.length - 1;
-                            _loop_1 = function (backgroundImage) {
-                                var blendMode, image, url, _c, path, x, y, width, height, pattern, _d, path, x, y, width, height, _e, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_1, pattern, _f, path, x, y, width, height, _g, lineLength, x0, x1, y0, y1, canvas, ctx, gradient_2, processedStops, tileStart, tileEnd, tileSize, MAX_ITER, allStops_1, _loop_2, iter, state_1, _loop_3, iter, pattern, _h, path, left, top_1, width, height, position, x, y, _j, rx, ry, radialGradient_1, midX, midY, f, invF, _k, path, left, top_2, width, height, position, x, y, _l, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_2, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_4, iter, state_2, _loop_5, iter, radialGradient_2, _m, path, left, top_3, width, height, position, cx, cy, conicGrad_1, _o, path, left, top_4, width, height, position, cx, cy, processedStops, tileStart, tileEnd, tileSize, conicGrad_2, MAX_ITER, allStops_3, _loop_6, iter, state_3, _loop_7, iter;
-                                return __generator(this, function (_p) {
-                                    switch (_p.label) {
-                                        case 0:
-                                            console.log('>>>', backgroundImage.type);
-                                            blendMode = getBackgroundValueForIndex(container.styles.backgroundBlendMode, index);
-                                            if (blendMode !== 'source-over') {
-                                                this_1.ctx.globalCompositeOperation = blendMode;
-                                            }
-                                            if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
-                                            image = void 0;
-                                            url = backgroundImage.url;
-                                            _p.label = 1;
-                                        case 1:
-                                            _p.trys.push([1, 3, , 4]);
-                                            return [4 /*yield*/, this_1.context.cache.match(url)];
-                                        case 2:
-                                            image = _p.sent();
-                                            return [3 /*break*/, 4];
-                                        case 3:
-                                            _p.sent();
-                                            this_1.context.logger.error("Error loading background-image ".concat(url));
-                                            return [3 /*break*/, 4];
-                                        case 4:
-                                            if (image && image.width > 0 && image.height > 0) {
-                                                _c = calculateBackgroundRendering(container, index, [
-                                                    image.width,
-                                                    image.height,
-                                                    image.width / image.height,
-                                                ]), path = _c[0], x = _c[1], y = _c[2], width = _c[3], height = _c[4];
-                                                pattern = this_1.ctx.createPattern(this_1.resizeImage(image, width, height), 'repeat');
-                                                this_1.renderRepeat(path, pattern, x, y);
-                                            }
-                                            return [3 /*break*/, 6];
-                                        case 5:
-                                            if (isLinearGradient(backgroundImage)) {
-                                                _d = calculateBackgroundRendering(container, index, [null, null, null]), path = _d[0], x = _d[1], y = _d[2], width = _d[3], height = _d[4];
-                                                _e = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _e[0], x0 = _e[1], x1 = _e[2], y0 = _e[3], y1 = _e[4];
-                                                canvas = document.createElement('canvas');
-                                                canvas.width = Math.max(1, width);
-                                                canvas.height = Math.max(1, height);
-                                                ctx = canvas.getContext('2d');
-                                                gradient_1 = ctx.createLinearGradient(x0, y0, x1, y1);
-                                                processColorStops(backgroundImage.stops, lineLength || 1).forEach(function (colorStop) {
-                                                    return gradient_1.addColorStop(colorStop.stop, asString(colorStop.color));
-                                                });
-                                                ctx.fillStyle = gradient_1;
-                                                ctx.fillRect(0, 0, width, height);
-                                                if (width > 0 && height > 0) {
-                                                    pattern = this_1.ctx.createPattern(canvas, 'repeat');
-                                                    this_1.renderRepeat(path, pattern, x, y);
-                                                }
-                                            }
-                                            else if (isRepeatingLinearGradient(backgroundImage)) {
-                                                _f = calculateBackgroundRendering(container, index, [null, null, null]), path = _f[0], x = _f[1], y = _f[2], width = _f[3], height = _f[4];
-                                                _g = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _g[0], x0 = _g[1], x1 = _g[2], y0 = _g[3], y1 = _g[4];
-                                                canvas = document.createElement('canvas');
-                                                canvas.width = Math.max(1, width);
-                                                canvas.height = Math.max(1, height);
-                                                ctx = canvas.getContext('2d');
-                                                gradient_2 = ctx.createLinearGradient(x0, y0, x1, y1);
-                                                processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
-                                                tileStart = processedStops[0].stop;
-                                                tileEnd = processedStops[processedStops.length - 1].stop;
-                                                tileSize = tileEnd - tileStart;
-                                                if (tileSize > 0) {
-                                                    MAX_ITER = 512;
-                                                    allStops_1 = [];
-                                                    _loop_2 = function (iter) {
-                                                        var offset = iter * tileSize;
-                                                        processedStops.forEach(function (s) {
-                                                            allStops_1.push({ stop: Math.max(0, s.stop - offset), color: s.color });
-                                                        });
-                                                        if (tileStart - offset <= 0)
-                                                            return "break";
-                                                    };
-                                                    // Tile backward: while the tile still contributes stops >= 0
-                                                    for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
-                                                        state_1 = _loop_2(iter);
-                                                        if (state_1 === "break")
-                                                            break;
-                                                    }
-                                                    // Original tile
-                                                    processedStops.forEach(function (s) { return allStops_1.push({ stop: s.stop, color: s.color }); });
-                                                    _loop_3 = function (iter) {
-                                                        var offset = iter * tileSize;
-                                                        processedStops.forEach(function (s) {
-                                                            allStops_1.push({ stop: Math.min(1, s.stop + offset), color: s.color });
-                                                        });
-                                                    };
-                                                    // Tile forward: while the tile still contributes stops <= 1
-                                                    for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
-                                                        _loop_3(iter);
-                                                    }
-                                                    // Clamp edges: ensure 0 and 1 are covered with the boundary stop's colour
-                                                    if (allStops_1[0].stop > 0) {
-                                                        allStops_1.unshift({ stop: 0, color: allStops_1[0].color });
-                                                    }
-                                                    if (allStops_1[allStops_1.length - 1].stop < 1) {
-                                                        allStops_1.push({ stop: 1, color: allStops_1[allStops_1.length - 1].color });
-                                                    }
-                                                    allStops_1.forEach(function (s) { return gradient_2.addColorStop(s.stop, asString(s.color)); });
-                                                }
-                                                else {
-                                                    processedStops.forEach(function (s) { return gradient_2.addColorStop(s.stop, asString(s.color)); });
-                                                }
-                                                ctx.fillStyle = gradient_2;
-                                                ctx.fillRect(0, 0, width, height);
-                                                if (width > 0 && height > 0) {
-                                                    pattern = this_1.ctx.createPattern(canvas, 'repeat');
-                                                    this_1.renderRepeat(path, pattern, x, y);
-                                                }
-                                            }
-                                            else if (isRadialGradient(backgroundImage)) {
-                                                _h = calculateBackgroundRendering(container, index, [
-                                                    null,
-                                                    null,
-                                                    null,
-                                                ]), path = _h[0], left = _h[1], top_1 = _h[2], width = _h[3], height = _h[4];
-                                                position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                                                x = getAbsoluteValue(position[0], width);
-                                                y = getAbsoluteValue(position[position.length - 1], height);
-                                                _j = calculateRadius(backgroundImage, x, y, width, height), rx = _j[0], ry = _j[1];
-                                                if (rx > 0 && ry > 0) {
-                                                    radialGradient_1 = this_1.ctx.createRadialGradient(left + x, top_1 + y, 0, left + x, top_1 + y, rx);
-                                                    processColorStops(backgroundImage.stops, rx * 2).forEach(function (colorStop) {
-                                                        return radialGradient_1.addColorStop(colorStop.stop, asString(colorStop.color));
-                                                    });
-                                                    this_1.path(path);
-                                                    this_1.ctx.fillStyle = radialGradient_1;
-                                                    if (rx !== ry) {
-                                                        midX = container.bounds.left + 0.5 * container.bounds.width;
-                                                        midY = container.bounds.top + 0.5 * container.bounds.height;
-                                                        f = ry / rx;
-                                                        invF = 1 / f;
-                                                        this_1.ctx.save();
-                                                        this_1.ctx.translate(midX, midY);
-                                                        this_1.ctx.transform(1, 0, 0, f, 0, 0);
-                                                        this_1.ctx.translate(-midX, -midY);
-                                                        this_1.ctx.fillRect(left, invF * (top_1 - midY) + midY, width, height * invF);
-                                                        this_1.ctx.restore();
-                                                    }
-                                                    else {
-                                                        this_1.ctx.fill();
-                                                    }
-                                                }
-                                            }
-                                            else if (isRepeatingRadialGradient(backgroundImage)) {
-                                                _k = calculateBackgroundRendering(container, index, [
-                                                    null,
-                                                    null,
-                                                    null,
-                                                ]), path = _k[0], left = _k[1], top_2 = _k[2], width = _k[3], height = _k[4];
-                                                position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                                                x = getAbsoluteValue(position[0], width);
-                                                y = getAbsoluteValue(position[position.length - 1], height);
-                                                _l = calculateRadius(backgroundImage, x, y, width, height), rx = _l[0], ry = _l[1];
-                                                if (rx > 0 && ry > 0) {
-                                                    cx = left + x;
-                                                    cy = top_2 + y;
-                                                    f = rx !== ry ? ry / rx : 1;
-                                                    invF = rx !== ry ? rx / ry : 1;
-                                                    maxDistX = Math.max(x, width - x);
-                                                    maxDistY = Math.max(y, height - y) * invF;
-                                                    maxRadius = Math.sqrt(Math.pow(maxDistX, 2) + Math.pow(maxDistY, 2));
-                                                    drawRadius = Math.max(rx, maxRadius);
-                                                    processedStops = processColorStops(backgroundImage.stops, rx);
-                                                    scale_2 = rx / drawRadius;
-                                                    scaledStops = processedStops.map(function (s) { return ({ color: s.color, stop: s.stop * scale_2 }); });
-                                                    tileStart = scaledStops[0].stop;
-                                                    tileEnd = scaledStops[scaledStops.length - 1].stop;
-                                                    tileSize = tileEnd - tileStart;
-                                                    allStops_2 = [];
-                                                    if (tileSize > 0) {
-                                                        MAX_ITER = 512;
-                                                        _loop_4 = function (iter) {
-                                                            var offset = iter * tileSize;
-                                                            scaledStops.forEach(function (s) {
-                                                                allStops_2.push({ color: s.color, stop: Math.max(0, s.stop - offset) });
-                                                            });
-                                                            if (tileStart - offset <= 0)
-                                                                return "break";
-                                                        };
-                                                        for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
-                                                            state_2 = _loop_4(iter);
-                                                            if (state_2 === "break")
-                                                                break;
-                                                        }
-                                                        scaledStops.forEach(function (s) { return allStops_2.push({ color: s.color, stop: s.stop }); });
-                                                        _loop_5 = function (iter) {
-                                                            var offset = iter * tileSize;
-                                                            scaledStops.forEach(function (s) {
-                                                                allStops_2.push({ color: s.color, stop: Math.min(1, s.stop + offset) });
-                                                            });
-                                                        };
-                                                        for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
-                                                            _loop_5(iter);
-                                                        }
-                                                    }
-                                                    else {
-                                                        scaledStops.forEach(function (s) { return allStops_2.push({ stop: s.stop, color: s.color }); });
-                                                    }
-                                                    radialGradient_2 = this_1.ctx.createRadialGradient(cx, cy, 0, cx, cy, drawRadius);
-                                                    allStops_2.forEach(function (s) { return radialGradient_2.addColorStop(s.stop, asString(s.color)); });
-                                                    // Prepare the path (e.g., the box with its border-radius)
-                                                    this_1.path(path);
-                                                    this_1.ctx.fillStyle = radialGradient_2;
-                                                    if (rx !== ry) {
-                                                        // Ellipse
-                                                        this_1.ctx.save();
-                                                        this_1.ctx.clip();
-                                                        this_1.ctx.translate(cx, cy);
-                                                        this_1.ctx.transform(1, 0, 0, f, 0, 0);
-                                                        this_1.ctx.translate(-cx, -cy);
-                                                        this_1.ctx.fillRect(left, invF * (top_2 - cy) + cy, width, height * invF);
-                                                        this_1.ctx.restore();
-                                                    }
-                                                    else {
-                                                        // Perfect circle
-                                                        this_1.ctx.fill();
-                                                    }
-                                                }
-                                            }
-                                            else if (isConicGradient(backgroundImage)) {
-                                                if (typeof CanvasRenderingContext2D !== 'undefined' &&
-                                                    typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
-                                                    _m = calculateBackgroundRendering(container, index, [
-                                                        null,
-                                                        null,
-                                                        null,
-                                                    ]), path = _m[0], left = _m[1], top_3 = _m[2], width = _m[3], height = _m[4];
-                                                    position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                                                    cx = left + getAbsoluteValue(position[0], width);
-                                                    cy = top_3 + getAbsoluteValue(position[position.length - 1], height);
-                                                    conicGrad_1 = this_1.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
-                                                    processColorStops(backgroundImage.stops, 360).forEach(function (colorStop) {
-                                                        return conicGrad_1.addColorStop(colorStop.stop, asString(colorStop.color));
-                                                    });
-                                                    this_1.path(path);
-                                                    this_1.ctx.fillStyle = conicGrad_1;
-                                                    this_1.ctx.fill();
-                                                }
-                                                else {
-                                                    this_1.context.logger.error('conic-gradient is not supported in this browser');
-                                                }
-                                            }
-                                            else if (isRepeatingConicGradient(backgroundImage)) {
-                                                if (typeof CanvasRenderingContext2D !== 'undefined' &&
-                                                    typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
-                                                    _o = calculateBackgroundRendering(container, index, [
-                                                        null,
-                                                        null,
-                                                        null,
-                                                    ]), path = _o[0], left = _o[1], top_4 = _o[2], width = _o[3], height = _o[4];
-                                                    position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
-                                                    cx = left + getAbsoluteValue(position[0], width);
-                                                    cy = top_4 + getAbsoluteValue(position[position.length - 1], height);
-                                                    processedStops = processColorStops(backgroundImage.stops, 360);
-                                                    tileStart = processedStops[0].stop;
-                                                    tileEnd = processedStops[processedStops.length - 1].stop;
-                                                    tileSize = tileEnd - tileStart;
-                                                    conicGrad_2 = this_1.ctx.createConicGradient(backgroundImage.startAngle - Math.PI / 2, cx, cy);
-                                                    if (tileSize > 0) {
-                                                        MAX_ITER = 512;
-                                                        allStops_3 = [];
-                                                        _loop_6 = function (iter) {
-                                                            var offset = iter * tileSize;
-                                                            processedStops.forEach(function (s) {
-                                                                allStops_3.push({ stop: Math.max(0, s.stop - offset), color: s.color });
-                                                            });
-                                                            if (tileStart - offset <= 0)
-                                                                return "break";
-                                                        };
-                                                        for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
-                                                            state_3 = _loop_6(iter);
-                                                            if (state_3 === "break")
-                                                                break;
-                                                        }
-                                                        processedStops.forEach(function (s) { return allStops_3.push({ stop: s.stop, color: s.color }); });
-                                                        _loop_7 = function (iter) {
-                                                            var offset = iter * tileSize;
-                                                            processedStops.forEach(function (s) {
-                                                                allStops_3.push({ stop: Math.min(1, s.stop + offset), color: s.color });
-                                                            });
-                                                            // Interpolate the colour at exactly position 1.0 within this tile
-                                                            var tilePos = 1 - processedStops[0].stop - offset;
-                                                            if (tilePos >= 0 && tilePos <= tileSize) {
-                                                                // Find the stop colour just before position 1.0
-                                                                for (var si = processedStops.length - 1; si >= 0; si--) {
-                                                                    if (processedStops[si].stop + offset <= 1) {
-                                                                        allStops_3.push({ stop: 1, color: processedStops[si].color });
-                                                                        break;
-                                                                    }
-                                                                }
-                                                            }
-                                                        };
-                                                        for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
-                                                            _loop_7(iter);
-                                                        }
-                                                        if (allStops_3[0].stop > 0) {
-                                                            allStops_3.unshift({ stop: 0, color: allStops_3[0].color });
-                                                        }
-                                                        if (allStops_3[allStops_3.length - 1].stop < 1) {
-                                                            allStops_3.push({ stop: 1, color: allStops_3[allStops_3.length - 1].color });
-                                                        }
-                                                        allStops_3.forEach(function (s) { return conicGrad_2.addColorStop(s.stop, asString(s.color)); });
-                                                    }
-                                                    else {
-                                                        processedStops.forEach(function (s) { return conicGrad_2.addColorStop(s.stop, asString(s.color)); });
-                                                    }
-                                                    this_1.path(path);
-                                                    this_1.ctx.fillStyle = conicGrad_2;
-                                                    this_1.ctx.fill();
-                                                }
-                                                else {
-                                                    this_1.context.logger.error('repeating-conic-gradient is not supported in this browser');
-                                                }
-                                            }
-                                            _p.label = 6;
-                                        case 6:
-                                            index--;
-                                            if (blendMode !== 'source-over') {
-                                                this_1.ctx.globalCompositeOperation = 'source-over';
-                                            }
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            };
-                            this_1 = this;
-                            _i = 0, _a = container.styles.backgroundImage.slice(0).reverse();
-                            _b.label = 1;
-                        case 1:
-                            if (!(_i < _a.length)) return [3 /*break*/, 4];
-                            backgroundImage = _a[_i];
-                            return [5 /*yield**/, _loop_1(backgroundImage)];
-                        case 2:
-                            _b.sent();
-                            _b.label = 3;
-                        case 3:
-                            _i++;
-                            return [3 /*break*/, 1];
-                        case 4: return [2 /*return*/];
-                    }
-                });
-            });
-        };
-        CanvasRenderer.prototype.renderSolidBorder = function (color, side, curvePoints) {
-            return __awaiter(this, void 0, void 0, function () {
-                return __generator(this, function (_a) {
-                    this.path(parsePathForBorder(curvePoints, side));
-                    this.ctx.fillStyle = asString(color);
-                    this.ctx.fill();
-                    return [2 /*return*/];
-                });
-            });
-        };
-        CanvasRenderer.prototype.renderDoubleBorder = function (color, width, side, curvePoints) {
-            return __awaiter(this, void 0, void 0, function () {
-                var outerPaths, innerPaths;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            if (!(width < 3)) return [3 /*break*/, 2];
-                            return [4 /*yield*/, this.renderSolidBorder(color, side, curvePoints)];
-                        case 1:
-                            _a.sent();
-                            return [2 /*return*/];
-                        case 2:
-                            outerPaths = parsePathForBorderDoubleOuter(curvePoints, side);
-                            this.path(outerPaths);
-                            this.ctx.fillStyle = asString(color);
-                            this.ctx.fill();
-                            innerPaths = parsePathForBorderDoubleInner(curvePoints, side);
-                            this.path(innerPaths);
-                            this.ctx.fill();
-                            return [2 /*return*/];
-                    }
-                });
-            });
-        };
-        /**
-         * Renders background clipped to text shapes using an offscreen canvas.
-         * Steps:
-         * 1. Create an offscreen canvas the size of the element's border box.
-         * 2. Draw the background (color + images) normally onto the offscreen canvas.
-         * 3. Create a text mask canvas with all text shapes drawn as opaque black.
-         * 4. Apply 'destination-in' with the mask canvas to clip the background to text.
-         * 5. Composite the offscreen canvas back onto the main canvas.
-         */
-        CanvasRenderer.prototype.renderBackgroundClipText = function (paint) {
-            return __awaiter(this, void 0, void 0, function () {
-                var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _loop_8, this_2, _c, _d, textBound;
-                return __generator(this, function (_e) {
-                    switch (_e.label) {
-                        case 0:
-                            container = paint.container;
-                            styles = container.styles;
-                            bounds = container.bounds;
-                            if (container.textNodes.length === 0) {
-                                return [2 /*return*/];
-                            }
-                            width = Math.ceil(bounds.width * this.options.scale);
-                            height = Math.ceil(bounds.height * this.options.scale);
-                            if (width <= 0 || height <= 0) {
-                                return [2 /*return*/];
-                            }
-                            offscreen = document.createElement('canvas');
-                            offscreen.width = width;
-                            offscreen.height = height;
-                            offCtx = offscreen.getContext('2d');
-                            // Apply the same transform so absolute coordinates work correctly.
-                            offCtx.scale(this.options.scale, this.options.scale);
-                            offCtx.translate(-bounds.left, -bounds.top);
-                            mainCtx = this.ctx;
-                            this.ctx = offCtx;
-                            if (!isTransparent(styles.backgroundColor)) {
-                                this.ctx.fillStyle = asString(styles.backgroundColor);
-                                this.ctx.fillRect(bounds.left, bounds.top, bounds.width, bounds.height);
-                            }
-                            return [4 /*yield*/, this.renderBackgroundImage(container)];
-                        case 1:
-                            _e.sent();
-                            this.ctx = mainCtx;
-                            maskCanvas = document.createElement('canvas');
-                            maskCanvas.width = width;
-                            maskCanvas.height = height;
-                            maskCtx = maskCanvas.getContext('2d');
-                            maskCtx.scale(this.options.scale, this.options.scale);
-                            maskCtx.translate(-bounds.left, -bounds.top);
-                            _a = this.createFontStyle(styles), font = _a[0], fontFamily = _a[1], fontSize = _a[2];
-                            maskCtx.font = font;
-                            maskCtx.direction = styles.direction === 1 /* DIRECTION.RTL */ ? 'rtl' : 'ltr';
-                            maskCtx.textAlign = 'left';
-                            maskCtx.fillStyle = '#000000';
-                            wm = styles.writingMode;
-                            baseline = this.fontMetrics.getMetrics(fontFamily, fontSize).baseline;
-                            isVertical = wm === 1 /* WRITING_MODE.VERTICAL_RL */ ||
-                                wm === 2 /* WRITING_MODE.VERTICAL_LR */ ||
-                                wm === 3 /* WRITING_MODE.SIDEWAYS_RL */ ||
-                                wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                            for (_i = 0, _b = container.textNodes; _i < _b.length; _i++) {
-                                textNode = _b[_i];
-                                _loop_8 = function (textBound) {
-                                    if (isVertical) {
-                                        var cx = textBound.bounds.left + textBound.bounds.width / 2;
-                                        var cy = textBound.bounds.top + textBound.bounds.height / 2;
-                                        var isSidewaysLR = wm === 4 /* WRITING_MODE.SIDEWAYS_LR */;
-                                        var angle = isSidewaysLR ? -Math.PI / 2 : Math.PI / 2;
-                                        maskCtx.save();
-                                        maskCtx.translate(cx, cy);
-                                        maskCtx.rotate(angle);
-                                        maskCtx.translate(-cx, -cy);
-                                        var rotatedBounds = new Bounds(cx - textBound.bounds.height / 2, cy - textBound.bounds.width / 2, textBound.bounds.height, textBound.bounds.width);
-                                        if (!this_2._isFirefox) {
-                                            maskCtx.textBaseline = 'ideographic';
-                                            maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + rotatedBounds.height);
-                                        }
-                                        else {
-                                            maskCtx.textBaseline = 'alphabetic';
-                                            maskCtx.fillText(textBound.text, rotatedBounds.left, rotatedBounds.top + baseline);
-                                        }
-                                        maskCtx.restore();
-                                    }
-                                    else {
-                                        if (styles.letterSpacing === 0) {
-                                            if (!this_2._isFirefox) {
-                                                maskCtx.textBaseline = 'ideographic';
-                                                maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + textBound.bounds.height);
-                                            }
-                                            else {
-                                                maskCtx.textBaseline = 'alphabetic';
-                                                maskCtx.fillText(textBound.text, textBound.bounds.left, textBound.bounds.top + baseline);
-                                            }
-                                        }
-                                        else {
-                                            maskCtx.textBaseline = 'alphabetic';
-                                            var letters_3 = segmentGraphemes(textBound.text);
-                                            letters_3.reduce(function (left, letter, index) {
-                                                maskCtx.fillText(letter, left, textBound.bounds.top + baseline);
-                                                var isLast = index === letters_3.length - 1;
-                                                return left + maskCtx.measureText(letter).width + (isLast ? 0 : styles.letterSpacing - 1);
-                                            }, textBound.bounds.left);
-                                        }
-                                    }
-                                };
-                                this_2 = this;
-                                for (_c = 0, _d = textNode.textBounds; _c < _d.length; _c++) {
-                                    textBound = _d[_c];
-                                    _loop_8(textBound);
-                                }
-                            }
-                            // Step 3: Apply the text mask to the background using 'destination-in'.
-                            // This is a single drawImage call so it clips the entire background at once.
-                            offCtx.globalCompositeOperation = 'destination-in';
-                            offCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pixel-to-pixel copy
-                            offCtx.drawImage(maskCanvas, 0, 0);
-                            // Step 4: Draw the clipped result onto the main canvas
-                            this.ctx.drawImage(offscreen, 0, 0, width, height, bounds.left, bounds.top, bounds.width, bounds.height);
-                            return [2 /*return*/];
-                    }
-                });
-            });
-        };
-        CanvasRenderer.prototype.renderNodeBackgroundAndBorders = function (paint) {
-            return __awaiter(this, void 0, void 0, function () {
-                var styles, hasBackground, borders, backgroundPaintingArea, isBackgroundClipText, _i, _a, textNode, _b, _c, textBound, side, _d, borders_1, border;
-                var _this = this;
-                return __generator(this, function (_e) {
-                    switch (_e.label) {
-                        case 0:
-                            this.applyEffects(paint.getEffects(2 /* EffectTarget.BACKGROUND_BORDERS */));
-                            styles = paint.container.styles;
-                            hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
-                            borders = [
-                                { style: styles.borderTopStyle, color: styles.borderTopColor, width: styles.borderTopWidth },
-                                { style: styles.borderRightStyle, color: styles.borderRightColor, width: styles.borderRightWidth },
-                                { style: styles.borderBottomStyle, color: styles.borderBottomColor, width: styles.borderBottomWidth },
-                                { style: styles.borderLeftStyle, color: styles.borderLeftColor, width: styles.borderLeftWidth },
-                            ];
-                            backgroundPaintingArea = calculateBackgroundCurvedPaintingArea(getBackgroundValueForIndex(styles.backgroundClip, 0), paint.curves);
-                            if (!(hasBackground || styles.boxShadow.length)) return [3 /*break*/, 5];
-                            isBackgroundClipText = getBackgroundValueForIndex(styles.backgroundClip, 0) === 3 /* BACKGROUND_CLIP.TEXT */;
-                            if (!(isBackgroundClipText && hasBackground)) return [3 /*break*/, 2];
-                            // background-clip: text — render background clipped to text shapes
-                            // using an offscreen canvas with composite operations.
-                            return [4 /*yield*/, this.renderBackgroundClipText(paint)];
-                        case 1:
-                            // background-clip: text — render background clipped to text shapes
-                            // using an offscreen canvas with composite operations.
-                            _e.sent();
-                            return [3 /*break*/, 4];
-                        case 2:
-                            if (!hasBackground) return [3 /*break*/, 4];
-                            this.ctx.save();
-                            this.path(backgroundPaintingArea);
-                            this.ctx.clip();
-                            if (!isTransparent(styles.backgroundColor)) {
-                                this.ctx.fillStyle = asString(styles.backgroundColor);
-                                if (styles.display === 4 /* DISPLAY.INLINE */) {
-                                    for (_i = 0, _a = paint.container.textNodes; _i < _a.length; _i++) {
-                                        textNode = _a[_i];
-                                        for (_b = 0, _c = textNode.textBounds; _b < _c.length; _b++) {
-                                            textBound = _c[_b];
-                                            this.ctx.fillRect(textBound.bounds.left, textBound.bounds.top, textBound.bounds.width, textBound.bounds.height);
-                                        }
-                                    }
-                                }
-                                else {
-                                    this.ctx.fill();
-                                }
-                            }
-                            return [4 /*yield*/, this.renderBackgroundImage(paint.container)];
-                        case 3:
-                            _e.sent();
-                            this.ctx.restore();
-                            _e.label = 4;
-                        case 4:
-                            styles.boxShadow
-                                .slice(0)
-                                .reverse()
-                                .forEach(function (shadow) {
-                                _this.ctx.save();
-                                var borderBoxArea = calculateBorderBoxPath(paint.curves);
-                                // Build the painting area by applying offset and spread.
-                                // expandBorderBoxPath rebuilds the Bézier curves with adjusted radii
-                                // (border-radius ± spread) per the CSS spec, unlike transformPath which
-                                // only translates corners without updating the curve geometry.
-                                // ctx.filter = blur() is the sole blur mechanism, avoiding the double-blur
-                                // that occurred when both ctx.shadowBlur and ctx.filter were set simultaneously.
-                                // See https://github.com/html2canvas/html2canvas/issues/21
-                                var effectiveSpread = shadow.inset ? -shadow.spread.number : shadow.spread.number;
-                                var shadowPaintingArea = expandBorderBoxPath(paint.curves, effectiveSpread).map(function (p) {
-                                    return p.add(shadow.offsetX.number, shadow.offsetY.number);
-                                });
-                                if (shadow.inset) {
-                                    _this.path(borderBoxArea);
-                                    _this.ctx.clip();
-                                    _this.mask(shadowPaintingArea);
-                                }
-                                else {
-                                    _this.mask(borderBoxArea);
-                                    _this.ctx.clip();
-                                    _this.path(shadowPaintingArea);
-                                }
-                                _this.ctx.fillStyle = asString(shadow.color);
-                                if (shadow.blur.number) {
-                                    _this.ctx.filter = "blur(".concat(shadow.blur.number / 2, "px)");
-                                }
-                                _this.ctx.fill();
-                                _this.ctx.restore();
-                            });
-                            _e.label = 5;
-                        case 5:
-                            side = 0;
-                            _d = 0, borders_1 = borders;
-                            _e.label = 6;
-                        case 6:
-                            if (!(_d < borders_1.length)) return [3 /*break*/, 16];
-                            border = borders_1[_d];
-                            if (!(border.style !== 0 /* BORDER_STYLE.NONE */ && !isTransparent(border.color) && border.width > 0)) return [3 /*break*/, 14];
-                            if (!(border.style === 2 /* BORDER_STYLE.DASHED */)) return [3 /*break*/, 8];
-                            return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 2 /* BORDER_STYLE.DASHED */)];
-                        case 7:
-                            _e.sent();
-                            return [3 /*break*/, 14];
-                        case 8:
-                            if (!(border.style === 3 /* BORDER_STYLE.DOTTED */)) return [3 /*break*/, 10];
-                            return [4 /*yield*/, this.renderDashedDottedBorder(border.color, border.width, side, paint.curves, 3 /* BORDER_STYLE.DOTTED */)];
-                        case 9:
-                            _e.sent();
-                            return [3 /*break*/, 14];
-                        case 10:
-                            if (!(border.style === 4 /* BORDER_STYLE.DOUBLE */)) return [3 /*break*/, 12];
-                            return [4 /*yield*/, this.renderDoubleBorder(border.color, border.width, side, paint.curves)];
-                        case 11:
-                            _e.sent();
-                            return [3 /*break*/, 14];
-                        case 12: return [4 /*yield*/, this.renderSolidBorder(border.color, side, paint.curves)];
-                        case 13:
-                            _e.sent();
-                            _e.label = 14;
-                        case 14:
-                            side++;
-                            _e.label = 15;
-                        case 15:
-                            _d++;
-                            return [3 /*break*/, 6];
-                        case 16: return [2 /*return*/];
-                    }
-                });
-            });
-        };
-        CanvasRenderer.prototype.renderDashedDottedBorder = function (color, width, side, curvePoints, style) {
-            return __awaiter(this, void 0, void 0, function () {
-                var strokePaths, boxPaths, startX, startY, endX, endY, length, dashLength, spaceLength, useLineDash, multiplier, numberOfDashes, minSpace, maxSpace, path1, path2, path1, path2;
-                return __generator(this, function (_a) {
-                    this.ctx.save();
-                    strokePaths = parsePathForBorderStroke(curvePoints, side);
-                    boxPaths = parsePathForBorder(curvePoints, side);
-                    if (style === 2 /* BORDER_STYLE.DASHED */) {
-                        this.path(boxPaths);
-                        this.ctx.clip();
-                    }
-                    if (isBezierCurve(boxPaths[0])) {
-                        startX = boxPaths[0].start.x;
-                        startY = boxPaths[0].start.y;
-                    }
-                    else {
-                        startX = boxPaths[0].x;
-                        startY = boxPaths[0].y;
-                    }
-                    if (isBezierCurve(boxPaths[1])) {
-                        endX = boxPaths[1].end.x;
-                        endY = boxPaths[1].end.y;
-                    }
-                    else {
-                        endX = boxPaths[1].x;
-                        endY = boxPaths[1].y;
-                    }
-                    if (side === 0 || side === 2) {
-                        length = Math.abs(startX - endX);
-                    }
-                    else {
-                        length = Math.abs(startY - endY);
-                    }
-                    this.ctx.beginPath();
-                    if (style === 3 /* BORDER_STYLE.DOTTED */) {
-                        this.formatPath(strokePaths);
-                    }
-                    else {
-                        this.formatPath(boxPaths.slice(0, 2));
-                    }
-                    dashLength = width < 3 ? width * 3 : width * 2;
-                    spaceLength = width < 3 ? width * 2 : width;
-                    if (style === 3 /* BORDER_STYLE.DOTTED */) {
-                        dashLength = width;
-                        spaceLength = width;
-                    }
-                    useLineDash = true;
-                    if (length <= dashLength * 2) {
-                        useLineDash = false;
-                    }
-                    else if (length <= dashLength * 2 + spaceLength) {
-                        multiplier = length / (2 * dashLength + spaceLength);
-                        dashLength *= multiplier;
-                        spaceLength *= multiplier;
-                    }
-                    else {
-                        numberOfDashes = Math.floor((length + spaceLength) / (dashLength + spaceLength));
-                        minSpace = (length - numberOfDashes * dashLength) / (numberOfDashes - 1);
-                        maxSpace = (length - (numberOfDashes + 1) * dashLength) / numberOfDashes;
-                        spaceLength =
-                            maxSpace <= 0 || Math.abs(spaceLength - minSpace) < Math.abs(spaceLength - maxSpace)
-                                ? minSpace
-                                : maxSpace;
-                    }
-                    if (useLineDash) {
-                        if (style === 3 /* BORDER_STYLE.DOTTED */) {
-                            this.ctx.setLineDash([0, dashLength + spaceLength]);
-                        }
-                        else {
-                            this.ctx.setLineDash([dashLength, spaceLength]);
-                        }
-                    }
-                    if (style === 3 /* BORDER_STYLE.DOTTED */) {
-                        this.ctx.lineCap = 'round';
-                        this.ctx.lineWidth = width;
-                    }
-                    else {
-                        this.ctx.lineWidth = width * 2 + 1.1;
-                    }
-                    this.ctx.strokeStyle = asString(color);
-                    this.ctx.stroke();
-                    this.ctx.setLineDash([]);
-                    // dashed round edge gap
-                    if (style === 2 /* BORDER_STYLE.DASHED */) {
-                        if (isBezierCurve(boxPaths[0])) {
-                            path1 = boxPaths[3];
-                            path2 = boxPaths[0];
-                            this.ctx.beginPath();
-                            this.formatPath([new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
-                            this.ctx.stroke();
-                        }
-                        if (isBezierCurve(boxPaths[1])) {
-                            path1 = boxPaths[1];
-                            path2 = boxPaths[2];
-                            this.ctx.beginPath();
-                            this.formatPath([new Vector(path1.end.x, path1.end.y), new Vector(path2.start.x, path2.start.y)]);
-                            this.ctx.stroke();
-                        }
-                    }
-                    this.ctx.restore();
-                    return [2 /*return*/];
-                });
-            });
-        };
+        // -------------------------------------------------------------------------
+        // Entry point
+        // -------------------------------------------------------------------------
         CanvasRenderer.prototype.render = function (element) {
             return __awaiter(this, void 0, void 0, function () {
                 var stack;
@@ -17612,70 +21022,26 @@
                     switch (_a.label) {
                         case 0:
                             if (this.options.backgroundColor) {
-                                this.ctx.fillStyle = asString(this.options.backgroundColor);
-                                this.ctx.fillRect(this.options.x, this.options.y, this.options.width, this.options.height);
+                                this.state.ctx.fillStyle = asString(this.options.backgroundColor);
+                                this.state.ctx.fillRect(this.options.x, this.options.y, this.options.width, this.options.height);
                             }
                             stack = parseStackingContexts(element);
                             return [4 /*yield*/, this.renderStack(stack)];
                         case 1:
                             _a.sent();
                             this.applyEffects([]);
-                            return [2 /*return*/, this.canvas];
+                            // Release pooled offscreen canvases and the per-render caches so their
+                            // backing memory is reclaimed.
+                            this.state.canvasPool.clear();
+                            this.state.resizeCache.clear();
+                            this.state.gradientCanvasCache.clear();
+                            return [2 /*return*/, this.state.canvas];
                     }
                 });
             });
         };
         return CanvasRenderer;
     }(Renderer));
-    var isTextInputElement = function (container) {
-        if (container instanceof TextareaElementContainer) {
-            return true;
-        }
-        else if (container instanceof SelectElementContainer) {
-            return true;
-        }
-        else if (container instanceof InputElementContainer &&
-            container.type !== RADIO &&
-            container.type !== CHECKBOX &&
-            container.type !== RANGE) {
-            return true;
-        }
-        return false;
-    };
-    var calculateBackgroundCurvedPaintingArea = function (clip, curves) {
-        switch (clip) {
-            case 0 /* BACKGROUND_CLIP.BORDER_BOX */:
-                return calculateBorderBoxPath(curves);
-            case 2 /* BACKGROUND_CLIP.CONTENT_BOX */:
-                return calculateContentBoxPath(curves);
-            case 3 /* BACKGROUND_CLIP.TEXT */:
-                // For background-clip: text, use padding-box as the initial painting area.
-                // The actual text-shape clipping is handled in renderNodeBackgroundAndBorders
-                // via offscreen canvas compositing.
-                return calculatePaddingBoxPath(curves);
-            case 1 /* BACKGROUND_CLIP.PADDING_BOX */:
-            default:
-                return calculatePaddingBoxPath(curves);
-        }
-    };
-    var canvasTextAlign = function (textAlign) {
-        switch (textAlign) {
-            case 1 /* TEXT_ALIGN.CENTER */:
-                return 'center';
-            case 2 /* TEXT_ALIGN.RIGHT */:
-                return 'right';
-            case 0 /* TEXT_ALIGN.LEFT */:
-            default:
-                return 'left';
-        }
-    };
-    // see https://github.com/niklasvh/html2canvas/pull/2645
-    var iOSBrokenFonts = ['-apple-system', 'system-ui'];
-    var fixIOSSystemFonts = function (fontFamilies) {
-        return /iPhone OS 15_(0|1)/.test(window.navigator.userAgent)
-            ? fontFamilies.filter(function (fontFamily) { return iOSBrokenFonts.indexOf(fontFamily) === -1; })
-            : fontFamilies;
-    };
 
     var ForeignObjectRenderer = /** @class */ (function (_super) {
         __extends(ForeignObjectRenderer, _super);
@@ -17724,10 +21090,10 @@
         CacheStorage.setContext(window);
     }
     var renderElement = function (element, opts) { return __awaiter(void 0, void 0, void 0, function () {
-        var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, container, clonedElement, _a, width, height, left, top, backgroundColor, renderOptions, canvas, renderer, root, renderer;
-        var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
-        return __generator(this, function (_u) {
-            switch (_u.label) {
+        var ownerDocument, defaultView, resourceOptions, contextOptions, windowOptions, windowBounds, context, foreignObjectRendering, cloneOptions, documentCloner, container, clonedElement, _a, width, height, left, top, backgroundColor, renderOptions, canvas, renderer, root, renderer, removed;
+        var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+        return __generator(this, function (_y) {
+            switch (_y.label) {
                 case 0:
                     if (!element || typeof element !== 'object') {
                         return [2 /*return*/, Promise.reject('Invalid element provided as first argument')];
@@ -17745,8 +21111,10 @@
                         imageTimeout: (_c = opts.imageTimeout) !== null && _c !== void 0 ? _c : 15000,
                         proxy: opts.proxy,
                         useCORS: (_d = opts.useCORS) !== null && _d !== void 0 ? _d : false,
+                        isResourceSameOrigin: opts.isResourceSameOrigin,
+                        maxCacheSize: opts.maxCacheSize,
                     };
-                    contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache }, resourceOptions);
+                    contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache, onError: opts.onError }, resourceOptions);
                     windowOptions = {
                         windowWidth: (_f = opts.windowWidth) !== null && _f !== void 0 ? _f : defaultView.innerWidth,
                         windowHeight: (_g = opts.windowHeight) !== null && _g !== void 0 ? _g : defaultView.innerHeight,
@@ -17771,7 +21139,7 @@
                     }
                     return [4 /*yield*/, documentCloner.toIFrame(ownerDocument, windowBounds)];
                 case 1:
-                    container = _u.sent();
+                    container = _y.sent();
                     clonedElement = documentCloner.clonedReferenceElement;
                     if (!clonedElement) {
                         return [2 /*return*/, Promise.reject("Unable to find element in cloned iframe")];
@@ -17788,13 +21156,17 @@
                         y: ((_q = opts.y) !== null && _q !== void 0 ? _q : 0) + top,
                         width: (_r = opts.width) !== null && _r !== void 0 ? _r : Math.ceil(width),
                         height: (_s = opts.height) !== null && _s !== void 0 ? _s : Math.ceil(height),
+                        cullOffscreen: (_t = opts.cullOffscreen) !== null && _t !== void 0 ? _t : false,
+                        imageSmoothing: (_u = opts.imageSmoothing) !== null && _u !== void 0 ? _u : true,
+                        imageSmoothingQuality: (_v = opts.imageSmoothingQuality) !== null && _v !== void 0 ? _v : 'low',
+                        forceImageQuality: (_w = opts.forceImageQuality) !== null && _w !== void 0 ? _w : false,
                     };
                     if (!foreignObjectRendering) return [3 /*break*/, 3];
                     context.logger.debug("Document cloned, using foreign object rendering");
                     renderer = new ForeignObjectRenderer(context, renderOptions);
                     return [4 /*yield*/, renderer.render(clonedElement)];
                 case 2:
-                    canvas = _u.sent();
+                    canvas = _y.sent();
                     return [3 /*break*/, 5];
                 case 3:
                     context.logger.debug("Document cloned, element located at ".concat(left, ",").concat(top, " with size ").concat(width, "x").concat(height, " using computed rendering"));
@@ -17807,13 +21179,17 @@
                     renderer = new CanvasRenderer(context, renderOptions);
                     return [4 /*yield*/, renderer.render(root)];
                 case 4:
-                    canvas = _u.sent();
-                    _u.label = 5;
+                    canvas = _y.sent();
+                    _y.label = 5;
                 case 5:
-                    if ((_t = opts.removeContainer) !== null && _t !== void 0 ? _t : true) {
+                    if ((_x = opts.removeContainer) !== null && _x !== void 0 ? _x : true) {
                         if (!DocumentCloner.destroy(ownerDocument, container.id)) {
                             context.logger.error("Cannot detach cloned iframe as it is not in the DOM anymore");
                         }
+                    }
+                    if (opts.clearImageCache === true) {
+                        removed = context.cache.clear();
+                        context.logger.debug("Cleared image cache (".concat(removed, " entries removed)"));
                     }
                     context.logger.debug("Finished rendering");
                     return [2 /*return*/, canvas];

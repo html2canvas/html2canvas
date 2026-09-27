@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Quotes and &lt;q&gt; element tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        background: #fff;
+        margin: 20px;
+      }
+
+      .row {
+        margin: 12px 0;
+      }
+
+      .label {
+        display: block;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      /* French quotes */
+      .french q {
+        quotes: '\00ab' '\00bb' '\2039' '\203a';
+      }
+
+      /* German quotes */
+      .german q {
+        quotes: '\201e' '\201c' '\201a' '\2018';
+      }
+
+      /* Japanese quotes */
+      .japanese q {
+        quotes: '\300c' '\300d' '\300e' '\300f';
+      }
+
+      /* Custom quotes */
+      .custom q {
+        quotes: '[' ']' '{' '}';
+      }
+
+      /* No quotes */
+      .none q {
+        quotes: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Default (auto) quotes -->
+    <div class="row">
+      <span class="label">&lt;q&gt; — default (quotes: auto)</span>
+      <p>She said <q>To be or not to be</q>, that is the question.</p>
+    </div>
+
+    <!-- Nested default quotes -->
+    <div class="row">
+      <span class="label">&lt;q&gt; — nested default quotes</span>
+      <p>He said <q>She told me <q>hello world</q> yesterday</q>.</p>
+    </div>
+
+    <!-- French quotes -->
+    <div class="row french">
+      <span class="label">&lt;q&gt; — French quotes (&laquo; &raquo; / &lsaquo; &rsaquo;)</span>
+      <p>Elle a dit <q>Bonjour <q>le monde</q></q>.</p>
+    </div>
+
+    <!-- German quotes -->
+    <div class="row german">
+      <span class="label">&lt;q&gt; — German quotes (&bdquo; &ldquo; / &sbquo; &lsquo;)</span>
+      <p>Er sagte <q>Hallo <q>Welt</q></q>.</p>
+    </div>
+
+    <!-- Japanese quotes -->
+    <div class="row japanese">
+      <span class="label">&lt;q&gt; — Japanese quotes (&#x300C; &#x300D; / &#x300E; &#x300F;)</span>
+      <p>彼は<q>世界<q>こんにちは</q></q>と言った。</p>
+    </div>
+
+    <!-- Custom quotes -->
+    <div class="row custom">
+      <span class="label">&lt;q&gt; — custom quotes ([ ] / { })</span>
+      <p>Result: <q>outer <q>inner</q> value</q>.</p>
+    </div>
+
+    <!-- quotes: none -->
+    <div class="row none">
+      <span class="label">&lt;q&gt; — quotes: none (no visible quotes)</span>
+      <p>This <q>should have no quotes</q> around it.</p>
+    </div>
+
+    <!-- ::before/::after with open-quote/close-quote -->
+    <div class="row">
+      <span class="label">::before/::after with open-quote / close-quote</span>
+      <style>
+        .manual-quotes q::before { content: open-quote; color: red; }
+        .manual-quotes q::after { content: close-quote; color: red; }
+      </style>
+      <p class="manual-quotes">Styled: <q>quoted text</q>.</p>
+    </div>
+  </body>
+</html>

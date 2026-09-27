@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <title>select multiple / size list-box tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body,
+      html {
+        margin: 0;
+        font-family: Roboto, sans-serif;
+      }
+      select {
+        margin: 10px;
+        border: 2px solid #000;
+        background-color: #fff;
+        color: #000;
+        font-size: 14px;
+        vertical-align: top;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- multiple with several options selected -->
+    <select multiple size="5">
+      <option>Apple</option>
+      <option selected>Banana</option>
+      <option>Cherry</option>
+      <option selected>Date</option>
+      <option>Elderberry</option>
+    </select>
+
+    <!-- size > 1 without multiple (list box, single selection) -->
+    <select size="4">
+      <option>Red</option>
+      <option>Green</option>
+      <option selected>Blue</option>
+      <option>Yellow</option>
+    </select>
+
+    <!-- multiple with no selection -->
+    <select multiple size="3">
+      <option>One</option>
+      <option>Two</option>
+      <option>Three</option>
+    </select>
+
+    <!-- more options than visible rows: the only selected option is below the
+             fold, so the browser auto-scrolls to reveal it. Expected visible slice:
+             Third / Fourth / Fifth(highlighted). -->
+    <select multiple size="3" style="width: 120px">
+      <option>First</option>
+      <option>Second</option>
+      <option>Third</option>
+      <option>Fourth</option>
+      <option selected>Fifth</option>
+    </select>
+
+    <!-- classic single-line dropdown for comparison (unchanged behaviour) -->
+    <select>
+      <option>Alpha</option>
+      <option selected>Beta</option>
+      <option>Gamma</option>
+    </select>
+  </body>
+</html>

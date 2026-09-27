@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+    <head>
+        <title>text-underline-position tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style>
+            body {
+                font-family: Roboto, sans-serif;
+                font-size: 20px;
+                line-height: 2.5;
+            }
+            .auto {
+                text-decoration: underline;
+                text-underline-position: auto;
+            }
+            .under {
+                text-decoration: underline;
+                text-underline-position: under;
+            }
+            .under-thick {
+                text-decoration: underline;
+                text-underline-position: under;
+                text-decoration-thickness: 3px;
+                text-decoration-color: blue;
+            }
+            .under-offset {
+                text-decoration: underline;
+                text-underline-position: under;
+                text-underline-offset: 3px;
+            }
+            .under-wavy {
+                text-decoration: underline;
+                text-underline-position: under;
+                text-decoration-style: wavy;
+                text-decoration-color: red;
+            }
+            .descenders {
+                text-decoration: underline;
+                text-underline-position: auto;
+            }
+            .descenders-under {
+                text-decoration: underline;
+                text-underline-position: under;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="auto">Position: auto (default baseline)</div>
+        <div class="under">Position: under (below descenders)</div>
+        <div class="under-thick">Under + thickness: 3px (blue)</div>
+        <div class="under-offset">Under + offset: 3px</div>
+        <div class="under-wavy">Under + wavy (red)</div>
+        <div class="descenders">Auto with descenders: gjpqy</div>
+        <div class="descenders-under">Under with descenders: gjpqy</div>
+    </body>
+</html>

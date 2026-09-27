@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Fieldset + Legend rendering</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style type="text/css">
+      html {
+        background: #f0f0f0;
+      }
+      body {
+        margin: 20px;
+        font-family: sans-serif;
+      }
+
+      /* Base fieldset reset so browser defaults don't interfere */
+      fieldset {
+        margin: 10px;
+        padding: 16px;
+        display: inline-block;
+        vertical-align: top;
+      }
+
+      legend {
+        padding: 0 6px;
+      }
+
+      /* Case 1: simple solid border */
+      .fs1 {
+        border: 2px solid #333;
+        width: 160px;
+      }
+
+      /* Case 2: thick border + coloured legend */
+      .fs2 {
+        border: 4px solid royalblue;
+        width: 160px;
+      }
+      .fs2 legend {
+        color: royalblue;
+        font-weight: bold;
+      }
+
+      /* Case 3: border-radius + legend */
+      .fs3 {
+        border: 2px solid tomato;
+        border-radius: 8px;
+        width: 160px;
+      }
+      .fs3 legend {
+        color: tomato;
+      }
+
+      /* Case 4: dashed border */
+      .fs4 {
+        border: 2px dashed #666;
+        width: 160px;
+      }
+
+      /* Case 5: no legend — control case, should render normally */
+      .fs5 {
+        border: 2px solid #333;
+        width: 160px;
+      }
+
+      /* Case 6: legend with background color to test layering */
+      .fs6 {
+        border: 3px solid #2a9d8f;
+        width: 160px;
+        background: #e8f8f7;
+      }
+      .fs6 legend {
+        background: #e8f8f7;
+        padding: 0 8px;
+        color: #2a9d8f;
+      }
+
+      /* Case 7: legend with background & border color to test layering */
+      .fs7 {
+        border: 3px solid #2a9d8f;
+        width: 160px;
+        background: #54aca7;
+      }
+      .fs7 legend {
+        background: #e8f8f7;
+        border: 3px solid #2a9d8f;
+        padding: 0 8px;
+        color: #2a9d8f;
+      }
+
+      /* Case 8: background on fieldset + rtl  */
+      .fs8 {
+        border: 3px solid #4d2a9d;
+        width: 160px;
+        background: #c8e9e7;
+      }
+
+      /* Case 9: nesting  */
+      .fs9 {
+        border: 3px solid #4d2a9d;
+        width: 160px;
+        background: #c8e9e7;
+      }
+
+      .fs9 fieldset {
+        border: 3px solid #9d7e2a;
+        background: #318781;
+      }
+
+      .fs10 {
+        background: #318781;
+
+        fieldset {
+          background: #c8e9e7;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Case 0: default -->
+    <fieldset>
+      <legend>Solid border</legend>
+      <label><input type="text" placeholder="name" /></label>
+    </fieldset>
+
+    <!-- Case 1: solid border with legend -->
+    <fieldset class="fs1">
+      <legend>Solid border</legend>
+      <label><input type="text" placeholder="name" /></label>
+    </fieldset>
+
+    <!-- Case 2: thick blue border -->
+    <fieldset class="fs2">
+      <legend>Thick border</legend>
+      <label><input type="checkbox" /> Option A</label><br />
+      <label><input type="checkbox" /> Option B</label>
+    </fieldset>
+
+    <!-- Case 3: border-radius -->
+    <fieldset class="fs3">
+      <legend>With radius</legend>
+      <p style="margin: 4px 0">Some content</p>
+    </fieldset>
+
+    <!-- Case 4: dashed border -->
+    <fieldset class="fs4">
+      <legend>Dashed border</legend>
+      <p style="margin: 4px 0">Content here</p>
+    </fieldset>
+
+    <!-- Case 5: control — no legend -->
+    <fieldset class="fs5">
+      <p style="margin: 4px 0">No legend control</p>
+    </fieldset>
+
+    <!-- Case 6: background on fieldset + legend with matching background -->
+    <fieldset class="fs6">
+      <legend>With background</legend>
+      <p style="margin: 4px 0">Layered background</p>
+    </fieldset>
+
+    <!-- Case 7: legend with background & border color to test layering -->
+    <fieldset class="fs7">
+      <legend>Own border</legend>
+      <p style="margin: 4px 0">Layered background</p>
+    </fieldset>
+
+    <!-- Case 8: background on fieldset + rtl -->
+    <fieldset dir="rtl" class="fs8">
+      <legend>RTL legend</legend>
+      <p style="margin: 4px 0">Layered background</p>
+    </fieldset>
+
+    <!-- Case 9: nesting -->
+    <fieldset class="fs9">
+      <legend>RTL legend</legend>
+      <p style="margin: 4px 0">Layered background</p>
+      <fieldset>
+        <legend>RTL legend</legend>
+        <p>Sub Layered background</p>
+      </fieldset>
+    </fieldset>
+
+    <div class="fs10">
+      <fieldset>
+        <legend>RTL legend</legend>
+        <p style="margin: 4px 0">Layered background</p>
+      </fieldset>
+    </div>
+  </body>
+</html>

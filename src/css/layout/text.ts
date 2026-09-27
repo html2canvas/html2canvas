@@ -97,10 +97,8 @@ let _reusableRange: Range | null = null;
 
 export const segmentGraphemes = (value: string): string[] => {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const segmenter = new (Intl as any).Segmenter(void 0, { granularity: 'grapheme' });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return Array.from(segmenter.segment(value)).map((segment: any) => segment.segment);
+        const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+        return Array.from(segmenter.segment(value)).map(segment => segment.segment);
     }
 
     return splitGraphemes(value);
@@ -108,12 +106,10 @@ export const segmentGraphemes = (value: string): string[] => {
 
 const segmentWords = (value: string, styles: CSSParsedDeclaration): string[] => {
     if (FEATURES.SUPPORT_NATIVE_TEXT_SEGMENTATION) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const segmenter = new (Intl as any).Segmenter(void 0, {
+        const segmenter = new Intl.Segmenter(undefined, {
             granularity: 'word',
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return Array.from(segmenter.segment(value)).map((segment: any) => segment.segment);
+        return Array.from(segmenter.segment(value)).map(segment => segment.segment);
     }
 
     return breakWords(value, styles);

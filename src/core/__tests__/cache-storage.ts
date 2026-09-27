@@ -1,6 +1,6 @@
 import { deepStrictEqual, fail } from 'assert';
 import { Bounds } from '../../css/layout/bounds';
-import { CacheStorage, cache } from '../cache-storage';
+import { CacheStorage, cache, cache as moduleCache } from '../cache-storage';
 import { Context } from '../context';
 import { FEATURES } from '../features';
 
@@ -171,6 +171,45 @@ describe('cache-storage', () => {
         deepStrictEqual(images[0].src, 'http://example.com/test.jpg');
     });
 
+    describe('clear', () => {
+        // `cache` (imported from ../cache-storage) is the shared module-level map.
+        // The Context exposes a Cache instance that reads/writes that same map.
+        it('removes all cached entries from the shared map', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.addImage('http://example.com/test2.jpg');
+            deepStrictEqual(Object.keys(cache).length, 2);
+
+            ctx.cache.clear();
+
+            deepStrictEqual(Object.keys(cache).length, 0);
+        });
+
+        it('returns the number of entries removed', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.addImage('http://example.com/test2.jpg');
+
+            deepStrictEqual(ctx.cache.clear(), 2);
+        });
+
+        it('returns 0 when the cache is already empty', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+
+            deepStrictEqual(ctx.cache.clear(), 0);
+        });
+
+        it('a subsequent addImage repopulates the cache after clear', () => {
+            const ctx = createMockContext('http://example.com', { proxy: null });
+            ctx.cache.addImage('http://example.com/test.jpg');
+            ctx.cache.clear();
+            ctx.cache.addImage('http://example.com/test2.jpg');
+
+            deepStrictEqual(cache.hasOwnProperty('http://example.com/test.jpg'), false);
+            deepStrictEqual(cache.hasOwnProperty('http://example.com/test2.jpg'), true);
+        });
+    });
+
     describe('svg', () => {
         it('should add svg images correctly', () => {
             const { cache } = createMockContext('http://example.com');
@@ -236,6 +275,45 @@ describe('cache-storage', () => {
             cache.addImage('http://html2canvas.hertzen.com/test.jpg');
             deepStrictEqual(images.length, 1);
             deepStrictEqual(removeQueryString(images[0].src), 'http://html2canvas.hertzen.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, 'anonymous');
+        });
+
+        it('isResourceSameOrigin can force a cross-origin URL to be treated as same-origin', () => {
+            // Without proxy or CORS, a genuinely cross-origin image would normally be
+            // skipped. Forcing same-origin lets it load directly.
+            const { cache } = createMockContext('http://example.com', {
+                proxy: undefined,
+                isResourceSameOrigin: (src: string) => src.indexOf('cdn.example.com') !== -1,
+            });
+            cache.addImage('http://cdn.example.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(images[0].src, 'http://cdn.example.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, undefined);
+        });
+
+        it('isResourceSameOrigin returning undefined falls back to the default origin check', () => {
+            // Returning undefined means "no opinion" → default check applies, so a
+            // cross-origin image with CORS enabled still gets crossOrigin=anonymous.
+            const { cache } = createMockContext('http://example.com', {
+                useCORS: true,
+                isResourceSameOrigin: () => undefined,
+            });
+            cache.addImage('http://html2canvas.hertzen.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(removeQueryString(images[0].src), 'http://html2canvas.hertzen.com/test.jpg');
+            deepStrictEqual(images[0].crossOrigin, 'anonymous');
+        });
+
+        it('isResourceSameOrigin can force a same-origin URL to be treated as cross-origin', () => {
+            // Forcing false on a same-origin URL with CORS enabled makes it load with
+            // crossOrigin=anonymous instead of directly.
+            const { cache } = createMockContext('http://example.com', {
+                useCORS: true,
+                isResourceSameOrigin: () => false,
+            });
+            cache.addImage('http://example.com/test.jpg');
+            deepStrictEqual(images.length, 1);
+            deepStrictEqual(removeQueryString(images[0].src), 'http://example.com/test.jpg');
             deepStrictEqual(images[0].crossOrigin, 'anonymous');
         });
 
@@ -306,5 +384,63 @@ V0aCcGCmTIHEIUEqjgaORCMxIC6e0CcguWw6aFjsVMkkIr7g77ZKPJjPZqIyd7sJAgVGoEGv2xsBxqNg
         cache.addImage(inlinedImg);
 
         await cache.match(inlinedImg);
+    });
+
+    describe('LRU eviction (maxCacheSize)', () => {
+        // Same-origin jpg urls are added synchronously to the cache.
+        const url = (n: number) => `http://example.com/img${n}.jpg`;
+
+        it('does not evict when maxCacheSize is undefined (unbounded)', () => {
+            const { cache } = createMockContext('http://example.com', { proxy: null });
+            cache.clear();
+            for (let i = 0; i < 10; i++) {
+                cache.addImage(url(i));
+            }
+            deepStrictEqual(Object.keys(moduleCache).length, 10);
+        });
+
+        it('does not evict when maxCacheSize <= 0', () => {
+            const { cache } = createMockContext('http://example.com', { proxy: null, maxCacheSize: 0 });
+            cache.clear();
+            for (let i = 0; i < 5; i++) {
+                cache.addImage(url(i));
+            }
+            deepStrictEqual(Object.keys(moduleCache).length, 5);
+        });
+
+        it('caps the cache at maxCacheSize entries', () => {
+            const { cache } = createMockContext('http://example.com', { proxy: null, maxCacheSize: 3 });
+            cache.clear();
+            for (let i = 0; i < 6; i++) {
+                cache.addImage(url(i));
+            }
+            deepStrictEqual(Object.keys(moduleCache).length, 3);
+        });
+
+        it('evicts the least-recently-added entries first', () => {
+            const { cache } = createMockContext('http://example.com', { proxy: null, maxCacheSize: 2 });
+            cache.clear();
+            cache.addImage(url(0));
+            cache.addImage(url(1));
+            cache.addImage(url(2)); // should evict url(0)
+
+            deepStrictEqual(moduleCache.hasOwnProperty(url(0)), false);
+            deepStrictEqual(moduleCache.hasOwnProperty(url(1)), true);
+            deepStrictEqual(moduleCache.hasOwnProperty(url(2)), true);
+        });
+
+        it('match() marks an entry as recently used, protecting it from eviction', () => {
+            const { cache } = createMockContext('http://example.com', { proxy: null, maxCacheSize: 2 });
+            cache.clear();
+            cache.addImage(url(0));
+            cache.addImage(url(1));
+            // Touch url(0) so url(1) becomes the least-recently-used.
+            cache.match(url(0));
+            cache.addImage(url(2)); // should evict url(1), not url(0)
+
+            deepStrictEqual(moduleCache.hasOwnProperty(url(0)), true);
+            deepStrictEqual(moduleCache.hasOwnProperty(url(1)), false);
+            deepStrictEqual(moduleCache.hasOwnProperty(url(2)), true);
+        });
     });
 });

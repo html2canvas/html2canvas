@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head>
+    <title>::first-line pseudo-element tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        font-size: 16px;
+        background: #fff;
+        margin: 20px;
+      }
+
+      .row {
+        margin: 16px 0;
+      }
+
+      .label {
+        display: block;
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      .block {
+        width: 320px;
+      }
+
+      /* color only */
+      .fl-color::first-line {
+        color: red;
+      }
+
+      /* font-style */
+      .fl-style::first-line {
+        font-style: italic;
+      }
+
+      /* color + italic combined */
+      .fl-combined::first-line {
+        color: #1a6fba;
+        font-style: italic;
+      }
+
+      /* color on single-line element (all text = first line) */
+      .fl-single::first-line {
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <span class="label">color: red on first line</span>
+      <div class="fl-color block">
+        This is the first line of the paragraph that should appear in red. This second line should appear in the default
+        color.
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="label">font-style: italic on first line</span>
+      <div class="fl-style block">
+        The first line of this block is in italic. The remaining lines are upright (normal style).
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="label">color + italic combined</span>
+      <div class="fl-combined block">
+        Combined styles applied to the first line here. This subsequent line has no special styling applied.
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="label">color on single-line element</span>
+      <div class="fl-single">All text is on the first line so everything is green.</div>
+    </div>
+  </body>
+</html>

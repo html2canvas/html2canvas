@@ -1,13 +1,14 @@
+import { Context } from '../../../core/context';
 import { CSSValue, isIdentToken, parseFunctionArgs } from '../../syntax/parser';
 import {
     CSSImageType,
     CSSRadialExtent,
-    CSSRepeatingRadialGradientImage,
     CSSRadialShape,
     CSSRadialSize,
+    CSSRepeatingRadialGradientImage,
     UnprocessedGradientColorStop,
 } from '../image';
-import { parseColorStop } from './gradient';
+import { isLength } from '../length';
 import {
     FIFTY_PERCENT,
     HUNDRED_PERCENT,
@@ -15,7 +16,7 @@ import {
     LengthPercentage,
     ZERO_LENGTH,
 } from '../length-percentage';
-import { isLength } from '../length';
+import { parseColorStops } from './gradient';
 import {
     CIRCLE,
     CLOSEST_CORNER,
@@ -26,7 +27,6 @@ import {
     FARTHEST_CORNER,
     FARTHEST_SIDE,
 } from './radial-gradient';
-import { Context } from '../../../core/context';
 
 export const repeatingRadialGradient = (context: Context, tokens: CSSValue[]): CSSRepeatingRadialGradientImage => {
     let shape: CSSRadialShape = CSSRadialShape.CIRCLE;
@@ -95,8 +95,8 @@ export const repeatingRadialGradient = (context: Context, tokens: CSSValue[]): C
         }
 
         if (isColorStop) {
-            const colorStop = parseColorStop(context, arg);
-            stops.push(colorStop);
+            const colorStop = parseColorStops(context, arg);
+            stops.push(...colorStop);
         }
     });
 
