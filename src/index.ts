@@ -60,6 +60,7 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         useCORS: opts.useCORS ?? false,
         isResourceSameOrigin: opts.isResourceSameOrigin,
         maxCacheSize: opts.maxCacheSize,
+        imageResolver: opts.imageResolver,
     };
 
     const contextOptions = {
