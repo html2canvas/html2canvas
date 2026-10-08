@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <title>imageResolver hook test</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script>
+      // A small 10×10 red square encoded as a data URL (PNG).
+      var RED_SQUARE =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9' +
+        'AAAAFElEQVQoU2P8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
+
+      // The imageResolver intercepts any URL that starts with
+      // "https://external.invalid/" and returns a known data URL instead.
+      // This lets the test run without a real CORS server while still
+      // exercising the imageResolver code path.
+      h2cOptions = {
+        imageResolver: function (src) {
+          if (src.indexOf('https://external.invalid/') === 0) {
+            return Promise.resolve(RED_SQUARE);
+          }
+          return undefined; // fall back to default behaviour
+        },
+      };
+    </script>
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 8px;
+        font-family: sans-serif;
+      }
+      img {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>imageResolver hook</h1>
+    <!-- This URL would be blocked by CORS in a real browser.
+             imageResolver substitutes it with a red square data URL. -->
+    <img src="https://external.invalid/cors-image.png" width="10" height="10" alt="red square via resolver" />
+
+    <img
+      src="https://api.classement.ikilote.net/images/9/b/7/4/d75e3d0cdc1482b23031826fe8f404e950c9.webp"
+      width="150"
+      height="150"
+      alt="red square via resolver"
+    />
+
+    <!-- A regular same-origin image should still load normally
+             (imageResolver returns undefined for it). -->
+    <img src="../../assets/small.png" alt="local image" />
+  </body>
+</html>

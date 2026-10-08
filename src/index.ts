@@ -27,6 +27,15 @@ export type Options = CloneOptions &
         clearImageCache?: boolean;
     };
 
+export type {
+    CloneStep,
+    OnProgressCallback,
+    ProgressEvent,
+    ProgressPhase,
+    ProgressState,
+    ProgressWeights
+} from './core/progress';
+
 const html2canvas = (element: HTMLElement, options: Partial<Options> = {}): Promise<HTMLCanvasElement> => {
     return renderElement(element, options);
 };
@@ -60,12 +69,15 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         useCORS: opts.useCORS ?? false,
         isResourceSameOrigin: opts.isResourceSameOrigin,
         maxCacheSize: opts.maxCacheSize,
+        imageResolver: opts.imageResolver,
     };
 
     const contextOptions = {
         logging: opts.logging ?? true,
         cache: opts.cache,
         onError: opts.onError,
+        onProgress: opts.onProgress,
+        progressWeights: opts.progressWeights,
         ...resourceOptions,
     };
 
@@ -84,6 +96,9 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
     );
 
     const context = new Context(contextOptions, windowBounds);
+
+    // ── phase: start ────────────────────────────────────────────────────────
+    context.progress('start', 'clone', 0);
 
     const foreignObjectRendering = opts.foreignObjectRendering ?? false;
 
@@ -108,6 +123,9 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
     }
 
     const container = await documentCloner.toIFrame(ownerDocument, windowBounds);
+
+    // ── phase: clone done ────────────────────────────────────────────────────
+    context.progress('progress', 'clone', context.progressThresholds.cloneEnd);
 
     // clonedReferenceElement is updated inside toIFrame() to point to the node in the
     // freshly parsed iframe document (document.write re-creates the DOM from HTML, so
@@ -152,6 +170,9 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
         context.logger.debug(`Starting DOM parsing`);
         const root = parseTree(context, clonedElement);
 
+        // ── phase: DOM tree parsed ───────────────────────────────────────────
+        context.progress('progress', 'parse', context.progressThresholds.parseEnd);
+
         if (backgroundColor === root.styles.backgroundColor) {
             root.styles.backgroundColor = COLORS.TRANSPARENT;
         }
@@ -176,6 +197,10 @@ const renderElement = async (element: HTMLElement, opts: Partial<Options>): Prom
     }
 
     context.logger.debug(`Finished rendering`);
+
+    // ── phase: end (100 %) ───────────────────────────────────────────────────
+    context.progress('end', 'render', 100);
+
     return canvas;
 };
 

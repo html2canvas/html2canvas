@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="Tips for speeding up html2canvas on large or complex pages"><title>Performance - html2canvas</title><link rel="icon" type="image/svg+xml" href="/html2canvas/logo_icon.svg"><link rel="stylesheet" href="/html2canvas/_astro/_slug_.DBT2aWM6.css"></head> <body>  <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="Z1olfbu" prefix="r3" component-url="/html2canvas/_astro/navigation.Cq4K-hcE.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Navigation&quot;,&quot;value&quot;:true}" await-children><nav class="nav-sidebar"><div class="nav-header"><img src="/html2canvas/ic_menu_black_24px.svg" alt="Menu" class="nav-menu-icon"/><a href="/html2canvas/"><img class="nav-logo" src="/html2canvas/logo.svg" alt="html2canvas"/></a></div><ul class="nav-links"><li class="nav-item"><a href="/html2canvas/documentation" class="nav-link">About</a></li><li class="nav-item"><a href="/html2canvas/getting-started" class="nav-link">Getting started</a></li><li class="nav-item"><a href="/html2canvas/configuration" class="nav-link">Configuration</a></li><li class="nav-item"><a href="/html2canvas/features" class="nav-link">Features</a></li><li class="nav-item"><a href="/html2canvas/performance" class="nav-link">Performance</a></li><li class="nav-item"><a href="/html2canvas/examples" class="nav-link">Examples</a></li><li class="nav-item"><a href="/html2canvas/proxy" class="nav-link">Proxy</a></li><li class="nav-item"><a href="/html2canvas/faq" class="nav-link">FAQ</a></li></ul></nav><!--astro:end--></astro-island> <div class="docs-wrapper"> <!-- Page header --> <div class="docs-header"> <div class="docs-header-inner"> <div class="docs-header-row"> <div class="docs-header-text"> <h1 class="docs-title">Performance</h1> <h4 class="docs-desc">Tips for speeding up html2canvas on large or complex pages</h4> </div> </div> </div> </div> <!-- Content --> <div class="docs-body"> <div class="docs-content">  <p>Rendering with html2canvas happens in three phases: <strong>clone</strong> (a full copy of the
+document is built in a hidden iframe), <strong>parse</strong> (the clone is turned into an internal
+tree), and <strong>render</strong> (that tree is painted to the canvas). On most pages this is fast,
+but on large or complex pages one phase can dominate. This page explains how to find the
+bottleneck and the levers available to reduce it.</p>
+<h2>Measure first</h2>
+<p>Before optimizing, find out which phase is slow. The <a href="./configuration#onprogress"><code>onProgress</code></a>
+callback reports each phase boundary with an <code>elapsedMs</code> timestamp, so you can see where
+the time goes:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        // Skip the per-element noise, keep the phase milestones</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#859900"> !==</span><span style="color:#2AA198"> 'element'</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#268BD2">            console</span><span style="color:#657B83">.</span><span style="color:#268BD2">log</span><span style="color:#657B83">(</span><span style="color:#2AA198">`${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#2AA198">} — ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">percentage</span><span style="color:#2AA198">}% @ ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">elapsedMs</span><span style="color:#2AA198">}ms`</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><p>The clone phase also emits sub-steps (<code>dom-cloned</code>, <code>html-written</code>, <code>iframe-loaded</code>,
+<code>fonts-ready</code>, <code>images-ready</code>, <code>onclone-done</code>) through <code>event.step</code>, so a slow clone can
+be pinned down precisely:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#859900"> ===</span><span style="color:#2AA198"> 'clone'</span><span style="color:#859900"> &#x26;&#x26;</span><span style="color:#268BD2"> event</span><span style="color:#657B83">.</span><span style="color:#268BD2">step</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#268BD2">            console</span><span style="color:#657B83">.</span><span style="color:#268BD2">log</span><span style="color:#657B83">(</span><span style="color:#2AA198">`clone:${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">step</span><span style="color:#2AA198">} @ ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">elapsedMs</span><span style="color:#2AA198">}ms`</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><p>A typical finding on a large app is that the clone phase accounts for the large majority
+of the total time — see the next section.</p>
+<h2>Speeding up the clone phase</h2>
+<p>Before rendering, html2canvas clones the <strong>entire</strong> <code>&lt;html&gt;</code> document into a hidden
+iframe — not just the element you pass in. This is required to preserve the full CSS
+cascade (stylesheets in <code>&lt;head&gt;</code>, inherited variables, etc.). On a small page this is
+cheap, but on a large app (many DOM nodes, menus, dialogs, long lists) the clone can
+dominate total render time, because every element triggers several <code>getComputedStyle</code>
+calls and a full copy of its computed styles.</p>
+<p>If you are capturing a <strong>small element inside a large page</strong>, you can cut most of that
+cost with <a href="./configuration"><code>ignoreElements</code></a>: skip the subtrees that are not part of
+your target. When <code>ignoreElements</code> returns <code>true</code> for an element, html2canvas does not
+clone it, does not read its computed styles, and does not descend into it — so entire
+branches are dropped from the expensive clone walk.</p>
+<h3>The pattern</h3>
+<p>Ignore everything that is <strong>not</strong> the target, an ancestor of the target, or a descendant
+of the target:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#586E75;font-weight:bold">const</span><span style="color:#268BD2"> target</span><span style="color:#859900"> =</span><span style="color:#268BD2"> document</span><span style="color:#657B83">.</span><span style="color:#268BD2">getElementById</span><span style="color:#657B83">(</span><span style="color:#2AA198">'capture-me'</span><span style="color:#657B83">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">target</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    ignoreElements</span><span style="color:#657B83">: element </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        // Never ignore anything outside &#x3C;body> (keep &#x3C;head>, &#x3C;html>, &#x3C;body>).</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#859900">!</span><span style="color:#268BD2">document</span><span style="color:#657B83">.</span><span style="color:#268BD2">body</span><span style="color:#657B83">.</span><span style="color:#268BD2">contains</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">) </span><span style="color:#859900">||</span><span style="color:#268BD2"> element</span><span style="color:#859900"> ===</span><span style="color:#268BD2"> document</span><span style="color:#657B83">.</span><span style="color:#268BD2">body</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#859900">            return</span><span style="color:#B58900"> false</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        // Keep the target, its ancestors, and its descendants; drop the rest.</span></span>
+<span class="line"><span style="color:#859900">        return</span><span style="color:#859900"> !</span><span style="color:#268BD2">target</span><span style="color:#657B83">.</span><span style="color:#268BD2">contains</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">) </span><span style="color:#859900">&#x26;&#x26;</span><span style="color:#859900"> !</span><span style="color:#268BD2">element</span><span style="color:#657B83">.</span><span style="color:#268BD2">contains</span><span style="color:#657B83">(</span><span style="color:#268BD2">target</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><p>In a real app this took the clone phase from ~7 s down to ~2 s on a page with thousands
+of nodes, with no visible difference in the output.</p>
+<h3>Important caveats</h3>
+<p>The clone optimization is only safe when everything the target depends on is reachable
+through the kept nodes. Keep these rules in mind:</p>
+<ul>
+<li><strong>Never ignore the <code>&lt;head&gt;</code></strong> or its <code>&lt;style&gt;</code> / <code>&lt;link&gt;</code> children. Global
+stylesheets (and therefore most backgrounds, fonts, and <code>var()</code> values) live there.
+The guard <code>!document.body.contains(element)</code> above protects them.</li>
+<li><strong>Never ignore ancestors of the target.</strong> They carry layout context and inherited
+properties. <code>element.contains(target)</code> keeps them.</li>
+<li><strong>Watch out for inherited CSS custom properties.</strong> If your styles rely on CSS variables
+set on <code>&lt;body&gt;</code> or an ancestor (e.g. <code>--brand-color</code> applied high up and read deep
+inside the target), those ancestors are kept by the pattern above, so the variables
+still cascade in. But if a style depends on a class or variable set on a <strong>sibling</strong>
+branch that you are ignoring, that style will be lost. In that case, widen the predicate
+to also keep the needed branch.</li>
+</ul>
+<p>If in doubt, compare the output with and without <code>ignoreElements</code> on a representative
+page before shipping.</p>
+<h2>Reducing the render phase</h2>
+<p>When the render phase is the bottleneck — usually because the output is large or the page
+has many elements — these options can help:</p>
+<ul>
+<li><strong><a href="./configuration"><code>cullOffscreen</code></a></strong> — skip painting element nodes whose bounds fall
+entirely outside the captured viewport. Useful when capturing a viewport-sized region
+of a long page. It is conservative: nodes with a CSS transform (own or inherited) or
+fixed/sticky positioning are always painted.</li>
+<li><strong><code>scale</code></strong> — the output is drawn at <code>width * scale</code> × <code>height * scale</code> pixels. A high
+<code>scale</code> (e.g. <code>window.devicePixelRatio</code> on a HiDPI screen, or an explicit <code>2</code>) multiplies
+the number of pixels to fill. Lower it when you do not need the extra resolution.</li>
+<li><strong><code>width</code> / <code>height</code></strong> — capture only the region you need rather than the full element.</li>
+</ul>
+<h2>Managing image memory</h2>
+<p>Images are cached across html2canvas calls so repeated captures of the same resources are
+fast. In long-lived apps (SPAs) that capture many <strong>distinct</strong> screenshots, this cache can
+grow indefinitely. Two options bound it:</p>
+<ul>
+<li><strong><a href="./configuration"><code>maxCacheSize</code></a></strong> — cap the number of images kept; least-recently-used
+entries are evicted when the limit is exceeded.</li>
+<li><strong><a href="./configuration"><code>clearImageCache</code></a></strong> — empty the cache after a render completes. Do
+not enable it when sharing a cache between concurrent captures.</li>
+</ul>
+<h2>Keeping the UI responsive</h2>
+<p>Rendering a large page is CPU-bound and runs on the main thread, so the UI will not update
+on its own while it is in progress. Use <a href="./configuration#onprogress"><code>onProgress</code></a> to drive
+a progress bar, and <a href="./configuration#progressweights"><code>progressWeights</code></a> to tune where the
+percentage breakpoints fall so the bar advances in a way that matches your page&#39;s actual
+timing (for example, giving the clone phase more weight when it dominates).</p>
+  </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/features" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+</svg>
+</div> <div> <span class="docs-pagination-label">Previous</span> <div class="docs-pagination-title">Features</div> </div> </a> <a href="/html2canvas/examples" class="docs-pagination-link docs-pagination-link--next"> <div> <span class="docs-pagination-label">Next</span> <div class="docs-pagination-title">Examples</div> </div> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+</svg>
+</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.B-ZpTzMe.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>

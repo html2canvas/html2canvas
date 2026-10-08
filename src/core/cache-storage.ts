@@ -47,6 +47,31 @@ export interface ResourceOptions {
      * <= 0) for an unbounded cache — the historical behaviour.
      */
     maxCacheSize?: number;
+    /**
+     * Custom image resolver hook. When provided, this function is called for
+     * every image URL before the default CORS/proxy logic runs. Return a
+     * data URL (or any URL loadable by an `<img>` element) to override the
+     * default loading, or `null`/`undefined` to fall back to the built-in
+     * behaviour.
+     *
+     * The primary use-case is working around CORS restrictions: convert the
+     * image to a base64 data URL on the caller side (e.g. via `fetch` +
+     * `FileReader`) and return it here, so html2canvas never attempts a
+     * cross-origin load.
+     *
+     * @example
+     * ```ts
+     * html2canvas(element, {
+     *   imageResolver: async (src) => {
+     *     if (src.startsWith('https://cdn.example.com/')) {
+     *       return await urlToBase64(src); // your helper
+     *     }
+     *     return undefined; // fall back to default behaviour
+     *   }
+     * });
+     * ```
+     */
+    imageResolver?: (src: string) => Promise<string | null | undefined> | string | null | undefined;
 }
 
 /**
@@ -159,6 +184,29 @@ export class Cache {
     }
 
     private async loadImage(key: string) {
+        // Give the caller a chance to resolve the image themselves (e.g. to work
+        // around CORS by returning a base64 data URL).
+        if (this._options.imageResolver) {
+            const resolved = await this._options.imageResolver(key);
+            if (resolved != null) {
+                return await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = resolved;
+                    if (img.complete === true) {
+                        setTimeout(() => resolve(img), 500);
+                    }
+                    if (this._options.imageTimeout > 0) {
+                        setTimeout(
+                            () => reject(`Timed out (${this._options.imageTimeout}ms) loading image`),
+                            this._options.imageTimeout,
+                        );
+                    }
+                });
+            }
+        }
+
         const isExtensionImage = key.startsWith('chrome-extension://');
         const isSameOrigin = this.isSameOrigin(key) || isExtensionImage;
         const useCORS =

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="Explore the different configuration options available for html2canvas"><title>Options - html2canvas</title><link rel="icon" type="image/svg+xml" href="/html2canvas/logo_icon.svg"><link rel="stylesheet" href="/html2canvas/_astro/_slug_.DBT2aWM6.css"></head> <body>  <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="ZnwgIx" prefix="r3" component-url="/html2canvas/_astro/navigation.DuI0gLHu.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Navigation&quot;,&quot;value&quot;:true}" await-children><nav class="nav-sidebar"><div class="nav-header"><img src="/html2canvas/ic_menu_black_24px.svg" alt="Menu" class="nav-menu-icon"/><a href="/html2canvas/"><img class="nav-logo" src="/html2canvas/logo.svg" alt="html2canvas"/></a></div><ul class="nav-links"><li class="nav-item"><a href="/html2canvas/documentation" class="nav-link">About</a></li><li class="nav-item"><a href="/html2canvas/getting-started" class="nav-link">Getting started</a></li><li class="nav-item"><a href="/html2canvas/configuration" class="nav-link">Configuration</a></li><li class="nav-item"><a href="/html2canvas/features" class="nav-link">Features</a></li><li class="nav-item"><a href="/html2canvas/examples" class="nav-link">Examples</a></li><li class="nav-item"><a href="/html2canvas/proxy" class="nav-link">Proxy</a></li><li class="nav-item"><a href="/html2canvas/faq" class="nav-link">FAQ</a></li></ul></nav><!--astro:end--></astro-island> <div class="docs-wrapper"> <!-- Page header --> <div class="docs-header"> <div class="docs-header-inner"> <div class="docs-header-row"> <div class="docs-header-text"> <h1 class="docs-title">Options</h1> <h4 class="docs-desc">Explore the different configuration options available for html2canvas</h4> </div> </div> </div> </div> <!-- Content --> <div class="docs-body"> <div class="docs-content">  <p>These are all of the available configuration options.</p>
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="Explore the different configuration options available for html2canvas"><title>Options - html2canvas</title><link rel="icon" type="image/svg+xml" href="/html2canvas/logo_icon.svg"><link rel="stylesheet" href="/html2canvas/_astro/_slug_.DBT2aWM6.css"></head> <body>  <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="Z1olfbu" prefix="r3" component-url="/html2canvas/_astro/navigation.Cq4K-hcE.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Navigation&quot;,&quot;value&quot;:true}" await-children><nav class="nav-sidebar"><div class="nav-header"><img src="/html2canvas/ic_menu_black_24px.svg" alt="Menu" class="nav-menu-icon"/><a href="/html2canvas/"><img class="nav-logo" src="/html2canvas/logo.svg" alt="html2canvas"/></a></div><ul class="nav-links"><li class="nav-item"><a href="/html2canvas/documentation" class="nav-link">About</a></li><li class="nav-item"><a href="/html2canvas/getting-started" class="nav-link">Getting started</a></li><li class="nav-item"><a href="/html2canvas/configuration" class="nav-link">Configuration</a></li><li class="nav-item"><a href="/html2canvas/features" class="nav-link">Features</a></li><li class="nav-item"><a href="/html2canvas/performance" class="nav-link">Performance</a></li><li class="nav-item"><a href="/html2canvas/examples" class="nav-link">Examples</a></li><li class="nav-item"><a href="/html2canvas/proxy" class="nav-link">Proxy</a></li><li class="nav-item"><a href="/html2canvas/faq" class="nav-link">FAQ</a></li></ul></nav><!--astro:end--></astro-island> <div class="docs-wrapper"> <!-- Page header --> <div class="docs-header"> <div class="docs-header-inner"> <div class="docs-header-row"> <div class="docs-header-text"> <h1 class="docs-title">Options</h1> <h4 class="docs-desc">Explore the different configuration options available for html2canvas</h4> </div> </div> </div> </div> <!-- Content --> <div class="docs-body"> <div class="docs-content">  <p>These are all of the available configuration options.</p>
 <table>
 <thead>
 <tr>
@@ -68,6 +68,11 @@
 <td>Callback <code>(src) =&gt; boolean | undefined</code> overriding the same-origin check for resource URLs. Return <code>true</code>/<code>false</code> to force the decision (e.g. treat a CDN as same-origin), or <code>undefined</code> to fall back to the default origin comparison.</td>
 </tr>
 <tr>
+<td>imageResolver</td>
+<td align="center"><code>undefined</code></td>
+<td>Async (or sync) callback <code>(src) =&gt; string | null | undefined</code> called for every image URL before the built-in CORS/proxy logic. Return a data URL (or any URL loadable by <code>&lt;img&gt;</code>) to override loading, or <code>null</code>/<code>undefined</code> to fall back to the default behaviour. Ideal for working around CORS restrictions by converting remote images to base64 on the caller side.</td>
+</tr>
+<tr>
 <td>logging</td>
 <td align="center"><code>true</code></td>
 <td>Enable logging for debug purposes</td>
@@ -91,6 +96,16 @@
 <td>onError</td>
 <td align="center"><code>undefined</code></td>
 <td>Callback <code>(error) =&gt; void</code> invoked when a resource (image, svg, background-image, etc.) fails to load or render. Rendering continues; this is a notification hook. Errors are also written to the logger.</td>
+</tr>
+<tr>
+<td>onProgress</td>
+<td align="center"><code>undefined</code></td>
+<td>Callback <code>(event: ProgressEvent) =&gt; void</code> invoked at each significant step of the rendering pipeline. Provides <code>state</code> (<code>&#39;start&#39;</code>/<code>&#39;progress&#39;</code>/<code>&#39;end&#39;</code>), <code>percentage</code> (0–100), <code>phase</code>, <code>elapsedMs</code>, and for per-element events: <code>renderedElements</code> / <code>totalElements</code>. See the <a href="#onprogress">onProgress section</a> below for the full event schema and examples.</td>
+</tr>
+<tr>
+<td>progressWeights</td>
+<td align="center"><code>{clone:1,parse:1,render:8}</code></td>
+<td>Relative weights for the three pipeline phases. Controls where the percentage breakpoints fall. Only the ratios matter — they are normalised to [0, 100] automatically. See the <a href="#progressweights">progressWeights section</a> below.</td>
 </tr>
 <tr>
 <td>proxy</td>
@@ -186,7 +201,205 @@ or a proxy. Returning <code>undefined</code> for other URLs keeps the default be
 <span class="line"><span style="color:#268BD2">    onError</span><span style="color:#657B83">: error </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
 <span class="line"><span style="color:#268BD2">        console</span><span style="color:#657B83">.</span><span style="color:#268BD2">warn</span><span style="color:#657B83">(</span><span style="color:#2AA198">'html2canvas resource failed:'</span><span style="color:#657B83">, </span><span style="color:#268BD2">error</span><span style="color:#657B83">.</span><span style="color:#268BD2">message</span><span style="color:#657B83">);</span></span>
 <span class="line"><span style="color:#657B83">    },</span></span>
-<span class="line"><span style="color:#657B83">});</span></span></code></pre>  </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/getting-started" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h2>imageResolver example</h2>
+<p><code>imageResolver</code> is the recommended way to handle CORS restrictions without a proxy server.
+The callback receives the original image URL and must return a value loadable by an <code>&lt;img&gt;</code> element
+(typically a base64 data URL), or <code>null</code>/<code>undefined</code> to let html2canvas fall back to its default
+CORS/proxy logic.</p>
+<p>Convert remote images to base64 before html2canvas tries to load them cross-origin:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#586E75;font-weight:bold">const</span><span style="color:#268BD2"> urlToBase64</span><span style="color:#859900"> =</span><span style="color:#657B83"> src </span><span style="color:#586E75;font-weight:bold">=></span></span>
+<span class="line"><span style="color:#268BD2">    fetch</span><span style="color:#657B83">(</span><span style="color:#268BD2">src</span><span style="color:#657B83">)</span></span>
+<span class="line"><span style="color:#657B83">        .</span><span style="color:#268BD2">then</span><span style="color:#657B83">(r </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#268BD2"> r</span><span style="color:#657B83">.</span><span style="color:#268BD2">blob</span><span style="color:#657B83">())</span></span>
+<span class="line"><span style="color:#657B83">        .</span><span style="color:#268BD2">then</span><span style="color:#657B83">(</span></span>
+<span class="line"><span style="color:#657B83">            blob </span><span style="color:#586E75;font-weight:bold">=></span></span>
+<span class="line"><span style="color:#859900">                new</span><span style="color:#859900"> Promise</span><span style="color:#657B83">((resolve, reject) </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#586E75;font-weight:bold">                    const</span><span style="color:#268BD2"> reader</span><span style="color:#859900"> =</span><span style="color:#859900"> new</span><span style="color:#268BD2"> FileReader</span><span style="color:#657B83">();</span></span>
+<span class="line"><span style="color:#268BD2">                    reader</span><span style="color:#657B83">.</span><span style="color:#268BD2">onload</span><span style="color:#859900"> =</span><span style="color:#657B83"> () </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#268BD2"> resolve</span><span style="color:#657B83">(</span><span style="color:#268BD2">reader</span><span style="color:#657B83">.</span><span style="color:#268BD2">result</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#268BD2">                    reader</span><span style="color:#657B83">.</span><span style="color:#268BD2">onerror</span><span style="color:#859900"> =</span><span style="color:#268BD2"> reject</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#268BD2">                    reader</span><span style="color:#657B83">.</span><span style="color:#268BD2">readAsDataURL</span><span style="color:#657B83">(</span><span style="color:#268BD2">blob</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">                }),</span></span>
+<span class="line"><span style="color:#657B83">        );</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    imageResolver</span><span style="color:#657B83">: </span><span style="color:#586E75;font-weight:bold">async</span><span style="color:#657B83"> src </span><span style="color:#586E75;font-weight:bold">=></span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        // Only intercept images from a specific CDN; let everything else</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        // go through the default path.</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">src</span><span style="color:#657B83">.</span><span style="color:#268BD2">startsWith</span><span style="color:#657B83">(</span><span style="color:#2AA198">'https://cdn.example.com/'</span><span style="color:#657B83">)) {</span></span>
+<span class="line"><span style="color:#859900">            return</span><span style="color:#859900"> await</span><span style="color:#268BD2"> urlToBase64</span><span style="color:#657B83">(</span><span style="color:#268BD2">src</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#859900">        return</span><span style="color:#B58900"> undefined</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><p>Returning <code>undefined</code> (or <code>null</code>) for a given URL leaves html2canvas in full control
+of that image — <code>useCORS</code>, <code>proxy</code>, and <code>allowTaint</code> still apply normally for those URLs.</p>
+<h2>onProgress</h2>
+<p>The <code>onProgress</code> callback lets you track how far along the rendering pipeline is.
+It is invoked at every significant step, from the initial DOM clone to the final canvas draw.</p>
+<h3>ProgressEvent schema</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#586E75;font-weight:bold">interface</span><span style="color:#CB4B16"> ProgressEvent</span><span style="color:#657B83"> {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /** Current pipeline stage. */</span></span>
+<span class="line"><span style="color:#657B83">    state</span><span style="color:#859900">:</span><span style="color:#2AA198"> 'start'</span><span style="color:#859900"> |</span><span style="color:#2AA198"> 'progress'</span><span style="color:#859900"> |</span><span style="color:#2AA198"> 'end'</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /** Completion percentage in the range [0, 100]. */</span></span>
+<span class="line"><span style="color:#657B83">    percentage</span><span style="color:#859900">:</span><span style="color:#859900"> number</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /**</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     * The pipeline phase that just completed:</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     * - 'clone'   — DOM clone + iframe injection finished.</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     * - 'parse'   — Element tree built from the clone.</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     * - 'element' — A single element has been drawn (fires once per element).</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     * - 'render'  — Canvas fully rendered (final event).</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">     */</span></span>
+<span class="line"><span style="color:#657B83">    phase</span><span style="color:#859900">:</span><span style="color:#2AA198"> 'clone'</span><span style="color:#859900"> |</span><span style="color:#2AA198"> 'parse'</span><span style="color:#859900"> |</span><span style="color:#2AA198"> 'element'</span><span style="color:#859900"> |</span><span style="color:#2AA198"> 'render'</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /** Elapsed milliseconds since rendering started. */</span></span>
+<span class="line"><span style="color:#657B83">    elapsedMs</span><span style="color:#859900">:</span><span style="color:#859900"> number</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /** (phase 'element' only) Number of elements drawn so far. */</span></span>
+<span class="line"><span style="color:#657B83">    renderedElements</span><span style="color:#859900">?:</span><span style="color:#859900"> number</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">    /** (phase 'element' only) Total number of elements to draw. */</span></span>
+<span class="line"><span style="color:#657B83">    totalElements</span><span style="color:#859900">?:</span><span style="color:#859900"> number</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#657B83">}</span></span></code></pre><h3>Event sequence and percentages</h3>
+<table>
+<thead>
+<tr>
+<th>state</th>
+<th>phase</th>
+<th align="center">percentage</th>
+<th>When it fires</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>start</code></td>
+<td><code>clone</code></td>
+<td align="center"><code>0</code></td>
+<td>Immediately when rendering begins</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>clone</code></td>
+<td align="center"><code>20</code></td>
+<td>DOM cloned, iframe loaded, fonts ready</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>parse</code></td>
+<td align="center"><code>35</code></td>
+<td>Element tree built</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>element</code></td>
+<td align="center"><code>35–95</code></td>
+<td>After each element is drawn (proportional to count)</td>
+</tr>
+<tr>
+<td><code>end</code></td>
+<td><code>render</code></td>
+<td align="center"><code>100</code></td>
+<td>Canvas fully rendered</td>
+</tr>
+</tbody></table>
+<h3>Basic usage — progress bar</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#586E75;font-weight:bold">const</span><span style="color:#268BD2"> bar</span><span style="color:#859900"> =</span><span style="color:#268BD2"> document</span><span style="color:#657B83">.</span><span style="color:#268BD2">querySelector</span><span style="color:#657B83">(</span><span style="color:#2AA198">'#progress-bar'</span><span style="color:#657B83">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#268BD2">        bar</span><span style="color:#657B83">.</span><span style="color:#268BD2">style</span><span style="color:#657B83">.</span><span style="color:#268BD2">width</span><span style="color:#859900"> =</span><span style="color:#268BD2"> event</span><span style="color:#657B83">.</span><span style="color:#268BD2">percentage</span><span style="color:#859900"> +</span><span style="color:#2AA198"> '%'</span><span style="color:#657B83">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">state</span><span style="color:#859900"> ===</span><span style="color:#2AA198"> 'end'</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#268BD2">            bar</span><span style="color:#657B83">.</span><span style="color:#268BD2">style</span><span style="color:#657B83">.</span><span style="color:#268BD2">display</span><span style="color:#859900"> =</span><span style="color:#2AA198"> 'none'</span><span style="color:#657B83">;</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h3>Measuring performance by phase</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#859900"> !==</span><span style="color:#2AA198"> 'element'</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">            // Log only phase-level milestones, skip the per-element noise</span></span>
+<span class="line"><span style="color:#268BD2">            console</span><span style="color:#657B83">.</span><span style="color:#268BD2">log</span><span style="color:#657B83">(</span><span style="color:#2AA198">`[${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">state</span><span style="color:#2AA198">}] ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#2AA198">} — ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">percentage</span><span style="color:#2AA198">}% (${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">elapsedMs</span><span style="color:#2AA198">}ms)`</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// Example output:</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// [start]    clone   —   0% (0ms)</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// [progress] clone   —  20% (312ms)</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// [progress] parse   —  35% (318ms)</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// [end]      render  — 100% (1042ms)</span></span></code></pre><h3>Fine-grained element tracking</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#859900">        if</span><span style="color:#657B83"> (</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">phase</span><span style="color:#859900"> ===</span><span style="color:#2AA198"> 'element'</span><span style="color:#657B83">) {</span></span>
+<span class="line"><span style="color:#268BD2">            console</span><span style="color:#657B83">.</span><span style="color:#268BD2">log</span><span style="color:#657B83">(</span><span style="color:#2AA198">`Drawing element ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">renderedElements</span><span style="color:#2AA198">} / ${</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">totalElements</span><span style="color:#2AA198">}`</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">        }</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h3>Combining onProgress with onError</h3>
+<p>Both callbacks are independent and can be used together:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#268BD2">        updateProgressUI</span><span style="color:#657B83">(</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">percentage</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#268BD2">    onError</span><span style="color:#657B83">(error) {</span></span>
+<span class="line"><span style="color:#268BD2">        console</span><span style="color:#657B83">.</span><span style="color:#268BD2">warn</span><span style="color:#657B83">(</span><span style="color:#2AA198">'Resource failed to load:'</span><span style="color:#657B83">, </span><span style="color:#268BD2">error</span><span style="color:#657B83">.</span><span style="color:#268BD2">message</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h2>progressWeights</h2>
+<p>The three pipeline phases — <code>clone</code>, <code>parse</code>, and <code>render</code> — rarely take the same
+amount of time. <code>progressWeights</code> lets you tune where the percentage breakpoints fall
+so that the progress bar advances in a way that feels natural for your page.</p>
+<p>Only the <strong>ratios</strong> between the three values matter. They are normalised internally
+so that the final percentage always reaches 100.</p>
+<h3>Default weights</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#657B83">{ clone: </span><span style="color:#D33682">1</span><span style="color:#657B83">, parse: </span><span style="color:#D33682">1</span><span style="color:#657B83">, render: </span><span style="color:#D33682">8</span><span style="color:#657B83"> }</span></span></code></pre><p>With these defaults the breakpoints are:</p>
+<table>
+<thead>
+<tr>
+<th>Phase ends</th>
+<th align="center">Percentage</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>clone</td>
+<td align="center"><code>9 %</code></td>
+</tr>
+<tr>
+<td>parse</td>
+<td align="center"><code>19 %</code></td>
+</tr>
+<tr>
+<td>render</td>
+<td align="center"><code>100 %</code></td>
+</tr>
+</tbody></table>
+<p>The render phase gets the most room because it emits one event per drawn element,
+making it the richest source of progress feedback.</p>
+<h3>Adjusting for heavy clone phases</h3>
+<p>If your page loads many images during cloning (e.g. with <code>inlineImages: true</code>),
+increase the clone weight to give it more screen time:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#657B83">    progressWeights: { clone: </span><span style="color:#D33682">4</span><span style="color:#657B83">, parse: </span><span style="color:#D33682">1</span><span style="color:#657B83">, render: </span><span style="color:#D33682">5</span><span style="color:#657B83"> },</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#268BD2">        console</span><span style="color:#657B83">.</span><span style="color:#268BD2">log</span><span style="color:#657B83">(</span><span style="color:#268BD2">event</span><span style="color:#657B83">.</span><span style="color:#268BD2">percentage</span><span style="color:#657B83">);</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// Breakpoints → clone: 40 %, parse: 50 %, render: 100 %</span></span></code></pre><h3>Equal weights</h3>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#657B83">    progressWeights: { clone: </span><span style="color:#D33682">1</span><span style="color:#657B83">, parse: </span><span style="color:#D33682">1</span><span style="color:#657B83">, render: </span><span style="color:#D33682">1</span><span style="color:#657B83"> },</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        /* ... */</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">// Breakpoints → clone: 32 %, parse: 63 %, render: 100 %</span></span></code></pre><h3>Partial override</h3>
+<p>Only the fields you specify are overridden; missing fields fall back to their defaults:</p>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#93A1A1;font-style:italic">// Only increase the render weight; clone and parse stay at 1</span></span>
+<span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
+<span class="line"><span style="color:#657B83">    progressWeights: { render: </span><span style="color:#D33682">20</span><span style="color:#657B83"> },</span></span>
+<span class="line"><span style="color:#268BD2">    onProgress</span><span style="color:#657B83">(event) {</span></span>
+<span class="line"><span style="color:#93A1A1;font-style:italic">        /* ... */</span></span>
+<span class="line"><span style="color:#657B83">    },</span></span>
+<span class="line"><span style="color:#657B83">});</span></span></code></pre><h2>Performance</h2>
+<p>For tips on speeding up rendering on large pages — including the <code>ignoreElements</code>
+clone optimization and <code>onProgress</code>/<code>progressWeights</code> usage — see the dedicated
+<a href="./performance">Performance</a> page.</p>
+  </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/getting-started" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 0h24v24H0z" fill="none"/>
     <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
 </svg>
@@ -194,4 +407,4 @@ or a proxy. Returning <code>undefined</code> for other URLs keeps the default be
     <path d="M0 0h24v24H0z" fill="none"/>
     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
 </svg>
-</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.B5GISmBv.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>
+</div> </a> </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.B-ZpTzMe.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>

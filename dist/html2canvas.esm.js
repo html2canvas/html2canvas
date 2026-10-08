@@ -14041,11 +14041,30 @@ var Cache = /** @class */ (function () {
     };
     Cache.prototype.loadImage = function (key) {
         return __awaiter(this, void 0, void 0, function () {
-            var isExtensionImage, isSameOrigin, useCORS, useProxy, src;
+            var resolved_1, isExtensionImage, isSameOrigin, useCORS, useProxy, src;
             var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        if (!this._options.imageResolver) return [3 /*break*/, 3];
+                        return [4 /*yield*/, this._options.imageResolver(key)];
+                    case 1:
+                        resolved_1 = _a.sent();
+                        if (!(resolved_1 != null)) return [3 /*break*/, 3];
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                var img = new Image();
+                                img.onload = function () { return resolve(img); };
+                                img.onerror = reject;
+                                img.src = resolved_1;
+                                if (img.complete === true) {
+                                    setTimeout(function () { return resolve(img); }, 500);
+                                }
+                                if (_this._options.imageTimeout > 0) {
+                                    setTimeout(function () { return reject("Timed out (".concat(_this._options.imageTimeout, "ms) loading image")); }, _this._options.imageTimeout);
+                                }
+                            })];
+                    case 2: return [2 /*return*/, _a.sent()];
+                    case 3:
                         isExtensionImage = key.startsWith('chrome-extension://');
                         isSameOrigin = this.isSameOrigin(key) || isExtensionImage;
                         useCORS = !isInlineImage(key) && this._options.useCORS === true && FEATURES.SUPPORT_CORS_IMAGES && !isSameOrigin;
@@ -14065,12 +14084,12 @@ var Cache = /** @class */ (function () {
                             return [2 /*return*/];
                         }
                         src = key;
-                        if (!useProxy) return [3 /*break*/, 2];
+                        if (!useProxy) return [3 /*break*/, 5];
                         return [4 /*yield*/, this.proxy(src)];
-                    case 1:
+                    case 4:
                         src = _a.sent();
-                        _a.label = 2;
-                    case 2:
+                        _a.label = 5;
+                    case 5:
                         this.context.logger.debug("Added image ".concat(key.substring(0, 256)));
                         return [4 /*yield*/, new Promise(function (resolve, reject) {
                                 var img = new Image();
@@ -14095,7 +14114,7 @@ var Cache = /** @class */ (function () {
                                     setTimeout(function () { return reject("Timed out (".concat(_this._options.imageTimeout, "ms) loading image")); }, _this._options.imageTimeout);
                                 }
                             })];
-                    case 3: return [2 /*return*/, _a.sent()];
+                    case 6: return [2 /*return*/, _a.sent()];
                 }
             });
         });
@@ -14224,14 +14243,107 @@ var Logger = /** @class */ (function () {
     return Logger;
 }());
 
+/** Default weights — render gets the lion's share because it has per-element events. */
+var DEFAULT_PROGRESS_WEIGHTS = {
+    clone: 1,
+    parse: 1,
+    render: 8,
+};
+/**
+ * Builds `ProgressThresholds` from a (possibly partial) `ProgressWeights`
+ * object, merging in `DEFAULT_PROGRESS_WEIGHTS` for any missing fields.
+ */
+function buildProgressThresholds(weights) {
+    var w = __assign(__assign({}, DEFAULT_PROGRESS_WEIGHTS), weights);
+    // Guard against zero or negative values.
+    var clone = Math.max(0, w.clone);
+    var parse = Math.max(0, w.parse);
+    var render = Math.max(0, w.render);
+    var total = clone + parse + render;
+    if (total === 0) {
+        // Degenerate: all zero — fall back to defaults.
+        return { cloneEnd: 10, parseEnd: 20 };
+    }
+    var cloneEnd = (clone / total) * 95; // cap at 95 to leave room for the 'end' event
+    var parseEnd = ((clone + parse) / total) * 95;
+    return {
+        cloneEnd: Math.round(cloneEnd),
+        parseEnd: Math.round(parseEnd),
+    };
+}
+/**
+ * Relative position (0..1) of each clone sub-step within the clone band.
+ * These are rough estimates of how far through cloning each milestone is;
+ * they only drive the progress bar, not any timing logic.
+ */
+var CLONE_STEP_FRACTION = {
+    'dom-cloned': 0.25,
+    'html-written': 0.4,
+    'iframe-loaded': 0.75,
+    'fonts-ready': 0.9,
+    'images-ready': 0.95,
+    'onclone-done': 1,
+};
+/**
+ * Maps a clone sub-step to an absolute percentage within the `[0, cloneEnd]`
+ * band, so sub-events advance the bar smoothly during the (often long) clone
+ * phase instead of jumping straight to `cloneEnd`.
+ */
+function cloneStepPercentage(step, cloneEnd) {
+    return CLONE_STEP_FRACTION[step] * cloneEnd;
+}
+// ---------------------------------------------------------------------------
+// Node counting helper
+// ---------------------------------------------------------------------------
+/**
+ * Counts the total number of renderable nodes in a StackingContext tree.
+ * This is used upfront to compute per-element percentages during rendering.
+ */
+function countStackingContextNodes(stack) {
+    var count = 1; // the root element itself
+    for (var _i = 0, _a = stack.negativeZIndex; _i < _a.length; _i++) {
+        var child = _a[_i];
+        count += countStackingContextNodes(child);
+    }
+    for (var _b = 0, _c = stack.nonInlineLevel; _b < _c.length; _b++) {
+        _c[_b];
+        count += 1; // renderNode (leaf, not a stack)
+    }
+    for (var _d = 0, _e = stack.nonPositionedFloats; _d < _e.length; _d++) {
+        var child = _e[_d];
+        count += countStackingContextNodes(child);
+    }
+    for (var _f = 0, _g = stack.nonPositionedInlineLevel; _f < _g.length; _f++) {
+        var child = _g[_f];
+        count += countStackingContextNodes(child);
+    }
+    for (var _h = 0, _j = stack.inlineLevel; _h < _j.length; _h++) {
+        _j[_h];
+        count += 1; // renderNode (leaf)
+    }
+    for (var _k = 0, _l = stack.zeroOrAutoZIndexOrTransformedOrOpacity; _k < _l.length; _k++) {
+        var child = _l[_k];
+        count += countStackingContextNodes(child);
+    }
+    for (var _m = 0, _o = stack.positiveZIndex; _m < _o.length; _m++) {
+        var child = _o[_m];
+        count += countStackingContextNodes(child);
+    }
+    return count;
+}
+
 var Context = /** @class */ (function () {
     function Context(options, windowBounds) {
         var _a;
         this.windowBounds = windowBounds;
         this.instanceName = "#".concat(Context.instanceCount++);
+        this._progressStartTime = 0;
         this.logger = new Logger({ id: this.instanceName, enabled: options.logging });
         this.cache = (_a = options.cache) !== null && _a !== void 0 ? _a : new Cache(this, options);
         this._onError = options.onError;
+        this._onProgress = options.onProgress;
+        this._progressStartTime = Date.now();
+        this.progressThresholds = buildProgressThresholds(options.progressWeights);
     }
     /**
      * Logs an error and notifies the `onError` callback (if provided).
@@ -14244,6 +14356,22 @@ var Context = /** @class */ (function () {
         if (this._onError) {
             var err = error instanceof Error ? error : new Error(message);
             this._onError(err);
+        }
+    };
+    /**
+     * Fires the `onProgress` callback (if provided) with the supplied event data.
+     * Safe to call even when no callback is registered.
+     */
+    Context.prototype.progress = function (state, phase, percentage, extra) {
+        if (!this._onProgress) {
+            return;
+        }
+        var event = __assign({ state: state, phase: phase, percentage: Math.min(100, Math.max(0, Math.round(percentage))), elapsedMs: Date.now() - this._progressStartTime }, extra);
+        try {
+            this._onProgress(event);
+        }
+        catch (_e) {
+            // Never let a user callback crash the renderer.
         }
     };
     Context.instanceCount = 1;
@@ -14634,7 +14762,19 @@ var DocumentCloner = /** @class */ (function () {
             throw new Error('Cloned element does not have an owner document');
         }
         this.documentElement = this.cloneNode(element.ownerDocument.documentElement, false);
+        // The synchronous deep-clone above is finished.
+        this.reportCloneStep('dom-cloned');
     }
+    /**
+     * Emits a fine-grained progress event for a clone sub-step. Lets callers see
+     * which part of the (often long) clone phase dominates. No-op when no
+     * `onProgress` callback is registered.
+     */
+    DocumentCloner.prototype.reportCloneStep = function (step) {
+        this.context.progress('progress', 'clone', cloneStepPercentage(step, this.context.progressThresholds.cloneEnd), {
+            step: step,
+        });
+    };
     DocumentCloner.prototype.toIFrame = function (ownerDocument, windowSize) {
         var _this = this;
         var iframe = createIFrameContainer(ownerDocument, windowSize);
@@ -14671,10 +14811,13 @@ var DocumentCloner = /** @class */ (function () {
         documentClone.open();
         var iframeLoad = iframeLoader(iframe).then(function () { return __awaiter(_this, void 0, void 0, function () {
             var referenceElement, onclone;
+            var _this = this;
             var _a, _b;
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
+                        // The iframe document reached readyState 'complete'.
+                        this.reportCloneStep('iframe-loaded');
                         this.scrolledElements.forEach(restoreNodeScroll);
                         // Re-apply scroll offsets that were serialized as data attributes (the
                         // in-memory clone references above do not survive document.write()).
@@ -14721,16 +14864,23 @@ var DocumentCloner = /** @class */ (function () {
                         _c.sent();
                         _c.label = 3;
                     case 3:
+                        // Web fonts settled (or none were loading).
+                        this.reportCloneStep('fonts-ready');
                         if (!/(AppleWebKit)/g.test(navigator.userAgent)) return [3 /*break*/, 5];
                         return [4 /*yield*/, imagesReady(documentClone)];
                     case 4:
                         _c.sent();
+                        // WebKit only: all <img> in the clone finished loading.
+                        this.reportCloneStep('images-ready');
                         _c.label = 5;
                     case 5:
                         if (typeof onclone === 'function') {
                             return [2 /*return*/, Promise.resolve()
                                     .then(function () { return onclone(documentClone, referenceElement); })
-                                    .then(function () { return iframe; })];
+                                    .then(function () {
+                                    _this.reportCloneStep('onclone-done');
+                                    return iframe;
+                                })];
                         }
                         return [2 /*return*/, iframe];
                 }
@@ -14740,6 +14890,9 @@ var DocumentCloner = /** @class */ (function () {
         // Chrome scrolls the parent document for some reason after the write to the cloned window???
         restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
         documentClone.close();
+        // HTML serialized and written to the iframe; the browser now parses it and
+        // the iframeLoader promise above will resolve once it is complete.
+        this.reportCloneStep('html-written');
         return iframeLoad;
     };
     DocumentCloner.prototype.createElementClone = function (node) {
@@ -20382,6 +20535,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
          * offscreen). Nested groups add/remove their own effect around the subtree.
          */
         _this._suppressedOpacity = new Set();
+        /** Progress tracking — set up once in render() before the stack walk. */
+        _this._progressTotal = 0;
+        _this._progressRendered = 0;
         var canvas = options.canvas ? options.canvas : document.createElement('canvas');
         var ctx = canvas.getContext('2d');
         if (!options.canvas) {
@@ -20500,7 +20656,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
                     case 3:
                         _a.sent();
                         _a.label = 4;
-                    case 4: return [2 /*return*/];
+                    case 4:
+                        this._reportElementProgress();
+                        return [2 /*return*/];
                 }
             });
         });
@@ -20802,9 +20960,30 @@ var CanvasRenderer = /** @class */ (function (_super) {
                     case 2:
                         _a.sent();
                         _a.label = 3;
-                    case 3: return [2 /*return*/];
+                    case 3:
+                        this._reportElementProgress();
+                        return [2 /*return*/];
                 }
             });
+        });
+    };
+    /**
+     * Emits a fine-grained `element` progress event after each node is rendered.
+     * Only fires when a total count is known (i.e. we are in the top-level render,
+     * not inside a recursive iframe renderer whose count is isolated).
+     */
+    CanvasRenderer.prototype._reportElementProgress = function () {
+        if (this._progressTotal === 0) {
+            return;
+        }
+        this._progressRendered++;
+        // Map rendered count into the [parseEnd → 95] band so phase events stay
+        // at the edges (parseEnd = parse done, 95 = just before the 'end' at 100%).
+        var parseEnd = this.context.progressThresholds.parseEnd;
+        var percentage = parseEnd + (this._progressRendered / this._progressTotal) * (95 - parseEnd);
+        this.context.progress('progress', 'element', percentage, {
+            renderedElements: this._progressRendered,
+            totalElements: this._progressTotal,
         });
     };
     /**
@@ -21020,6 +21199,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
                             this.state.ctx.fillRect(this.options.x, this.options.y, this.options.width, this.options.height);
                         }
                         stack = parseStackingContexts(element);
+                        // Count total renderable nodes upfront so per-element percentage is accurate.
+                        this._progressTotal = countStackingContextNodes(stack);
+                        this._progressRendered = 0;
                         return [4 /*yield*/, this.renderStack(stack)];
                     case 1:
                         _a.sent();
@@ -21107,8 +21289,9 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     useCORS: (_d = opts.useCORS) !== null && _d !== void 0 ? _d : false,
                     isResourceSameOrigin: opts.isResourceSameOrigin,
                     maxCacheSize: opts.maxCacheSize,
+                    imageResolver: opts.imageResolver,
                 };
-                contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache, onError: opts.onError }, resourceOptions);
+                contextOptions = __assign({ logging: (_e = opts.logging) !== null && _e !== void 0 ? _e : true, cache: opts.cache, onError: opts.onError, onProgress: opts.onProgress, progressWeights: opts.progressWeights }, resourceOptions);
                 windowOptions = {
                     windowWidth: (_f = opts.windowWidth) !== null && _f !== void 0 ? _f : defaultView.innerWidth,
                     windowHeight: (_g = opts.windowHeight) !== null && _g !== void 0 ? _g : defaultView.innerHeight,
@@ -21117,6 +21300,8 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                 };
                 windowBounds = new Bounds(windowOptions.scrollX, windowOptions.scrollY, windowOptions.windowWidth, windowOptions.windowHeight);
                 context = new Context(contextOptions, windowBounds);
+                // ── phase: start ────────────────────────────────────────────────────────
+                context.progress('start', 'clone', 0);
                 foreignObjectRendering = (_k = opts.foreignObjectRendering) !== null && _k !== void 0 ? _k : false;
                 cloneOptions = {
                     allowTaint: (_l = opts.allowTaint) !== null && _l !== void 0 ? _l : false,
@@ -21134,6 +21319,8 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                 return [4 /*yield*/, documentCloner.toIFrame(ownerDocument, windowBounds)];
             case 1:
                 container = _y.sent();
+                // ── phase: clone done ────────────────────────────────────────────────────
+                context.progress('progress', 'clone', context.progressThresholds.cloneEnd);
                 clonedElement = documentCloner.clonedReferenceElement;
                 if (!clonedElement) {
                     return [2 /*return*/, Promise.reject("Unable to find element in cloned iframe")];
@@ -21166,6 +21353,8 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                 context.logger.debug("Document cloned, element located at ".concat(left, ",").concat(top, " with size ").concat(width, "x").concat(height, " using computed rendering"));
                 context.logger.debug("Starting DOM parsing");
                 root = parseTree(context, clonedElement);
+                // ── phase: DOM tree parsed ───────────────────────────────────────────
+                context.progress('progress', 'parse', context.progressThresholds.parseEnd);
                 if (backgroundColor === root.styles.backgroundColor) {
                     root.styles.backgroundColor = COLORS.TRANSPARENT;
                 }
@@ -21186,6 +21375,8 @@ var renderElement = function (element, opts) { return __awaiter(void 0, void 0, 
                     context.logger.debug("Cleared image cache (".concat(removed, " entries removed)"));
                 }
                 context.logger.debug("Finished rendering");
+                // ── phase: end (100 %) ───────────────────────────────────────────────────
+                context.progress('end', 'render', 100);
                 return [2 /*return*/, canvas];
         }
     });

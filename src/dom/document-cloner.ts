@@ -1,5 +1,6 @@
 import { Context } from '../core/context';
 import { DebuggerType, isDebugging } from '../core/debugger';
+import { CloneStep, cloneStepPercentage } from '../core/progress';
 import { CSSParsedCounterDeclaration, CSSParsedPseudoDeclaration } from '../css/index';
 import { Bounds } from '../css/layout/bounds';
 import { LIST_STYLE_TYPE, listStyleType } from '../css/property-descriptors/list-style-type';
@@ -85,6 +86,25 @@ export class DocumentCloner {
         }
 
         this.documentElement = this.cloneNode(element.ownerDocument.documentElement, false) as HTMLElement;
+
+        // The synchronous deep-clone above is finished.
+        this.reportCloneStep('dom-cloned');
+    }
+
+    /**
+     * Emits a fine-grained progress event for a clone sub-step. Lets callers see
+     * which part of the (often long) clone phase dominates. No-op when no
+     * `onProgress` callback is registered.
+     */
+    private reportCloneStep(step: CloneStep): void {
+        this.context.progress(
+            'progress',
+            'clone',
+            cloneStepPercentage(step, this.context.progressThresholds.cloneEnd),
+            {
+                step,
+            },
+        );
     }
 
     toIFrame(ownerDocument: Document, windowSize: Bounds): Promise<HTMLIFrameElement> {
@@ -129,6 +149,8 @@ export class DocumentCloner {
         documentClone.open();
 
         const iframeLoad = iframeLoader(iframe).then(async () => {
+            // The iframe document reached readyState 'complete'.
+            this.reportCloneStep('iframe-loaded');
             this.scrolledElements.forEach(restoreNodeScroll);
             // Re-apply scroll offsets that were serialized as data attributes (the
             // in-memory clone references above do not survive document.write()).
@@ -184,15 +206,22 @@ export class DocumentCloner {
                     }),
                 ]);
             }
+            // Web fonts settled (or none were loading).
+            this.reportCloneStep('fonts-ready');
 
             if (/(AppleWebKit)/g.test(navigator.userAgent)) {
                 await imagesReady(documentClone);
+                // WebKit only: all <img> in the clone finished loading.
+                this.reportCloneStep('images-ready');
             }
 
             if (typeof onclone === 'function') {
                 return Promise.resolve()
                     .then(() => onclone(documentClone, referenceElement))
-                    .then(() => iframe);
+                    .then(() => {
+                        this.reportCloneStep('onclone-done');
+                        return iframe;
+                    });
             }
 
             return iframe;
@@ -202,6 +231,9 @@ export class DocumentCloner {
         // Chrome scrolls the parent document for some reason after the write to the cloned window???
         restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
         documentClone.close();
+        // HTML serialized and written to the iframe; the browser now parses it and
+        // the iframeLoader promise above will resolve once it is complete.
+        this.reportCloneStep('html-written');
 
         return iframeLoad;
     }
