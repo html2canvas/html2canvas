@@ -17,6 +17,8 @@ debug.log
 tests/reftests.js
 *.log
 .rpt2_cache
+# tarballs produced by `npm pack` for local linking (non-publishable builds)
+*.tgz
 www/dist-site/
 www/static/src/
 www/static/dist/

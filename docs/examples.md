@@ -1,8 +1,8 @@
 ---
 title: 'Examples'
 description: 'Live examples of html2canvas in action'
-previousUrl: './features'
-previousTitle: 'Features'
+previousUrl: './performance'
+previousTitle: 'Performance'
 nextUrl: './proxy'
 nextTitle: 'Proxy'
 ---

@@ -5,6 +5,7 @@ const makeLinks = base => [
     { href: `${base}/getting-started`, text: 'Getting started' },
     { href: `${base}/configuration`, text: 'Configuration' },
     { href: `${base}/features`, text: 'Features' },
+    { href: `${base}/performance`, text: 'Performance' },
     { href: `${base}/examples`, text: 'Examples' },
     { href: `${base}/proxy`, text: 'Proxy' },
     { href: `${base}/faq`, text: 'FAQ' },

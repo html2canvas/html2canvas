@@ -1,5 +1,6 @@
 import { contains } from '../../core/bitwise';
 import { Context } from '../../core/context';
+import { countStackingContextNodes } from '../../core/progress';
 import { FilterType } from '../../css/property-descriptors/filter';
 import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blend-mode';
 import { POSITION } from '../../css/property-descriptors/position';
@@ -108,6 +109,10 @@ export class CanvasRenderer extends Renderer {
      * so sub-renderers always read the current target without extra allocations.
      */
     readonly state: CanvasRenderState;
+
+    /** Progress tracking — set up once in render() before the stack walk. */
+    private _progressTotal = 0;
+    private _progressRendered = 0;
 
     // Convenience accessors that stay in sync via state
     get canvas(): HTMLCanvasElement {
@@ -248,6 +253,7 @@ export class CanvasRenderer extends Renderer {
                 await this.renderStackContent(stack);
             }
         }
+        this._reportElementProgress();
     }
 
     /**
@@ -496,6 +502,27 @@ export class CanvasRenderer extends Renderer {
             await this.renderNodeBackgroundAndBorders(paint);
             await this.renderNodeContent(paint);
         }
+        this._reportElementProgress();
+    }
+
+    /**
+     * Emits a fine-grained `element` progress event after each node is rendered.
+     * Only fires when a total count is known (i.e. we are in the top-level render,
+     * not inside a recursive iframe renderer whose count is isolated).
+     */
+    private _reportElementProgress(): void {
+        if (this._progressTotal === 0) {
+            return;
+        }
+        this._progressRendered++;
+        // Map rendered count into the [parseEnd → 95] band so phase events stay
+        // at the edges (parseEnd = parse done, 95 = just before the 'end' at 100%).
+        const { parseEnd } = this.context.progressThresholds;
+        const percentage = parseEnd + (this._progressRendered / this._progressTotal) * (95 - parseEnd);
+        this.context.progress('progress', 'element', percentage, {
+            renderedElements: this._progressRendered,
+            totalElements: this._progressTotal,
+        });
     }
 
     /**
@@ -684,6 +711,11 @@ export class CanvasRenderer extends Renderer {
             this.state.ctx.fillRect(this.options.x, this.options.y, this.options.width, this.options.height);
         }
         const stack = parseStackingContexts(element);
+
+        // Count total renderable nodes upfront so per-element percentage is accurate.
+        this._progressTotal = countStackingContextNodes(stack);
+        this._progressRendered = 0;
+
         await this.renderStack(stack);
         this.applyEffects([]);
         // Release pooled offscreen canvases and the per-render caches so their
