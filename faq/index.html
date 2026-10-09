@@ -4,11 +4,28 @@ reside outside of the <a href="https://developer.mozilla.org/en-US/docs/Web/Secu
 of the current page <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image">taints the canvas</a>,
 making it unreadable. html2canvas checks whether an image would taint the canvas before applying it,
 and skips it if <code>allowTaint</code> is <code>false</code> (the default).</p>
-<p>To include cross-origin images, either:</p>
-<ul>
-<li>Enable <code>useCORS: true</code> if the image server sends the appropriate <code>Access-Control-Allow-Origin</code> header, or</li>
-<li>Use a <a href="./proxy">proxy</a> to fetch the image through the same origin.</li>
-</ul>
+<p>To include cross-origin images, pick one of the following.</p>
+<h3>1. <code>useCORS</code> + <code>crossorigin</code> (recommended when the host sends CORS headers)</h3>
+<p>This is the cleanest option and avoids inlining large base64 strings. It requires <strong>two</strong>
+things together — enabling <code>useCORS</code> alone is not enough:</p>
+<ol>
+<li>Set <code>useCORS: true</code> in the options.</li>
+<li>Add <code>crossorigin=&quot;anonymous&quot;</code> to every cross-origin <code>&lt;img&gt;</code> in the DOM you capture.</li>
+</ol>
+<pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#93A1A1">&#x3C;</span><span style="color:#268BD2">img</span><span style="color:#93A1A1"> crossorigin</span><span style="color:#657B83">=</span><span style="color:#2AA198">"anonymous"</span><span style="color:#93A1A1"> src</span><span style="color:#657B83">=</span><span style="color:#2AA198">"https://cdn.example.com/photo.jpg"</span><span style="color:#93A1A1"> /></span></span></code></pre><pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#859900">await</span><span style="color:#268BD2"> html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, { useCORS: </span><span style="color:#B58900">true</span><span style="color:#657B83"> });</span></span></code></pre><p>The image server must send <code>Access-Control-Allow-Origin</code> (e.g. <code>*</code>). If the <code>&lt;img&gt;</code> lacks the
+<code>crossorigin</code> attribute, the browser may serve a <strong>cached copy without CORS metadata</strong>, which
+taints the canvas even though the server supports CORS. When in doubt, hard-reload (or test in a
+private window) after adding the attribute, since the non-CORS response can linger in the HTTP cache.</p>
+<blockquote>
+<p>Note: <code>crossorigin</code> only applies to <code>&lt;img&gt;</code> elements. CSS <code>background-image</code> values cannot carry
+it, so cross-origin backgrounds still taint the canvas — use <code>imageResolver</code> or base64 for those.</p>
+</blockquote>
+<h3>2. <code>imageResolver</code> (when the host does <em>not</em> send CORS headers)</h3>
+<p>Intercept image URLs and return a base64 data URL you fetched yourself. See the
+<a href="./configuration#imageresolver-example">imageResolver example</a>. Useful as a fallback for the
+specific hosts that lack CORS, while letting everything else go through <code>useCORS</code>.</p>
+<h3>3. Proxy</h3>
+<p>Use a <a href="./proxy">proxy</a> to fetch the image through the same origin.</p>
 <h2>Why is the produced canvas empty or cuts off half way through?</h2>
 <p>The canvas may hit <a href="https://stackoverflow.com/questions/6081483/maximum-size-of-a-canvas-element">browser size limits</a>.
 Use the <code>windowWidth</code> / <code>windowHeight</code> options to match the element&#39;s scroll dimensions:</p>

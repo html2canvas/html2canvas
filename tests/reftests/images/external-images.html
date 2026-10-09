@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+  <head>
+    <title>External images (manual demo)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <!--
+      MANUAL DEMO PAGE — NOT a deterministic reftest.
+
+      This page loads REAL external images to exercise the cross-origin image
+      paths of html2canvas (useCORS, proxy, allowTaint, imageResolver) in a real
+      browser. Because it depends on the network and third-party servers, it is
+      excluded from the automated visual baseline (see tests/reftests/ignore.txt)
+      and is meant to be opened by hand:
+
+        1. Start the test server:  npm run build && node tests/server
+        2. Open in a browser:
+           http://localhost:8080/tests/reftests/images/external-images.html?useCORS
+        3. Click the page to toggle between the DOM and the rendered canvas.
+
+      Query flags you can toggle via the address bar (handled below):
+        ?useCORS      → load cross-origin images with crossOrigin="anonymous"
+        ?allowTaint   → allow tainting the canvas (canvas becomes unreadable)
+        ?resolver     → intercept the CDN host with imageResolver (base64)
+    -->
+    <script>
+      var params = new URLSearchParams(window.location.search);
+
+      h2cOptions = {
+        useCORS: params.has('useCORS'),
+        allowTaint: params.has('allowTaint'),
+        logging: true,
+      };
+
+      // ?resolver — fetch EVERY cross-origin image client-side and hand
+      // html2canvas a base64 data URL instead. This side-steps CORS entirely.
+      // It must intercept ALL external hosts: if even one external image falls
+      // through to the normal (non-CORS) path it taints the canvas and the whole
+      // capture becomes unreadable.
+      if (params.has('resolver')) {
+        h2cOptions.imageResolver = function (src) {
+          // Only intercept cross-origin URLs; same-origin ones load normally.
+          if (/^https?:\/\//.test(src) && src.indexOf(location.origin) !== 0) {
+            return fetch(src, { mode: 'cors' })
+              .then(function (r) {
+                return r.blob();
+              })
+              .then(function (blob) {
+                return new Promise(function (resolve, reject) {
+                  var reader = new FileReader();
+                  reader.onload = function () {
+                    resolve(reader.result);
+                  };
+                  reader.onerror = reject;
+                  reader.readAsDataURL(blob);
+                });
+              })
+              .catch(function () {
+                return undefined; // let html2canvas fall back on failure
+              });
+          }
+          return undefined; // same-origin: default behaviour
+        };
+      }
+    </script>
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: sans-serif;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      figure {
+        margin: 0;
+        width: 160px;
+      }
+      figure img {
+        display: block;
+        width: 160px;
+        height: 160px;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        background: #f4f4f4;
+      }
+      figcaption {
+        font-size: 12px;
+        color: #333;
+        margin-top: 4px;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>External images — manual demo</h1>
+    <p>
+      Loads real cross-origin images. A cross-origin image can only be painted onto a
+      <em>readable</em> canvas when it is fetched with CORS. The modes below show the options:
+    </p>
+    <ul>
+      <li>
+        <code>?useCORS</code> — load each external image with <code>crossOrigin="anonymous"</code>. Works when the host
+        sends CORS headers (both demo hosts do). Canvas stays readable.
+        <strong>This is the recommended approach.</strong>
+      </li>
+      <li>
+        <code>?resolver</code> — intercept every external URL via <code>imageResolver</code>, fetch it client-side and
+        feed html2canvas a base64 data URL. Also keeps the canvas readable, but requires an extra fetch per image. Use
+        it when a host does <em>not</em> send CORS headers.
+      </li>
+      <li>
+        <code>?allowTaint</code> — draw external images without CORS. The image appears, but the canvas becomes
+        <strong>tainted</strong> (unreadable): <code>toDataURL()</code>/<code>getImageData()</code>
+        throw, so the capture cannot be exported. Shown here only to illustrate the trade-off.
+      </li>
+      <li><code>none</code> — no cross-origin handling: external images render blank. Expected.</li>
+    </ul>
+    <p id="mode-bar">
+      Active options:
+      <strong id="mode-flags"></strong>
+      &nbsp;·&nbsp; switch:
+      <a href="?useCORS">?useCORS</a>
+      <a href="?allowTaint">?allowTaint</a>
+      <a href="?resolver">?resolver</a>
+      <a href="?">none</a>
+    </p>
+    <script>
+      // Reflect the active flags so it is obvious which mode is being tested.
+      (function () {
+        var active = [];
+        if (params.has('useCORS')) active.push('useCORS');
+        if (params.has('allowTaint')) active.push('allowTaint');
+        if (params.has('resolver')) active.push('resolver');
+        document.getElementById('mode-flags').textContent = active.length ? active.join(' + ') : 'none';
+      })();
+    </script>
+
+    <div class="grid">
+      <figure>
+        <img
+          crossorigin="anonymous"
+          src="https://raw.githubusercontent.com/html2canvas/html2canvas/master/tests/assets/image.jpg"
+          alt="CDN image (CORS)"
+        />
+        <figcaption>raw.githubusercontent.com (CORS-enabled host)</figcaption>
+      </figure>
+
+      <figure>
+        <img
+          crossorigin="anonymous"
+          src="https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg"
+          alt="Wikimedia JPEG"
+        />
+        <figcaption>upload.wikimedia.org (opaque JPEG, CORS *)</figcaption>
+      </figure>
+
+      <figure>
+        <img src="../../assets/image.jpg" alt="local reference image" />
+        <figcaption>local same-origin image (control)</figcaption>
+      </figure>
+    </div>
+  </body>
+</html>

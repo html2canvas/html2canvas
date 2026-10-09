@@ -33,7 +33,7 @@ export type {
     ProgressEvent,
     ProgressPhase,
     ProgressState,
-    ProgressWeights
+    ProgressWeights,
 } from './core/progress';
 
 const html2canvas = (element: HTMLElement, options: Partial<Options> = {}): Promise<HTMLCanvasElement> => {

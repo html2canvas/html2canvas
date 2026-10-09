@@ -4,10 +4,10 @@
     <title>imageResolver hook test</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <script>
-      // A small 10×10 red square encoded as a data URL (PNG).
+      // A small 10×10 solid-red square encoded as a data URL (PNG).
       var RED_SQUARE =
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9' +
-        'AAAAFElEQVQoU2P8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==';
+        'AAAAJElEQVR4AY3BAQEAAAiDMKR/51uB7QYjkEgiiSSSSCKJJJLoAT2cAhLpVj+QAAAAAElFTkSuQmCC';
 
       // The imageResolver intercepts any URL that starts with
       // "https://external.invalid/" and returns a known data URL instead.
@@ -40,13 +40,6 @@
     <!-- This URL would be blocked by CORS in a real browser.
              imageResolver substitutes it with a red square data URL. -->
     <img src="https://external.invalid/cors-image.png" width="10" height="10" alt="red square via resolver" />
-
-    <img
-      src="https://api.classement.ikilote.net/images/9/b/7/4/d75e3d0cdc1482b23031826fe8f404e950c9.webp"
-      width="150"
-      height="150"
-      alt="red square via resolver"
-    />
 
     <!-- A regular same-origin image should still load normally
              (imageResolver returns undefined for it). -->
