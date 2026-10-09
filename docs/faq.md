@@ -11,10 +11,41 @@ of the current page [taints the canvas](https://developer.mozilla.org/en-US/docs
 making it unreadable. html2canvas checks whether an image would taint the canvas before applying it,
 and skips it if `allowTaint` is `false` (the default).
 
-To include cross-origin images, either:
+To include cross-origin images, pick one of the following.
 
-- Enable `useCORS: true` if the image server sends the appropriate `Access-Control-Allow-Origin` header, or
-- Use a [proxy](./proxy) to fetch the image through the same origin.
+### 1. `useCORS` + `crossorigin` (recommended when the host sends CORS headers)
+
+This is the cleanest option and avoids inlining large base64 strings. It requires **two**
+things together — enabling `useCORS` alone is not enough:
+
+1. Set `useCORS: true` in the options.
+2. Add `crossorigin="anonymous"` to every cross-origin `<img>` in the DOM you capture.
+
+```html
+<img crossorigin="anonymous" src="https://cdn.example.com/photo.jpg" />
+```
+
+```javascript
+await html2canvas(element, { useCORS: true });
+```
+
+The image server must send `Access-Control-Allow-Origin` (e.g. `*`). If the `<img>` lacks the
+`crossorigin` attribute, the browser may serve a **cached copy without CORS metadata**, which
+taints the canvas even though the server supports CORS. When in doubt, hard-reload (or test in a
+private window) after adding the attribute, since the non-CORS response can linger in the HTTP cache.
+
+> Note: `crossorigin` only applies to `<img>` elements. CSS `background-image` values cannot carry
+> it, so cross-origin backgrounds still taint the canvas — use `imageResolver` or base64 for those.
+
+### 2. `imageResolver` (when the host does _not_ send CORS headers)
+
+Intercept image URLs and return a base64 data URL you fetched yourself. See the
+[imageResolver example](./configuration#imageresolver-example). Useful as a fallback for the
+specific hosts that lack CORS, while letting everything else go through `useCORS`.
+
+### 3. Proxy
+
+Use a [proxy](./proxy) to fetch the image through the same origin.
 
 ## Why is the produced canvas empty or cuts off half way through?
 
