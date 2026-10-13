@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Outline offset tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                background: #3a84c3;
+            }
+
+            div {
+                width: 150px;
+                height: 150px;
+                display: inline-block;
+                margin: 40px;
+                background: #6f428c;
+                outline: 4px solid #00b5e2;
+            }
+
+            /* no offset (default) */
+            .box1 {
+                outline-offset: 0;
+            }
+
+            /* small positive offset */
+            .box2 {
+                outline-offset: 4px;
+            }
+
+            /* large positive offset */
+            .box3 {
+                outline-offset: 16px;
+            }
+
+            /* small negative offset */
+            .box4 {
+                outline-offset: -4px;
+            }
+
+            /* large negative offset (outline deep inside) */
+            .box5 {
+                outline-offset: -20px;
+            }
+
+            /* offset + border-radius */
+            .box6 {
+                outline-offset: 8px;
+                border-radius: 20px;
+                outline-color: hotpink;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box1">&nbsp;</div>
+        <div class="box2">&nbsp;</div>
+        <div class="box3">&nbsp;</div>
+        <div class="box4">&nbsp;</div>
+        <div class="box5">&nbsp;</div>
+        <div class="box6">&nbsp;</div>
+    </body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Outline dashed/dotted tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                background: #3a84c3;
+            }
+
+            div {
+                width: 150px;
+                height: 150px;
+                display: inline-block;
+                margin: 30px;
+                background: #6f428c;
+            }
+
+            .box1 {
+                outline: 3px dashed #00b5e2;
+            }
+
+            .box2 {
+                outline: 6px dashed red;
+            }
+
+            .box3 {
+                outline: 3px dotted lime;
+            }
+
+            .box4 {
+                outline: 8px dotted yellow;
+            }
+
+            /* dashed with offset */
+            .box5 {
+                outline: 4px dashed cyan;
+                outline-offset: 8px;
+            }
+
+            /* dotted with border-radius */
+            .box6 {
+                outline: 6px dotted hotpink;
+                border-radius: 16px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box1">&nbsp;</div>
+        <div class="box2">&nbsp;</div>
+        <div class="box3">&nbsp;</div>
+        <div class="box4">&nbsp;</div>
+        <div class="box5">&nbsp;</div>
+        <div class="box6">&nbsp;</div>
+    </body>
+</html>

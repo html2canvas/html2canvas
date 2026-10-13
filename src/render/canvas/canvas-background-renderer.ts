@@ -37,6 +37,7 @@ import {
     calculateContentBoxPath,
     calculatePaddingBoxPath,
     expandBorderBoxPath,
+    expandBorderBoxPathForOutline,
 } from '../bound-curves';
 import { Path } from '../path';
 import { ElementPaint } from '../stacking-context';
@@ -1114,6 +1115,160 @@ export async function renderBorderSide(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Outline rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the CSS `outline` of an element.
+ *
+ * The outline is drawn outside the border-box, separated from it by
+ * `outline-offset` pixels (which may be negative, pulling the outline inward).
+ * The painted region is the ring between:
+ *   - inner edge: border-box expanded by `outlineOffset`
+ *     (clamped to at least the border-box when offset is negative)
+ *   - outer edge: inner edge expanded by `outlineWidth`
+ *
+ * We render this ring using the even-odd fill rule: the outer path is the
+ * outline exterior and the inner path is punched out as a hole. This matches
+ * how browsers render outlines — a continuous ring with no per-side seams.
+ *
+ * For dashed/dotted/double outlines we fall back to the stroke-based path
+ * (same as borders) drawn on the centre-line of the ring.
+ */
+export async function renderOutline(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
+    const styles = paint.container.styles;
+    const outlineW = styles.outlineWidth;
+    const outlineS = styles.outlineStyle;
+    const outlineC = styles.outlineColor;
+
+    if (outlineS === BORDER_STYLE.NONE || outlineW <= 0 || isTransparent(outlineC)) {
+        return;
+    }
+
+    const offset = styles.outlineOffset;
+
+    // Inner edge: border-box expanded by outlineOffset.
+    // When outlineOffset is negative the inner path shrinks; we don't clamp —
+    // negative offsets draw the outline inside the element, matching browsers.
+    const innerSpread = offset;
+    const outerSpread = offset + outlineW;
+
+    const outerPaths = expandBorderBoxPathForOutline(paint.curves, outerSpread);
+    const innerPaths = expandBorderBoxPathForOutline(paint.curves, innerSpread);
+
+    const ctx = state.ctx;
+
+    switch (outlineS) {
+        case BORDER_STYLE.DASHED:
+        case BORDER_STYLE.DOTTED: {
+            // For dashed/dotted we stroke on the centre-line of the ring.
+            // Clip to the ring area (outer - inner) using even-odd so we don't
+            // paint outside the outline band.
+            ctx.save();
+            ctx.beginPath();
+            formatPath(ctx, outerPaths);
+            ctx.closePath();
+            formatPath(ctx, innerPaths);
+            ctx.closePath();
+            ctx.clip('evenodd');
+
+            const centrePaths = expandBorderBoxPathForOutline(paint.curves, offset + outlineW / 2);
+            ctx.beginPath();
+            formatPath(ctx, centrePaths);
+            ctx.closePath();
+
+            const length = _outlinePerimeter(paint.curves, offset + outlineW / 2);
+            let dashLength = outlineW < 3 ? outlineW * 3 : outlineW * 2;
+            let spaceLength = outlineW < 3 ? outlineW * 2 : outlineW;
+            if (outlineS === BORDER_STYLE.DOTTED) {
+                // dash=0 + lineCap=round produces true circular dots,
+                // matching how renderDashedDottedBorder handles dotted borders.
+                dashLength = 0;
+                spaceLength = outlineW * 2;
+            }
+            if (length > (dashLength + spaceLength) * 2) {
+                ctx.setLineDash([dashLength, spaceLength]);
+            }
+            ctx.lineWidth = outlineW;
+            if (outlineS === BORDER_STYLE.DOTTED) {
+                ctx.lineCap = 'round';
+            }
+            ctx.strokeStyle = asString(outlineC);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+            break;
+        }
+
+        case BORDER_STYLE.DOUBLE: {
+            if (outlineW < 3) {
+                // Too thin for double — fall through to solid ring.
+                _renderOutlineRing(ctx, outerPaths, innerPaths, outlineC);
+            } else {
+                // Outer band: outer → outer-1/3
+                const outerBandInner = expandBorderBoxPathForOutline(paint.curves, offset + (outlineW * 2) / 3);
+                _renderOutlineRing(ctx, outerPaths, outerBandInner, outlineC);
+                // Inner band: outer-2/3 → inner
+                const innerBandOuter = expandBorderBoxPathForOutline(paint.curves, offset + outlineW / 3);
+                _renderOutlineRing(ctx, innerBandOuter, innerPaths, outlineC);
+            }
+            break;
+        }
+
+        default:
+            // solid, groove, ridge, inset, outset — render as a filled ring.
+            // For 3D effects we approximate with a uniform shade (groove/ridge
+            // would need per-side half-rings which is complex for outlines).
+            _renderOutlineRing(ctx, outerPaths, innerPaths, outlineC);
+            break;
+    }
+}
+
+/**
+ * Paints a filled ring using the even-odd rule.
+ * `outer` is the exterior path, `inner` is the hole punched inside it.
+ */
+function _renderOutlineRing(
+    ctx: CanvasRenderingContext2D,
+    outer: import('../path').Path[],
+    inner: import('../path').Path[],
+    color: import('../../css/types/color').Color,
+): void {
+    ctx.beginPath();
+    formatPath(ctx, outer);
+    ctx.closePath();
+    formatPath(ctx, inner);
+    ctx.closePath();
+    ctx.fillStyle = asString(color);
+    ctx.fill('evenodd');
+}
+
+/**
+ * Rough perimeter of the outline centre-line path (used for dash length
+ * calculation). We approximate each corner curve as a quarter-ellipse arc.
+ */
+function _outlinePerimeter(curves: BoundCurves, spread: number): number {
+    const paths = expandBorderBoxPathForOutline(curves, spread);
+    // paths = [TL, TR, BR, BL] — each is a BezierCurve or Vector.
+    // Approximate perimeter by summing chord lengths between adjacent anchors.
+    let perim = 0;
+    const pts: { x: number; y: number }[] = [];
+    for (const p of paths) {
+        if ('start' in p) {
+            pts.push((p as import('../bezier-curve').BezierCurve).start);
+        } else {
+            pts.push(p as import('../vector').Vector);
+        }
+    }
+    for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        perim += Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+    }
+    return perim || 1;
+}
+
 export async function renderDashedDottedBorder(
     state: CanvasRenderState,
     color: import('../../css/types/color').Color,
@@ -1411,6 +1566,9 @@ async function _renderInlineSlice(state: CanvasRenderState, paint: ElementPaint)
             }
         }
     }
+
+    // Outline is drawn around the full element bounding box (not per fragment).
+    await renderOutline(state, paint);
 }
 
 // ---------------------------------------------------------------------------
@@ -2068,6 +2226,9 @@ async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, pa
             }
         }
     }
+
+    // Outline is drawn after borders (outside the border-box).
+    await renderOutline(state, paint);
 }
 
 /**

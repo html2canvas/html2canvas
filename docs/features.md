@@ -92,6 +92,11 @@ Below is a list of all the supported CSS properties and values.
 - object-fit
 - object-position
 - opacity
+- outline
+    - outline-color
+    - outline-style (`solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset`, `outset`, `auto`)
+    - outline-width
+    - outline-offset
 - overflow
 - overflow-wrap
 - padding

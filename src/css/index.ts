@@ -75,6 +75,10 @@ import { MIX_BLEND_MODE, mixBlendMode as mixBlendModeDescriptor } from './proper
 import { objectFit } from './property-descriptors/object-fit';
 import { objectPosition } from './property-descriptors/object-position';
 import { opacity } from './property-descriptors/opacity';
+import { outlineColor } from './property-descriptors/outline-color';
+import { outlineOffset } from './property-descriptors/outline-offset';
+import { outlineStyle } from './property-descriptors/outline-style';
+import { outlineWidth } from './property-descriptors/outline-width';
 import { OVERFLOW, overflow } from './property-descriptors/overflow';
 import { overflowWrap } from './property-descriptors/overflow-wrap';
 import { paddingBottom, paddingLeft, paddingRight, paddingTop } from './property-descriptors/padding';
@@ -197,6 +201,10 @@ export class CSSParsedDeclaration {
     objectFit: ReturnType<typeof objectFit.parse>;
     objectPosition: ReturnType<typeof objectPosition.parse>;
     opacity: ReturnType<typeof opacity.parse>;
+    outlineColor: Color;
+    outlineOffset: ReturnType<typeof outlineOffset.parse>;
+    outlineStyle: ReturnType<typeof outlineStyle.parse>;
+    outlineWidth: ReturnType<typeof outlineWidth.parse>;
     mixBlendMode: MIX_BLEND_MODE;
     overflowX: OVERFLOW;
     overflowY: OVERFLOW;
@@ -293,6 +301,10 @@ export class CSSParsedDeclaration {
         this.objectFit = parse(context, objectFit, declaration.objectFit);
         this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
         this.opacity = parse(context, opacity, declaration.opacity);
+        this.outlineColor = parse(context, outlineColor, declaration.outlineColor);
+        this.outlineOffset = parse(context, outlineOffset, declaration.outlineOffset);
+        this.outlineStyle = parse(context, outlineStyle, declaration.outlineStyle);
+        this.outlineWidth = parse(context, outlineWidth, declaration.outlineWidth);
         this.mixBlendMode = parse(context, mixBlendModeDescriptor, declaration.mixBlendMode);
         const overflowTuple = parse(context, overflow, declaration.overflow);
         this.overflowX = overflowTuple[0];
@@ -387,6 +399,10 @@ export class CSSParsedDeclaration {
 
             // webkit-text-stroke-width (plain number in px)
             this.webkitTextStrokeWidth *= z;
+
+            // outline-width and outline-offset (plain numbers in px)
+            this.outlineWidth *= z;
+            this.outlineOffset *= z;
 
             // Text decoration thickness (number | null)
             if (typeof this.textDecorationThickness === 'number') {

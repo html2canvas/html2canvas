@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Outline double tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                background: #3a84c3;
+            }
+
+            div {
+                width: 150px;
+                height: 150px;
+                display: inline-block;
+                margin: 30px;
+                background: #6f428c;
+                outline-style: double;
+            }
+
+            /* too thin — falls back to solid */
+            .box1 {
+                outline-width: 2px;
+                outline-color: #00b5e2;
+            }
+
+            /* minimum for real double */
+            .box2 {
+                outline-width: 3px;
+                outline-color: red;
+            }
+
+            .box3 {
+                outline-width: 9px;
+                outline-color: yellow;
+            }
+
+            .box4 {
+                outline-width: 15px;
+                outline-color: lime;
+                border-radius: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box1">&nbsp;</div>
+        <div class="box2">&nbsp;</div>
+        <div class="box3">&nbsp;</div>
+        <div class="box4">&nbsp;</div>
+    </body>
+</html>
