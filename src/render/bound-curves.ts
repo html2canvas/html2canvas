@@ -453,6 +453,89 @@ export const expandBorderBoxPath = (curves: BoundCurves, spread: number): Path[]
     ];
 };
 
+/**
+ * Like `expandBorderBoxPath` but with outline-correct radius behaviour:
+ *
+ * CSS spec (css-ui-4 §8): the outline follows the element's `border-radius`.
+ * If a corner has no radius (r = 0) the outline corner stays sharp regardless
+ * of `outline-offset`. Only corners that already have a radius get it adjusted
+ * by `spread` (= outlineOffset, positive or negative).
+ *
+ * `expandBorderBoxPath` is designed for box-shadow and always adds `spread` to
+ * every radius — which inadvertently rounds otherwise-sharp corners.
+ * This function leaves zero-radii corners as sharp Vectors.
+ */
+export const expandBorderBoxPathForOutline = (curves: BoundCurves, spread: number): Path[] => {
+    const getRadii = (corner: Path): [number, number] => {
+        if (isBezierCurve(corner)) {
+            const c = corner as BezierCurve;
+            const dx = Math.abs(c.end.x - c.start.x);
+            const dy = Math.abs(c.end.y - c.start.y);
+            return [dx, dy];
+        }
+        return [0, 0];
+    };
+
+    const [tlH, tlV] = getRadii(curves.topLeftBorderBox);
+    const [trH, trV] = getRadii(curves.topRightBorderBox);
+    const [brH, brV] = getRadii(curves.bottomRightBorderBox);
+    const [blH, blV] = getRadii(curves.bottomLeftBorderBox);
+
+    const tl = curves.topLeftBorderBox;
+    const left = isBezierCurve(tl) ? tl.start.x : (tl as Vector).x;
+    const top = isBezierCurve(tl) ? tl.end.y : (tl as Vector).y;
+    const br = curves.bottomRightBorderBox;
+    const right = isBezierCurve(br) ? br.start.x : (br as Vector).x;
+    const bottom = isBezierCurve(br) ? br.start.y + brV : (br as Vector).y;
+
+    const newLeft = left - spread;
+    const newTop = top - spread;
+    const newRight = right + spread;
+    const newBottom = bottom + spread;
+    const newWidth = newRight - newLeft;
+    const newHeight = newBottom - newTop;
+
+    if (newWidth <= 0 || newHeight <= 0) {
+        const mid = new Vector((left + right) / 2, (top + bottom) / 2);
+        return [mid, mid, mid, mid];
+    }
+
+    // KEY DIFFERENCE vs expandBorderBoxPath:
+    // Only grow/shrink radii that were already non-zero. A zero radius stays
+    // zero (sharp corner) regardless of spread — matching browser outline behaviour.
+    const adjustRadius = (r: number, s: number, max: number): number =>
+        r === 0 ? 0 : Math.min(Math.max(0, r + s), max);
+
+    const newTlH = adjustRadius(tlH, spread, newWidth / 2);
+    const newTlV = adjustRadius(tlV, spread, newHeight / 2);
+    const newTrH = adjustRadius(trH, spread, newWidth / 2);
+    const newTrV = adjustRadius(trV, spread, newHeight / 2);
+    const newBrH = adjustRadius(brH, spread, newWidth / 2);
+    const newBrV = adjustRadius(brV, spread, newHeight / 2);
+    const newBlH = adjustRadius(blH, spread, newWidth / 2);
+    const newBlV = adjustRadius(blV, spread, newHeight / 2);
+
+    const topWidth = newWidth - newTrH;
+    const rightHeight = newHeight - newBrV;
+    const bottomWidth = newWidth - newBrH;
+    const leftHeight = newHeight - newBlV;
+
+    return [
+        newTlH > 0 || newTlV > 0
+            ? getCurvePoints(newLeft, newTop, newTlH, newTlV, CORNER.TOP_LEFT)
+            : new Vector(newLeft, newTop),
+        newTrH > 0 || newTrV > 0
+            ? getCurvePoints(newLeft + topWidth, newTop, newTrH, newTrV, CORNER.TOP_RIGHT)
+            : new Vector(newLeft + newWidth, newTop),
+        newBrH > 0 || newBrV > 0
+            ? getCurvePoints(newLeft + bottomWidth, newTop + rightHeight, newBrH, newBrV, CORNER.BOTTOM_RIGHT)
+            : new Vector(newLeft + newWidth, newTop + newHeight),
+        newBlH > 0 || newBlV > 0
+            ? getCurvePoints(newLeft, newTop + leftHeight, newBlH, newBlV, CORNER.BOTTOM_LEFT)
+            : new Vector(newLeft, newTop + newHeight),
+    ];
+};
+
 export const calculateContentBoxPath = (curves: BoundCurves): Path[] => {
     return [
         curves.topLeftContentBox,

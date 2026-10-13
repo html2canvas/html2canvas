@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Outline solid tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html {
+                background: #3a84c3;
+            }
+
+            div {
+                width: 150px;
+                height: 150px;
+                display: inline-block;
+                margin: 30px;
+                background: #6f428c;
+                outline-style: solid;
+            }
+
+            /* thin outline */
+            .box1 {
+                outline-width: 2px;
+                outline-color: #00b5e2;
+            }
+
+            /* medium outline */
+            .box2 {
+                outline-width: 6px;
+                outline-color: red;
+            }
+
+            /* thick outline */
+            .box3 {
+                outline-width: 16px;
+                outline-color: yellow;
+            }
+
+            /* outline + border-radius */
+            .box4 {
+                outline-width: 8px;
+                outline-color: #ff8800;
+                border-radius: 20px;
+            }
+
+            /* outline with positive offset */
+            .box5 {
+                outline-width: 6px;
+                outline-color: lime;
+                outline-offset: 6px;
+            }
+
+            /* outline with negative offset (inside the element) */
+            .box6 {
+                outline-width: 6px;
+                outline-color: hotpink;
+                outline-offset: -10px;
+            }
+
+            /* outline on top of a border */
+            .box7 {
+                outline-width: 4px;
+                outline-color: cyan;
+                border: 6px solid white;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box1">&nbsp;</div>
+        <div class="box2">&nbsp;</div>
+        <div class="box3">&nbsp;</div>
+        <div class="box4">&nbsp;</div>
+        <div class="box5">&nbsp;</div>
+        <div class="box6">&nbsp;</div>
+        <div class="box7">&nbsp;</div>
+    </body>
+</html>

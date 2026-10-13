@@ -11244,6 +11244,75 @@
         },
     };
 
+    var outlineColor = {
+        name: 'outline-color',
+        initialValue: 'transparent',
+        prefix: false,
+        type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+        format: 'color',
+    };
+
+    // outline-offset can be negative (outline moves inside the border-box)
+    var outlineOffset = {
+        name: 'outline-offset',
+        initialValue: '0',
+        prefix: false,
+        type: 0 /* PropertyDescriptorParsingType.VALUE */,
+        parse: function (_context, token) {
+            if (isDimensionToken(token)) {
+                return token.number;
+            }
+            if (isNumberToken(token)) {
+                return token.number;
+            }
+            return 0;
+        },
+    };
+
+    var outlineStyle = {
+        name: 'outline-style',
+        initialValue: 'none',
+        prefix: false,
+        type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+        parse: function (_context, style) {
+            switch (style) {
+                case 'none':
+                    return 0 /* BORDER_STYLE.NONE */;
+                case 'dashed':
+                    return 2 /* BORDER_STYLE.DASHED */;
+                case 'dotted':
+                    return 3 /* BORDER_STYLE.DOTTED */;
+                case 'double':
+                    return 4 /* BORDER_STYLE.DOUBLE */;
+                case 'groove':
+                    return 5 /* BORDER_STYLE.GROOVE */;
+                case 'ridge':
+                    return 6 /* BORDER_STYLE.RIDGE */;
+                case 'inset':
+                    return 7 /* BORDER_STYLE.INSET */;
+                case 'outset':
+                    return 8 /* BORDER_STYLE.OUTSET */;
+                case 'auto':
+                // 'auto' is browser-specific; treat as solid for canvas rendering
+                default:
+                    return 1 /* BORDER_STYLE.SOLID */;
+            }
+        },
+    };
+
+    var outlineWidth = {
+        name: 'outline-width',
+        initialValue: '0',
+        prefix: false,
+        type: 0 /* PropertyDescriptorParsingType.VALUE */,
+        parse: function (_context, token) {
+            if (isDimensionToken(token)) {
+                return token.number;
+            }
+            return 0;
+        },
+    };
+
     var overflow = {
         name: 'overflow',
         initialValue: 'visible',
@@ -12112,6 +12181,10 @@
             this.objectFit = parse(context, objectFit, declaration.objectFit);
             this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
             this.opacity = parse(context, opacity, declaration.opacity);
+            this.outlineColor = parse(context, outlineColor, declaration.outlineColor);
+            this.outlineOffset = parse(context, outlineOffset, declaration.outlineOffset);
+            this.outlineStyle = parse(context, outlineStyle, declaration.outlineStyle);
+            this.outlineWidth = parse(context, outlineWidth, declaration.outlineWidth);
             this.mixBlendMode = parse(context, mixBlendMode, declaration.mixBlendMode);
             var overflowTuple = parse(context, overflow, declaration.overflow);
             this.overflowX = overflowTuple[0];
@@ -12190,6 +12263,9 @@
                 this.letterSpacing *= z_1;
                 // webkit-text-stroke-width (plain number in px)
                 this.webkitTextStrokeWidth *= z_1;
+                // outline-width and outline-offset (plain numbers in px)
+                this.outlineWidth *= z_1;
+                this.outlineOffset *= z_1;
                 // Text decoration thickness (number | null)
                 if (typeof this.textDecorationThickness === 'number') {
                     this.textDecorationThickness *= z_1;
@@ -16302,6 +16378,81 @@
                 : new Vector(newLeft, newTop + newHeight),
         ];
     };
+    /**
+     * Like `expandBorderBoxPath` but with outline-correct radius behaviour:
+     *
+     * CSS spec (css-ui-4 §8): the outline follows the element's `border-radius`.
+     * If a corner has no radius (r = 0) the outline corner stays sharp regardless
+     * of `outline-offset`. Only corners that already have a radius get it adjusted
+     * by `spread` (= outlineOffset, positive or negative).
+     *
+     * `expandBorderBoxPath` is designed for box-shadow and always adds `spread` to
+     * every radius — which inadvertently rounds otherwise-sharp corners.
+     * This function leaves zero-radii corners as sharp Vectors.
+     */
+    var expandBorderBoxPathForOutline = function (curves, spread) {
+        var getRadii = function (corner) {
+            if (isBezierCurve(corner)) {
+                var c = corner;
+                var dx = Math.abs(c.end.x - c.start.x);
+                var dy = Math.abs(c.end.y - c.start.y);
+                return [dx, dy];
+            }
+            return [0, 0];
+        };
+        var _a = getRadii(curves.topLeftBorderBox), tlH = _a[0], tlV = _a[1];
+        var _b = getRadii(curves.topRightBorderBox), trH = _b[0], trV = _b[1];
+        var _c = getRadii(curves.bottomRightBorderBox), brH = _c[0], brV = _c[1];
+        var _d = getRadii(curves.bottomLeftBorderBox), blH = _d[0], blV = _d[1];
+        var tl = curves.topLeftBorderBox;
+        var left = isBezierCurve(tl) ? tl.start.x : tl.x;
+        var top = isBezierCurve(tl) ? tl.end.y : tl.y;
+        var br = curves.bottomRightBorderBox;
+        var right = isBezierCurve(br) ? br.start.x : br.x;
+        var bottom = isBezierCurve(br) ? br.start.y + brV : br.y;
+        var newLeft = left - spread;
+        var newTop = top - spread;
+        var newRight = right + spread;
+        var newBottom = bottom + spread;
+        var newWidth = newRight - newLeft;
+        var newHeight = newBottom - newTop;
+        if (newWidth <= 0 || newHeight <= 0) {
+            var mid = new Vector((left + right) / 2, (top + bottom) / 2);
+            return [mid, mid, mid, mid];
+        }
+        // KEY DIFFERENCE vs expandBorderBoxPath:
+        // Only grow/shrink radii that were already non-zero. A zero radius stays
+        // zero (sharp corner) regardless of spread — matching browser outline behaviour.
+        var adjustRadius = function (r, s, max) {
+            return r === 0 ? 0 : Math.min(Math.max(0, r + s), max);
+        };
+        var newTlH = adjustRadius(tlH, spread, newWidth / 2);
+        var newTlV = adjustRadius(tlV, spread, newHeight / 2);
+        var newTrH = adjustRadius(trH, spread, newWidth / 2);
+        var newTrV = adjustRadius(trV, spread, newHeight / 2);
+        var newBrH = adjustRadius(brH, spread, newWidth / 2);
+        var newBrV = adjustRadius(brV, spread, newHeight / 2);
+        var newBlH = adjustRadius(blH, spread, newWidth / 2);
+        var newBlV = adjustRadius(blV, spread, newHeight / 2);
+        var topWidth = newWidth - newTrH;
+        var rightHeight = newHeight - newBrV;
+        var bottomWidth = newWidth - newBrH;
+        var leftHeight = newHeight - newBlV;
+        return [
+            newTlH > 0 || newTlV > 0
+                ? getCurvePoints(newLeft, newTop, newTlH, newTlV, CORNER.TOP_LEFT)
+                : new Vector(newLeft, newTop),
+            newTrH > 0 || newTrV > 0
+                ? getCurvePoints(newLeft + topWidth, newTop, newTrH, newTrV, CORNER.TOP_RIGHT)
+                : new Vector(newLeft + newWidth, newTop),
+            newBrH > 0 || newBrV > 0
+                ? getCurvePoints(newLeft + bottomWidth, newTop + rightHeight, newBrH, newBrV, CORNER.BOTTOM_RIGHT)
+                : new Vector(newLeft + newWidth, newTop + newHeight),
+            newBlH > 0 || newBlV > 0
+                ? getCurvePoints(newLeft, newTop + leftHeight, newBlH, newBlV, CORNER.BOTTOM_LEFT)
+                : new Vector(newLeft, newTop + newHeight),
+        ];
+    };
     var calculateContentBoxPath = function (curves) {
         return [
             curves.topLeftContentBox,
@@ -18741,6 +18892,145 @@
             });
         });
     }
+    // ---------------------------------------------------------------------------
+    // Outline rendering
+    // ---------------------------------------------------------------------------
+    /**
+     * Renders the CSS `outline` of an element.
+     *
+     * The outline is drawn outside the border-box, separated from it by
+     * `outline-offset` pixels (which may be negative, pulling the outline inward).
+     * The painted region is the ring between:
+     *   - inner edge: border-box expanded by `outlineOffset`
+     *     (clamped to at least the border-box when offset is negative)
+     *   - outer edge: inner edge expanded by `outlineWidth`
+     *
+     * We render this ring using the even-odd fill rule: the outer path is the
+     * outline exterior and the inner path is punched out as a hole. This matches
+     * how browsers render outlines — a continuous ring with no per-side seams.
+     *
+     * For dashed/dotted/double outlines we fall back to the stroke-based path
+     * (same as borders) drawn on the centre-line of the ring.
+     */
+    function renderOutline(state, paint) {
+        return __awaiter(this, void 0, void 0, function () {
+            var styles, outlineW, outlineS, outlineC, offset, innerSpread, outerSpread, outerPaths, innerPaths, ctx, centrePaths, length_1, dashLength, spaceLength, outerBandInner, innerBandOuter;
+            return __generator(this, function (_a) {
+                styles = paint.container.styles;
+                outlineW = styles.outlineWidth;
+                outlineS = styles.outlineStyle;
+                outlineC = styles.outlineColor;
+                if (outlineS === 0 /* BORDER_STYLE.NONE */ || outlineW <= 0 || isTransparent(outlineC)) {
+                    return [2 /*return*/];
+                }
+                offset = styles.outlineOffset;
+                innerSpread = offset;
+                outerSpread = offset + outlineW;
+                outerPaths = expandBorderBoxPathForOutline(paint.curves, outerSpread);
+                innerPaths = expandBorderBoxPathForOutline(paint.curves, innerSpread);
+                ctx = state.ctx;
+                switch (outlineS) {
+                    case 2 /* BORDER_STYLE.DASHED */:
+                    case 3 /* BORDER_STYLE.DOTTED */: {
+                        // For dashed/dotted we stroke on the centre-line of the ring.
+                        // Clip to the ring area (outer - inner) using even-odd so we don't
+                        // paint outside the outline band.
+                        ctx.save();
+                        ctx.beginPath();
+                        formatPath(ctx, outerPaths);
+                        ctx.closePath();
+                        formatPath(ctx, innerPaths);
+                        ctx.closePath();
+                        ctx.clip('evenodd');
+                        centrePaths = expandBorderBoxPathForOutline(paint.curves, offset + outlineW / 2);
+                        ctx.beginPath();
+                        formatPath(ctx, centrePaths);
+                        ctx.closePath();
+                        length_1 = _outlinePerimeter(paint.curves, offset + outlineW / 2);
+                        dashLength = outlineW < 3 ? outlineW * 3 : outlineW * 2;
+                        spaceLength = outlineW < 3 ? outlineW * 2 : outlineW;
+                        if (outlineS === 3 /* BORDER_STYLE.DOTTED */) {
+                            // dash=0 + lineCap=round produces true circular dots,
+                            // matching how renderDashedDottedBorder handles dotted borders.
+                            dashLength = 0;
+                            spaceLength = outlineW * 2;
+                        }
+                        if (length_1 > (dashLength + spaceLength) * 2) {
+                            ctx.setLineDash([dashLength, spaceLength]);
+                        }
+                        ctx.lineWidth = outlineW;
+                        if (outlineS === 3 /* BORDER_STYLE.DOTTED */) {
+                            ctx.lineCap = 'round';
+                        }
+                        ctx.strokeStyle = asString(outlineC);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.restore();
+                        break;
+                    }
+                    case 4 /* BORDER_STYLE.DOUBLE */: {
+                        if (outlineW < 3) {
+                            // Too thin for double — fall through to solid ring.
+                            _renderOutlineRing(ctx, outerPaths, innerPaths, outlineC);
+                        }
+                        else {
+                            outerBandInner = expandBorderBoxPathForOutline(paint.curves, offset + (outlineW * 2) / 3);
+                            _renderOutlineRing(ctx, outerPaths, outerBandInner, outlineC);
+                            innerBandOuter = expandBorderBoxPathForOutline(paint.curves, offset + outlineW / 3);
+                            _renderOutlineRing(ctx, innerBandOuter, innerPaths, outlineC);
+                        }
+                        break;
+                    }
+                    default:
+                        // solid, groove, ridge, inset, outset — render as a filled ring.
+                        // For 3D effects we approximate with a uniform shade (groove/ridge
+                        // would need per-side half-rings which is complex for outlines).
+                        _renderOutlineRing(ctx, outerPaths, innerPaths, outlineC);
+                        break;
+                }
+                return [2 /*return*/];
+            });
+        });
+    }
+    /**
+     * Paints a filled ring using the even-odd rule.
+     * `outer` is the exterior path, `inner` is the hole punched inside it.
+     */
+    function _renderOutlineRing(ctx, outer, inner, color) {
+        ctx.beginPath();
+        formatPath(ctx, outer);
+        ctx.closePath();
+        formatPath(ctx, inner);
+        ctx.closePath();
+        ctx.fillStyle = asString(color);
+        ctx.fill('evenodd');
+    }
+    /**
+     * Rough perimeter of the outline centre-line path (used for dash length
+     * calculation). We approximate each corner curve as a quarter-ellipse arc.
+     */
+    function _outlinePerimeter(curves, spread) {
+        var paths = expandBorderBoxPathForOutline(curves, spread);
+        // paths = [TL, TR, BR, BL] — each is a BezierCurve or Vector.
+        // Approximate perimeter by summing chord lengths between adjacent anchors.
+        var perim = 0;
+        var pts = [];
+        for (var _i = 0, paths_1 = paths; _i < paths_1.length; _i++) {
+            var p = paths_1[_i];
+            if ('start' in p) {
+                pts.push(p.start);
+            }
+            else {
+                pts.push(p);
+            }
+        }
+        for (var i = 0; i < pts.length; i++) {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.length];
+            perim += Math.sqrt(Math.pow((b.x - a.x), 2) + Math.pow((b.y - a.y), 2));
+        }
+        return perim || 1;
+    }
     function renderDashedDottedBorder(state, color, width, side, curvePoints, style) {
         return __awaiter(this, void 0, void 0, function () {
             var strokePaths, boxPaths, startX, startY, endX, endY, length, dashLength, spaceLength, useLineDash, multiplier, numberOfDashes, minSpace, maxSpace, path1, path2, path1, path2;
@@ -19014,7 +19304,13 @@
                     case 15:
                         _b++;
                         return [3 /*break*/, 10];
-                    case 16: return [2 /*return*/];
+                    case 16: 
+                    // Outline is drawn around the full element bounding box (not per fragment).
+                    return [4 /*yield*/, renderOutline(state, paint)];
+                    case 17:
+                        // Outline is drawn around the full element bounding box (not per fragment).
+                        _d.sent();
+                        return [2 /*return*/];
                 }
             });
         });
@@ -19519,7 +19815,13 @@
                     case 15:
                         _i++;
                         return [3 /*break*/, 10];
-                    case 16: return [2 /*return*/];
+                    case 16: 
+                    // Outline is drawn after borders (outside the border-box).
+                    return [4 /*yield*/, renderOutline(state, paint)];
+                    case 17:
+                        // Outline is drawn after borders (outside the border-box).
+                        _a.sent();
+                        return [2 /*return*/];
                 }
             });
         });
