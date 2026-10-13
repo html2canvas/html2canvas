@@ -12,6 +12,7 @@ import { OLElementContainer } from '../dom/elements/ol-element-container';
 import { BoundCurves, calculateBorderBoxPath, calculatePaddingBoxPath } from './bound-curves';
 import { buildClipPath } from './clip-path-effect';
 import {
+    BackdropFilterEffect,
     ClipEffect,
     EffectTarget,
     FilterEffect,
@@ -86,6 +87,10 @@ export class ElementPaint {
 
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
+        }
+
+        if (this.container.styles.isBackdropFiltered()) {
+            this.effects.push(new BackdropFilterEffect(this.container.styles.backdropFilter));
         }
 
         // clip: rect() — deprecated property, applies only to absolutely/fixed positioned elements (CSS spec).

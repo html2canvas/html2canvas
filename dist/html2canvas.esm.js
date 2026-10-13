@@ -1576,336 +1576,6 @@ var isEndingTokenFor = function (token, type) {
     return type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */ && token.type === 3 /* TokenType.RIGHT_PARENTHESIS_TOKEN */;
 };
 
-var backgroundAttachment = {
-    name: 'background-attachment',
-    initialValue: 'scroll',
-    prefix: false,
-    type: 1 /* PropertyDescriptorParsingType.LIST */,
-    parse: function (_context, tokens) {
-        return tokens.filter(isIdentToken).map(function (token) {
-            switch (token.value) {
-                case 'fixed':
-                    return 1 /* BACKGROUND_ATTACHMENT.FIXED */;
-                case 'local':
-                    return 2 /* BACKGROUND_ATTACHMENT.LOCAL */;
-                default:
-                    return 0 /* BACKGROUND_ATTACHMENT.SCROLL */;
-            }
-        });
-    },
-};
-
-var parseBlendMode = function (value) {
-    switch (value) {
-        case 'multiply':
-            return "multiply" /* BACKGROUND_BLEND_MODE.MULTIPLY */;
-        case 'screen':
-            return "screen" /* BACKGROUND_BLEND_MODE.SCREEN */;
-        case 'overlay':
-            return "overlay" /* BACKGROUND_BLEND_MODE.OVERLAY */;
-        case 'darken':
-            return "darken" /* BACKGROUND_BLEND_MODE.DARKEN */;
-        case 'lighten':
-            return "lighten" /* BACKGROUND_BLEND_MODE.LIGHTEN */;
-        case 'color-dodge':
-            return "color-dodge" /* BACKGROUND_BLEND_MODE.COLOR_DODGE */;
-        case 'color-burn':
-            return "color-burn" /* BACKGROUND_BLEND_MODE.COLOR_BURN */;
-        case 'hard-light':
-            return "hard-light" /* BACKGROUND_BLEND_MODE.HARD_LIGHT */;
-        case 'soft-light':
-            return "soft-light" /* BACKGROUND_BLEND_MODE.SOFT_LIGHT */;
-        case 'difference':
-            return "difference" /* BACKGROUND_BLEND_MODE.DIFFERENCE */;
-        case 'exclusion':
-            return "exclusion" /* BACKGROUND_BLEND_MODE.EXCLUSION */;
-        case 'hue':
-            return "hue" /* BACKGROUND_BLEND_MODE.HUE */;
-        case 'saturation':
-            return "saturation" /* BACKGROUND_BLEND_MODE.SATURATION */;
-        case 'color':
-            return "color" /* BACKGROUND_BLEND_MODE.COLOR */;
-        case 'luminosity':
-            return "luminosity" /* BACKGROUND_BLEND_MODE.LUMINOSITY */;
-        case 'normal':
-        default:
-            return "source-over" /* BACKGROUND_BLEND_MODE.NORMAL */;
-    }
-};
-var backgroundBlendMode = {
-    name: 'background-blend-mode',
-    initialValue: 'normal',
-    type: 1 /* PropertyDescriptorParsingType.LIST */,
-    prefix: false,
-    parse: function (_context, tokens) {
-        var modes = [];
-        for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
-            var token = tokens_1[_i];
-            if (isIdentToken(token)) {
-                modes.push(parseBlendMode(token.value));
-            }
-            else if (token.type === 4 /* TokenType.COMMA_TOKEN */) ;
-        }
-        return modes.length ? modes : ["source-over" /* BACKGROUND_BLEND_MODE.NORMAL */];
-    },
-};
-
-var backgroundClip = {
-    name: 'background-clip',
-    initialValue: 'border-box',
-    prefix: false,
-    type: 1 /* PropertyDescriptorParsingType.LIST */,
-    parse: function (_context, tokens) {
-        return tokens.map(function (token) {
-            if (isIdentToken(token)) {
-                switch (token.value) {
-                    case 'padding-box':
-                        return 1 /* BACKGROUND_CLIP.PADDING_BOX */;
-                    case 'content-box':
-                        return 2 /* BACKGROUND_CLIP.CONTENT_BOX */;
-                    case 'text':
-                    case '-webkit-text':
-                        return 3 /* BACKGROUND_CLIP.TEXT */;
-                }
-            }
-            return 0 /* BACKGROUND_CLIP.BORDER_BOX */;
-        });
-    },
-};
-
-var backgroundColor = {
-    name: "background-color",
-    initialValue: 'transparent',
-    prefix: false,
-    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
-    format: 'color',
-};
-
-var isLength = function (token) {
-    return token.type === 17 /* TokenType.NUMBER_TOKEN */ || token.type === 15 /* TokenType.DIMENSION_TOKEN */;
-};
-
-var isLengthPercentage = function (token) {
-    return token.type === 16 /* TokenType.PERCENTAGE_TOKEN */ || isLength(token) || isCalcFunction(token);
-};
-var isCalcFunction = function (token) {
-    return token.type === 18 /* TokenType.FUNCTION */ && token.name === 'calc';
-};
-var parseLengthPercentageTuple = function (tokens) {
-    return tokens.length > 1 ? [tokens[0], tokens[1]] : [tokens[0]];
-};
-var ZERO_LENGTH = {
-    type: 17 /* TokenType.NUMBER_TOKEN */,
-    number: 0,
-    flags: FLAG_INTEGER,
-};
-var FIFTY_PERCENT = {
-    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
-    number: 50,
-    flags: FLAG_INTEGER,
-};
-var HUNDRED_PERCENT = {
-    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
-    number: 100,
-    flags: FLAG_INTEGER,
-};
-var getAbsoluteValueForTuple = function (tuple, width, height) {
-    var x = tuple[0], y = tuple[1];
-    return [getAbsoluteValue(x, width), getAbsoluteValue(typeof y !== 'undefined' ? y : x, height)];
-};
-/**
- * Returns the raw numeric value of a LengthPercentage token.
- * For simple tokens this is `token.number`, for calc() it evaluates with a parent of 0
- * (meaning percentages resolve to 0 — use getAbsoluteValue for percentage-aware resolution).
- */
-var getNumber = function (token) {
-    if (token.type === 18 /* TokenType.FUNCTION */) {
-        return evaluateCalc(token.values, 0);
-    }
-    return token.number;
-};
-var getAbsoluteValue = function (token, parent) {
-    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
-        return (token.number / 100) * parent;
-    }
-    if (isDimensionToken(token)) {
-        switch (token.unit) {
-            case 'rem':
-            case 'em':
-                return 16 * token.number; // TODO use correct font-size
-            case 'px':
-            default:
-                return token.number;
-        }
-    }
-    if (token.type === 18 /* TokenType.FUNCTION */) {
-        return evaluateCalc(token.values, parent);
-    }
-    return token.number;
-};
-/**
- * Evaluates a calc() expression given the parsed token values.
- * Supports +, -, *, / operators and nested calc().
- * Percentages are resolved relative to `parent`.
- */
-var evaluateCalc = function (values, parent) {
-    // Flatten tokens, ignoring whitespace
-    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
-    return evaluateExpression(tokens, 0, parent).value;
-};
-/**
- * Simple recursive-descent expression evaluator for calc() contents.
- * Grammar: expression = term (('+' | '-') term)*
- *          term = factor (('*' | '/') factor)*
- *          factor = number | percentage | dimension | '(' expression ')' | calc(expression)
- */
-var evaluateExpression = function (tokens, startIndex, parent) {
-    var _a = evaluateTerm(tokens, startIndex, parent), value = _a.value, index = _a.index;
-    while (index < tokens.length) {
-        var op = tokens[index];
-        if (op.type === 6 /* TokenType.DELIM_TOKEN */ && (op.value === '+' || op.value === '-')) {
-            var right = evaluateTerm(tokens, index + 1, parent);
-            value = op.value === '+' ? value + right.value : value - right.value;
-            index = right.index;
-        }
-        else {
-            break;
-        }
-    }
-    return { value: value, index: index };
-};
-var evaluateTerm = function (tokens, startIndex, parent) {
-    var _a = evaluateFactor(tokens, startIndex, parent), value = _a.value, index = _a.index;
-    while (index < tokens.length) {
-        var op = tokens[index];
-        if (op.type === 6 /* TokenType.DELIM_TOKEN */ && (op.value === '*' || op.value === '/')) {
-            var right = evaluateFactor(tokens, index + 1, parent);
-            value = op.value === '*' ? value * right.value : value / right.value;
-            index = right.index;
-        }
-        else {
-            break;
-        }
-    }
-    return { value: value, index: index };
-};
-var evaluateFactor = function (tokens, index, parent) {
-    if (index >= tokens.length) {
-        return { value: 0, index: index };
-    }
-    var token = tokens[index];
-    // Nested calc()
-    if (token.type === 18 /* TokenType.FUNCTION */ && token.name === 'calc') {
-        var result = evaluateCalc(token.values, parent);
-        return { value: result, index: index + 1 };
-    }
-    // Parenthesized sub-expression
-    if (token.type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */) {
-        // Find matching right paren and evaluate contents
-        var _a = evaluateExpression(tokens, index + 1, parent), value = _a.value, endIndex = _a.index;
-        // Skip the right parenthesis
-        return { value: value, index: endIndex + 1 };
-    }
-    // Percentage
-    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
-        return { value: (token.number / 100) * parent, index: index + 1 };
-    }
-    // Dimension (px, em, rem, etc.)
-    if (isDimensionToken(token)) {
-        var val = void 0;
-        switch (token.unit) {
-            case 'rem':
-            case 'em':
-                val = 16 * token.number;
-                break;
-            case 'px':
-            default:
-                val = token.number;
-                break;
-        }
-        return { value: val, index: index + 1 };
-    }
-    // Plain number
-    if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
-        return { value: token.number, index: index + 1 };
-    }
-    // Unrecognized token — skip it
-    return { value: 0, index: index + 1 };
-};
-
-var DEG = 'deg';
-var GRAD = 'grad';
-var RAD = 'rad';
-var TURN = 'turn';
-var angle = {
-    name: 'angle',
-    parse: function (_context, value) {
-        if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
-            switch (value.unit) {
-                case DEG:
-                    return (Math.PI * value.number) / 180;
-                case GRAD:
-                    return (Math.PI / 200) * value.number;
-                case RAD:
-                    return value.number;
-                case TURN:
-                    return Math.PI * 2 * value.number;
-            }
-        }
-        throw new Error("Unsupported angle type");
-    },
-};
-var isAngle = function (value) {
-    if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
-        if (value.unit === DEG || value.unit === GRAD || value.unit === RAD || value.unit === TURN) {
-            return true;
-        }
-    }
-    return false;
-};
-var parseNamedSide = function (tokens) {
-    var sideOrCorner = tokens
-        .filter(isIdentToken)
-        .map(function (ident) { return ident.value; })
-        .join(' ');
-    switch (sideOrCorner) {
-        case 'to bottom right':
-        case 'to right bottom':
-        case 'left top':
-        case 'top left':
-            return [ZERO_LENGTH, ZERO_LENGTH];
-        case 'to top':
-        case 'bottom':
-            return deg(0);
-        case 'to bottom left':
-        case 'to left bottom':
-        case 'right top':
-        case 'top right':
-            return [ZERO_LENGTH, HUNDRED_PERCENT];
-        case 'to right':
-        case 'left':
-            return deg(90);
-        case 'to top left':
-        case 'to left top':
-        case 'right bottom':
-        case 'bottom right':
-            return [HUNDRED_PERCENT, HUNDRED_PERCENT];
-        case 'to bottom':
-        case 'top':
-            return deg(180);
-        case 'to top right':
-        case 'to right top':
-        case 'left bottom':
-        case 'bottom left':
-            return [HUNDRED_PERCENT, ZERO_LENGTH];
-        case 'to left':
-        case 'right':
-            return deg(270);
-    }
-    return 0;
-};
-var deg = function (deg) { return (Math.PI * deg) / 180; };
-
 /** @import { Matrix3x3, Vector3 } from "./types.js" */
 
 /**
@@ -8988,6 +8658,542 @@ var COLORS = {
     YELLOWGREEN: 0x9acd32ff,
 };
 
+var isLength = function (token) {
+    return token.type === 17 /* TokenType.NUMBER_TOKEN */ || token.type === 15 /* TokenType.DIMENSION_TOKEN */;
+};
+
+var isLengthPercentage = function (token) {
+    return token.type === 16 /* TokenType.PERCENTAGE_TOKEN */ || isLength(token) || isCalcFunction(token);
+};
+var isCalcFunction = function (token) {
+    return token.type === 18 /* TokenType.FUNCTION */ && token.name === 'calc';
+};
+var parseLengthPercentageTuple = function (tokens) {
+    return tokens.length > 1 ? [tokens[0], tokens[1]] : [tokens[0]];
+};
+var ZERO_LENGTH = {
+    type: 17 /* TokenType.NUMBER_TOKEN */,
+    number: 0,
+    flags: FLAG_INTEGER,
+};
+var FIFTY_PERCENT = {
+    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+    number: 50,
+    flags: FLAG_INTEGER,
+};
+var HUNDRED_PERCENT = {
+    type: 16 /* TokenType.PERCENTAGE_TOKEN */,
+    number: 100,
+    flags: FLAG_INTEGER,
+};
+var getAbsoluteValueForTuple = function (tuple, width, height) {
+    var x = tuple[0], y = tuple[1];
+    return [getAbsoluteValue(x, width), getAbsoluteValue(typeof y !== 'undefined' ? y : x, height)];
+};
+/**
+ * Returns the raw numeric value of a LengthPercentage token.
+ * For simple tokens this is `token.number`, for calc() it evaluates with a parent of 0
+ * (meaning percentages resolve to 0 — use getAbsoluteValue for percentage-aware resolution).
+ */
+var getNumber = function (token) {
+    if (token.type === 18 /* TokenType.FUNCTION */) {
+        return evaluateCalc(token.values, 0);
+    }
+    return token.number;
+};
+var getAbsoluteValue = function (token, parent) {
+    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+        return (token.number / 100) * parent;
+    }
+    if (isDimensionToken(token)) {
+        switch (token.unit) {
+            case 'rem':
+            case 'em':
+                return 16 * token.number; // TODO use correct font-size
+            case 'px':
+            default:
+                return token.number;
+        }
+    }
+    if (token.type === 18 /* TokenType.FUNCTION */) {
+        return evaluateCalc(token.values, parent);
+    }
+    return token.number;
+};
+/**
+ * Evaluates a calc() expression given the parsed token values.
+ * Supports +, -, *, / operators and nested calc().
+ * Percentages are resolved relative to `parent`.
+ */
+var evaluateCalc = function (values, parent) {
+    // Flatten tokens, ignoring whitespace
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    return evaluateExpression(tokens, 0, parent).value;
+};
+/**
+ * Simple recursive-descent expression evaluator for calc() contents.
+ * Grammar: expression = term (('+' | '-') term)*
+ *          term = factor (('*' | '/') factor)*
+ *          factor = number | percentage | dimension | '(' expression ')' | calc(expression)
+ */
+var evaluateExpression = function (tokens, startIndex, parent) {
+    var _a = evaluateTerm(tokens, startIndex, parent), value = _a.value, index = _a.index;
+    while (index < tokens.length) {
+        var op = tokens[index];
+        if (op.type === 6 /* TokenType.DELIM_TOKEN */ && (op.value === '+' || op.value === '-')) {
+            var right = evaluateTerm(tokens, index + 1, parent);
+            value = op.value === '+' ? value + right.value : value - right.value;
+            index = right.index;
+        }
+        else {
+            break;
+        }
+    }
+    return { value: value, index: index };
+};
+var evaluateTerm = function (tokens, startIndex, parent) {
+    var _a = evaluateFactor(tokens, startIndex, parent), value = _a.value, index = _a.index;
+    while (index < tokens.length) {
+        var op = tokens[index];
+        if (op.type === 6 /* TokenType.DELIM_TOKEN */ && (op.value === '*' || op.value === '/')) {
+            var right = evaluateFactor(tokens, index + 1, parent);
+            value = op.value === '*' ? value * right.value : value / right.value;
+            index = right.index;
+        }
+        else {
+            break;
+        }
+    }
+    return { value: value, index: index };
+};
+var evaluateFactor = function (tokens, index, parent) {
+    if (index >= tokens.length) {
+        return { value: 0, index: index };
+    }
+    var token = tokens[index];
+    // Nested calc()
+    if (token.type === 18 /* TokenType.FUNCTION */ && token.name === 'calc') {
+        var result = evaluateCalc(token.values, parent);
+        return { value: result, index: index + 1 };
+    }
+    // Parenthesized sub-expression
+    if (token.type === 2 /* TokenType.LEFT_PARENTHESIS_TOKEN */) {
+        // Find matching right paren and evaluate contents
+        var _a = evaluateExpression(tokens, index + 1, parent), value = _a.value, endIndex = _a.index;
+        // Skip the right parenthesis
+        return { value: value, index: endIndex + 1 };
+    }
+    // Percentage
+    if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+        return { value: (token.number / 100) * parent, index: index + 1 };
+    }
+    // Dimension (px, em, rem, etc.)
+    if (isDimensionToken(token)) {
+        var val = void 0;
+        switch (token.unit) {
+            case 'rem':
+            case 'em':
+                val = 16 * token.number;
+                break;
+            case 'px':
+            default:
+                val = token.number;
+                break;
+        }
+        return { value: val, index: index + 1 };
+    }
+    // Plain number
+    if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+        return { value: token.number, index: index + 1 };
+    }
+    // Unrecognized token — skip it
+    return { value: 0, index: index + 1 };
+};
+
+var filter = {
+    name: 'filter',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: function (context, tokens) {
+        if (tokens.length === 1 && isIdentWithValue(tokens[0], 'none')) {
+            return [];
+        }
+        var filters = [];
+        for (var i = 0; i < tokens.length; i++) {
+            var token = tokens[i];
+            if (token.type === 18 /* TokenType.FUNCTION */) {
+                var parsed = parseFilterFunction(context, token.name, token.values);
+                if (parsed) {
+                    filters.push(parsed);
+                }
+            }
+        }
+        return filters;
+    },
+};
+var parseFilterFunction = function (context, name, values) {
+    switch (name) {
+        case 'drop-shadow':
+            return parseDropShadow(context, values);
+        case 'blur':
+            return parseBlur(values);
+        case 'brightness':
+            return parseAmountFilter(2 /* FilterType.BRIGHTNESS */, values);
+        case 'contrast':
+            return parseAmountFilter(3 /* FilterType.CONTRAST */, values);
+        case 'grayscale':
+            return parseAmountFilter(4 /* FilterType.GRAYSCALE */, values);
+        case 'invert':
+            return parseAmountFilter(6 /* FilterType.INVERT */, values);
+        case 'opacity':
+            return parseAmountFilter(7 /* FilterType.OPACITY */, values);
+        case 'saturate':
+            return parseAmountFilter(8 /* FilterType.SATURATE */, values);
+        case 'sepia':
+            return parseAmountFilter(9 /* FilterType.SEPIA */, values);
+        case 'hue-rotate':
+            return parseHueRotate(values);
+        default:
+            return null;
+    }
+};
+var parseDropShadow = function (context, values) {
+    var shadow = {
+        type: 0 /* FilterType.DROP_SHADOW */,
+        color: COLORS.TRANSPARENT,
+        offsetX: ZERO_LENGTH,
+        offsetY: ZERO_LENGTH,
+        blur: ZERO_LENGTH,
+    };
+    var lengthCount = 0;
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
+            continue;
+        }
+        if (isLength(token)) {
+            if (lengthCount === 0) {
+                shadow.offsetX = token;
+            }
+            else if (lengthCount === 1) {
+                shadow.offsetY = token;
+            }
+            else if (lengthCount === 2) {
+                shadow.blur = token;
+            }
+            lengthCount++;
+        }
+        else {
+            shadow.color = color$1.parse(context, token);
+        }
+    }
+    // At minimum, offsetX and offsetY are required
+    if (lengthCount < 2) {
+        return null;
+    }
+    return shadow;
+};
+var parseBlur = function (values) {
+    var result = {
+        type: 1 /* FilterType.BLUR */,
+        radius: ZERO_LENGTH,
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (isLength(token)) {
+            result.radius = token;
+            break;
+        }
+    }
+    return result;
+};
+var parseAmountFilter = function (type, values) {
+    var result = {
+        type: type,
+        amount: 1, // default is 1 (100%) for most filters
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
+            result.amount = token.number / 100;
+            break;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+            result.amount = token.number;
+            break;
+        }
+    }
+    return result;
+};
+var parseHueRotate = function (values) {
+    var result = {
+        type: 5 /* FilterType.HUE_ROTATE */,
+        angle: 0,
+    };
+    for (var i = 0; i < values.length; i++) {
+        var token = values[i];
+        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            switch (token.unit) {
+                case 'deg':
+                    result.angle = token.number;
+                    break;
+                case 'rad':
+                    result.angle = (token.number * 180) / Math.PI;
+                    break;
+                case 'grad':
+                    result.angle = (token.number * 180) / 200;
+                    break;
+                case 'turn':
+                    result.angle = token.number * 360;
+                    break;
+            }
+            break;
+        }
+        if (token.type === 17 /* TokenType.NUMBER_TOKEN */ && token.number === 0) {
+            result.angle = 0;
+            break;
+        }
+    }
+    return result;
+};
+/**
+ * Converts a CSSFilterList to a CSS filter string for use with
+ * CanvasRenderingContext2D.filter. Exported here so other modules can use it
+ * without importing const enums across module boundaries.
+ */
+function filterListToString(filterList) {
+    var parts = [];
+    for (var _i = 0, filterList_1 = filterList; _i < filterList_1.length; _i++) {
+        var f = filterList_1[_i];
+        switch (f.type) {
+            case 0 /* FilterType.DROP_SHADOW */: {
+                var ds = f;
+                parts.push("drop-shadow(".concat(ds.offsetX.number, "px ").concat(ds.offsetY.number, "px ").concat(ds.blur.number, "px ").concat(asString(ds.color), ")"));
+                break;
+            }
+            case 1 /* FilterType.BLUR */:
+                parts.push("blur(".concat(f.radius.number, "px)"));
+                break;
+            case 2 /* FilterType.BRIGHTNESS */:
+                parts.push("brightness(".concat(f.amount, ")"));
+                break;
+            case 3 /* FilterType.CONTRAST */:
+                parts.push("contrast(".concat(f.amount, ")"));
+                break;
+            case 4 /* FilterType.GRAYSCALE */:
+                parts.push("grayscale(".concat(f.amount, ")"));
+                break;
+            case 5 /* FilterType.HUE_ROTATE */:
+                parts.push("hue-rotate(".concat(f.angle, "deg)"));
+                break;
+            case 6 /* FilterType.INVERT */:
+                parts.push("invert(".concat(f.amount, ")"));
+                break;
+            case 7 /* FilterType.OPACITY */:
+                parts.push("opacity(".concat(f.amount, ")"));
+                break;
+            case 8 /* FilterType.SATURATE */:
+                parts.push("saturate(".concat(f.amount, ")"));
+                break;
+            case 9 /* FilterType.SEPIA */:
+                parts.push("sepia(".concat(f.amount, ")"));
+                break;
+        }
+    }
+    return parts.join(' ');
+}
+
+// backdrop-filter accepts the same function syntax as filter.
+// We reuse CSSFilter / CSSFilterList types and the same parser.
+var backdropFilter = {
+    name: 'backdrop-filter',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: function (context, tokens) {
+        return filter.parse(context, tokens);
+    },
+};
+
+var backgroundAttachment = {
+    name: 'background-attachment',
+    initialValue: 'scroll',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.filter(isIdentToken).map(function (token) {
+            switch (token.value) {
+                case 'fixed':
+                    return 1 /* BACKGROUND_ATTACHMENT.FIXED */;
+                case 'local':
+                    return 2 /* BACKGROUND_ATTACHMENT.LOCAL */;
+                default:
+                    return 0 /* BACKGROUND_ATTACHMENT.SCROLL */;
+            }
+        });
+    },
+};
+
+var parseBlendMode = function (value) {
+    switch (value) {
+        case 'multiply':
+            return "multiply" /* BACKGROUND_BLEND_MODE.MULTIPLY */;
+        case 'screen':
+            return "screen" /* BACKGROUND_BLEND_MODE.SCREEN */;
+        case 'overlay':
+            return "overlay" /* BACKGROUND_BLEND_MODE.OVERLAY */;
+        case 'darken':
+            return "darken" /* BACKGROUND_BLEND_MODE.DARKEN */;
+        case 'lighten':
+            return "lighten" /* BACKGROUND_BLEND_MODE.LIGHTEN */;
+        case 'color-dodge':
+            return "color-dodge" /* BACKGROUND_BLEND_MODE.COLOR_DODGE */;
+        case 'color-burn':
+            return "color-burn" /* BACKGROUND_BLEND_MODE.COLOR_BURN */;
+        case 'hard-light':
+            return "hard-light" /* BACKGROUND_BLEND_MODE.HARD_LIGHT */;
+        case 'soft-light':
+            return "soft-light" /* BACKGROUND_BLEND_MODE.SOFT_LIGHT */;
+        case 'difference':
+            return "difference" /* BACKGROUND_BLEND_MODE.DIFFERENCE */;
+        case 'exclusion':
+            return "exclusion" /* BACKGROUND_BLEND_MODE.EXCLUSION */;
+        case 'hue':
+            return "hue" /* BACKGROUND_BLEND_MODE.HUE */;
+        case 'saturation':
+            return "saturation" /* BACKGROUND_BLEND_MODE.SATURATION */;
+        case 'color':
+            return "color" /* BACKGROUND_BLEND_MODE.COLOR */;
+        case 'luminosity':
+            return "luminosity" /* BACKGROUND_BLEND_MODE.LUMINOSITY */;
+        case 'normal':
+        default:
+            return "source-over" /* BACKGROUND_BLEND_MODE.NORMAL */;
+    }
+};
+var backgroundBlendMode = {
+    name: 'background-blend-mode',
+    initialValue: 'normal',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: false,
+    parse: function (_context, tokens) {
+        var modes = [];
+        for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+            var token = tokens_1[_i];
+            if (isIdentToken(token)) {
+                modes.push(parseBlendMode(token.value));
+            }
+            else if (token.type === 4 /* TokenType.COMMA_TOKEN */) ;
+        }
+        return modes.length ? modes : ["source-over" /* BACKGROUND_BLEND_MODE.NORMAL */];
+    },
+};
+
+var backgroundClip = {
+    name: 'background-clip',
+    initialValue: 'border-box',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.map(function (token) {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'padding-box':
+                        return 1 /* BACKGROUND_CLIP.PADDING_BOX */;
+                    case 'content-box':
+                        return 2 /* BACKGROUND_CLIP.CONTENT_BOX */;
+                    case 'text':
+                    case '-webkit-text':
+                        return 3 /* BACKGROUND_CLIP.TEXT */;
+                }
+            }
+            return 0 /* BACKGROUND_CLIP.BORDER_BOX */;
+        });
+    },
+};
+
+var backgroundColor = {
+    name: "background-color",
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color',
+};
+
+var DEG = 'deg';
+var GRAD = 'grad';
+var RAD = 'rad';
+var TURN = 'turn';
+var angle = {
+    name: 'angle',
+    parse: function (_context, value) {
+        if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+            switch (value.unit) {
+                case DEG:
+                    return (Math.PI * value.number) / 180;
+                case GRAD:
+                    return (Math.PI / 200) * value.number;
+                case RAD:
+                    return value.number;
+                case TURN:
+                    return Math.PI * 2 * value.number;
+            }
+        }
+        throw new Error("Unsupported angle type");
+    },
+};
+var isAngle = function (value) {
+    if (value.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+        if (value.unit === DEG || value.unit === GRAD || value.unit === RAD || value.unit === TURN) {
+            return true;
+        }
+    }
+    return false;
+};
+var parseNamedSide = function (tokens) {
+    var sideOrCorner = tokens
+        .filter(isIdentToken)
+        .map(function (ident) { return ident.value; })
+        .join(' ');
+    switch (sideOrCorner) {
+        case 'to bottom right':
+        case 'to right bottom':
+        case 'left top':
+        case 'top left':
+            return [ZERO_LENGTH, ZERO_LENGTH];
+        case 'to top':
+        case 'bottom':
+            return deg(0);
+        case 'to bottom left':
+        case 'to left bottom':
+        case 'right top':
+        case 'top right':
+            return [ZERO_LENGTH, HUNDRED_PERCENT];
+        case 'to right':
+        case 'left':
+            return deg(90);
+        case 'to top left':
+        case 'to left top':
+        case 'right bottom':
+        case 'bottom right':
+            return [HUNDRED_PERCENT, HUNDRED_PERCENT];
+        case 'to bottom':
+        case 'top':
+            return deg(180);
+        case 'to top right':
+        case 'to right top':
+        case 'left bottom':
+        case 'bottom left':
+            return [HUNDRED_PERCENT, ZERO_LENGTH];
+        case 'to left':
+        case 'right':
+            return deg(270);
+    }
+    return 0;
+};
+var deg = function (deg) { return (Math.PI * deg) / 180; };
+
 /**
  * Parses a color stop argument that may carry one *or two* position hints
  * (the "double-position" shorthand defined in CSS Images Level 4).
@@ -10628,154 +10834,6 @@ var duration = {
     },
 };
 
-var filter = {
-    name: 'filter',
-    initialValue: 'none',
-    type: 1 /* PropertyDescriptorParsingType.LIST */,
-    prefix: false,
-    parse: function (context, tokens) {
-        if (tokens.length === 1 && isIdentWithValue(tokens[0], 'none')) {
-            return [];
-        }
-        var filters = [];
-        for (var i = 0; i < tokens.length; i++) {
-            var token = tokens[i];
-            if (token.type === 18 /* TokenType.FUNCTION */) {
-                var parsed = parseFilterFunction(context, token.name, token.values);
-                if (parsed) {
-                    filters.push(parsed);
-                }
-            }
-        }
-        return filters;
-    },
-};
-var parseFilterFunction = function (context, name, values) {
-    switch (name) {
-        case 'drop-shadow':
-            return parseDropShadow(context, values);
-        case 'blur':
-            return parseBlur(values);
-        case 'brightness':
-            return parseAmountFilter(2 /* FilterType.BRIGHTNESS */, values);
-        case 'contrast':
-            return parseAmountFilter(3 /* FilterType.CONTRAST */, values);
-        case 'grayscale':
-            return parseAmountFilter(4 /* FilterType.GRAYSCALE */, values);
-        case 'invert':
-            return parseAmountFilter(6 /* FilterType.INVERT */, values);
-        case 'opacity':
-            return parseAmountFilter(7 /* FilterType.OPACITY */, values);
-        case 'saturate':
-            return parseAmountFilter(8 /* FilterType.SATURATE */, values);
-        case 'sepia':
-            return parseAmountFilter(9 /* FilterType.SEPIA */, values);
-        case 'hue-rotate':
-            return parseHueRotate(values);
-        default:
-            return null;
-    }
-};
-var parseDropShadow = function (context, values) {
-    var shadow = {
-        type: 0 /* FilterType.DROP_SHADOW */,
-        color: COLORS.TRANSPARENT,
-        offsetX: ZERO_LENGTH,
-        offsetY: ZERO_LENGTH,
-        blur: ZERO_LENGTH,
-    };
-    var lengthCount = 0;
-    for (var i = 0; i < values.length; i++) {
-        var token = values[i];
-        if (token.type === 31 /* TokenType.WHITESPACE_TOKEN */) {
-            continue;
-        }
-        if (isLength(token)) {
-            if (lengthCount === 0) {
-                shadow.offsetX = token;
-            }
-            else if (lengthCount === 1) {
-                shadow.offsetY = token;
-            }
-            else if (lengthCount === 2) {
-                shadow.blur = token;
-            }
-            lengthCount++;
-        }
-        else {
-            shadow.color = color$1.parse(context, token);
-        }
-    }
-    // At minimum, offsetX and offsetY are required
-    if (lengthCount < 2) {
-        return null;
-    }
-    return shadow;
-};
-var parseBlur = function (values) {
-    var result = {
-        type: 1 /* FilterType.BLUR */,
-        radius: ZERO_LENGTH,
-    };
-    for (var i = 0; i < values.length; i++) {
-        var token = values[i];
-        if (isLength(token)) {
-            result.radius = token;
-            break;
-        }
-    }
-    return result;
-};
-var parseAmountFilter = function (type, values) {
-    var result = {
-        type: type,
-        amount: 1, // default is 1 (100%) for most filters
-    };
-    for (var i = 0; i < values.length; i++) {
-        var token = values[i];
-        if (token.type === 16 /* TokenType.PERCENTAGE_TOKEN */) {
-            result.amount = token.number / 100;
-            break;
-        }
-        if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
-            result.amount = token.number;
-            break;
-        }
-    }
-    return result;
-};
-var parseHueRotate = function (values) {
-    var result = {
-        type: 5 /* FilterType.HUE_ROTATE */,
-        angle: 0,
-    };
-    for (var i = 0; i < values.length; i++) {
-        var token = values[i];
-        if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
-            switch (token.unit) {
-                case 'deg':
-                    result.angle = token.number;
-                    break;
-                case 'rad':
-                    result.angle = (token.number * 180) / Math.PI;
-                    break;
-                case 'grad':
-                    result.angle = (token.number * 180) / 200;
-                    break;
-                case 'turn':
-                    result.angle = token.number * 360;
-                    break;
-            }
-            break;
-        }
-        if (token.type === 17 /* TokenType.NUMBER_TOKEN */ && token.number === 0) {
-            result.angle = 0;
-            break;
-        }
-    }
-    return result;
-};
-
 var float = {
     name: 'float',
     initialValue: 'none',
@@ -12117,6 +12175,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         if (zoomFactor === void 0) { zoomFactor = 1; }
         var _a, _b, _c;
         this.animationDuration = parse(context, duration, declaration.animationDuration);
+        this.backdropFilter = parse(context, backdropFilter, declaration.backdropFilter);
         this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
         this.backgroundBlendMode = parse(context, backgroundBlendMode, declaration.backgroundBlendMode);
@@ -12300,6 +12359,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
     };
     CSSParsedDeclaration.prototype.isFiltered = function () {
         return this.filter.length > 0;
+    };
+    CSSParsedDeclaration.prototype.isBackdropFiltered = function () {
+        return this.backdropFilter.length > 0;
     };
     CSSParsedDeclaration.prototype.isPositioned = function () {
         return this.position !== 0 /* POSITION.STATIC */;
@@ -15952,6 +16014,14 @@ var Path2DClipEffect = /** @class */ (function () {
     }
     return Path2DClipEffect;
 }());
+var BackdropFilterEffect = /** @class */ (function () {
+    function BackdropFilterEffect(filter) {
+        this.filter = filter;
+        this.type = 7 /* EffectType.BACKDROP_FILTER */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+    return BackdropFilterEffect;
+}());
 var isTransformEffect = function (effect) {
     return effect.type === 0 /* EffectType.TRANSFORM */;
 };
@@ -15966,6 +16036,9 @@ var isMixBlendModeEffect = function (effect) {
 };
 var isPath2DClipEffect = function (effect) {
     return effect.type === 5 /* EffectType.PATH2D_CLIP */;
+};
+var isBackdropFilterEffect = function (effect) {
+    return effect.type === 7 /* EffectType.BACKDROP_FILTER */;
 };
 
 var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -16728,6 +16801,9 @@ var ElementPaint = /** @class */ (function () {
         if (this.container.styles.isFiltered()) {
             this.effects.push(new FilterEffect(this.container.styles.filter));
         }
+        if (this.container.styles.isBackdropFiltered()) {
+            this.effects.push(new BackdropFilterEffect(this.container.styles.backdropFilter));
+        }
         // clip: rect() — deprecated property, applies only to absolutely/fixed positioned elements (CSS spec).
         var clipRect = this.container.styles.clip;
         if (clipRect !== null &&
@@ -17319,6 +17395,17 @@ function getLinearGradientCanvas(state, key, width, height, paint) {
     paint(ctx, width, height);
     state.gradientCanvasCache.set(key, canvas);
     return canvas;
+}
+// ---------------------------------------------------------------------------
+// Filter string builder (shared by filter and backdrop-filter rendering)
+// ---------------------------------------------------------------------------
+/**
+ * Converts a CSSFilterList into a CSS `filter` property string usable by
+ * CanvasRenderingContext2D.filter. Delegates to filterListToString (defined
+ * alongside the const enum in filter.ts) to avoid cross-module const enum issues.
+ */
+function buildFilterString(filterList) {
+    return filterListToString(filterList);
 }
 
 // ---------------------------------------------------------------------------
@@ -19130,6 +19217,89 @@ function renderDashedDottedBorder(state, color, width, side, curvePoints, style)
 // ---------------------------------------------------------------------------
 // Full background + borders node rendering
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Backdrop-filter rendering
+// ---------------------------------------------------------------------------
+/**
+ * Implements CSS `backdrop-filter`.
+ *
+ * The effect is applied to the pixels **already painted** on the canvas behind
+ * this element (i.e. within the html2canvas rendering of the DOM clone — content
+ * outside the clone is simply transparent).
+ *
+ * Algorithm:
+ *   1. Compute the padding-box area of the element in device pixels.
+ *   2. Copy that region of the current canvas into a temporary offscreen canvas.
+ *   3. Apply the ctx.filter string to the offscreen canvas and re-draw the copy.
+ *   4. Clip the main canvas to the padding-box path (respects border-radius).
+ *   5. Paint the filtered offscreen back onto the main canvas.
+ *
+ * This runs synchronously against already-rendered pixels — no async operations
+ * needed. It is called at the very start of background+border rendering so the
+ * backdrop effect is applied before the element's own background is painted.
+ */
+function renderBackdropFilter(state, paint) {
+    // Collect the filter string from the BackdropFilterEffect on this element only
+    // (not inherited ancestors — backdrop-filter is not inherited).
+    var filterString = '';
+    for (var _i = 0, _a = paint.effects; _i < _a.length; _i++) {
+        var effect = _a[_i];
+        if (isBackdropFilterEffect(effect)) {
+            filterString = buildFilterString(effect.filter);
+            break;
+        }
+    }
+    if (!filterString) {
+        return;
+    }
+    var ctx = state.ctx;
+    var scale = state.options.scale;
+    // Padding-box in CSS coordinates (clip area for the backdrop effect).
+    var paddingBoxPaths = calculatePaddingBoxPath(paint.curves);
+    // Border-box bounds in CSS coordinates (bounding rect of the area to copy).
+    // We use the border-box so rounded corners at the edge don't clip the source region.
+    var bounds = paint.container.bounds;
+    // Convert CSS coordinates to device pixels.
+    var ox = state.options.x;
+    var oy = state.options.y;
+    var dLeft = Math.floor((bounds.left - ox) * scale);
+    var dTop = Math.floor((bounds.top - oy) * scale);
+    var dWidth = Math.ceil(bounds.width * scale);
+    var dHeight = Math.ceil(bounds.height * scale);
+    if (dWidth <= 0 || dHeight <= 0) {
+        return;
+    }
+    // Clamp to the canvas dimensions to avoid errors on getImageData.
+    var canvasW = state.canvas.width;
+    var canvasH = state.canvas.height;
+    var srcX = Math.max(0, dLeft);
+    var srcY = Math.max(0, dTop);
+    var srcW = Math.min(dWidth, canvasW - srcX);
+    var srcH = Math.min(dHeight, canvasH - srcY);
+    if (srcW <= 0 || srcH <= 0) {
+        return;
+    }
+    // Step 1 — Capture the current pixels in that region.
+    var offscreen = state.canvasPool.acquire(srcW, srcH);
+    var offCtx = offscreen.getContext('2d');
+    offCtx.drawImage(state.canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+    // Step 2 — Apply the CSS filter to the captured region.
+    var filtered = state.canvasPool.acquire(srcW, srcH);
+    var filteredCtx = filtered.getContext('2d');
+    filteredCtx.filter = filterString;
+    filteredCtx.drawImage(offscreen, 0, 0);
+    state.canvasPool.release(offscreen);
+    // Step 3 — Paint the filtered region back, clipped to the padding-box shape.
+    ctx.save();
+    // Clip to the padding-box (includes border-radius curves).
+    canvasPath(state, paddingBoxPaths);
+    ctx.clip();
+    // Switch to device-pixel identity transform to draw device-pixel-aligned.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(filtered, srcX, srcY);
+    ctx.restore();
+    state.canvasPool.release(filtered);
+}
 function renderNodeBackgroundAndBorders(state, paint) {
     return __awaiter(this, void 0, void 0, function () {
         var styles, isInline, fragments, _i, fragments_1, fragment, fragContainer, fragCurves, fragPaint;
@@ -19138,6 +19308,9 @@ function renderNodeBackgroundAndBorders(state, paint) {
                 case 0:
                     styles = paint.container.styles;
                     isInline = styles.display === 4 /* DISPLAY.INLINE */;
+                    // Apply backdrop-filter first — it operates on already-rendered pixels
+                    // behind this element, before the element's own background is painted.
+                    renderBackdropFilter(state, paint);
                     if (!(isInline && styles.boxDecorationBreak === 1 /* BOX_DECORATION_BREAK.CLONE */)) return [3 /*break*/, 5];
                     fragments = getInlineFragmentBounds(paint.container);
                     if (!(fragments && fragments.length > 0)) return [3 /*break*/, 5];
@@ -20975,41 +21148,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
         for (var _i = 0, _a = stack.element.effects; _i < _a.length; _i++) {
             var effect = _a[_i];
             if (isFilterEffect(effect)) {
-                for (var _b = 0, _c = effect.filter; _b < _c.length; _b++) {
-                    var f = _c[_b];
-                    switch (f.type) {
-                        case 0 /* FilterType.DROP_SHADOW */:
-                            filterStrings.push("drop-shadow(".concat(f.offsetX.number, "px ").concat(f.offsetY.number, "px ").concat(f.blur.number, "px ").concat(asString(f.color), ")"));
-                            break;
-                        case 1 /* FilterType.BLUR */:
-                            filterStrings.push("blur(".concat(f.radius.number, "px)"));
-                            break;
-                        case 2 /* FilterType.BRIGHTNESS */:
-                            filterStrings.push("brightness(".concat(f.amount, ")"));
-                            break;
-                        case 3 /* FilterType.CONTRAST */:
-                            filterStrings.push("contrast(".concat(f.amount, ")"));
-                            break;
-                        case 4 /* FilterType.GRAYSCALE */:
-                            filterStrings.push("grayscale(".concat(f.amount, ")"));
-                            break;
-                        case 5 /* FilterType.HUE_ROTATE */:
-                            filterStrings.push("hue-rotate(".concat(f.angle, "deg)"));
-                            break;
-                        case 6 /* FilterType.INVERT */:
-                            filterStrings.push("invert(".concat(f.amount, ")"));
-                            break;
-                        case 7 /* FilterType.OPACITY */:
-                            filterStrings.push("opacity(".concat(f.amount, ")"));
-                            break;
-                        case 8 /* FilterType.SATURATE */:
-                            filterStrings.push("saturate(".concat(f.amount, ")"));
-                            break;
-                        case 9 /* FilterType.SEPIA */:
-                            filterStrings.push("sepia(".concat(f.amount, ")"));
-                            break;
-                    }
-                }
+                var s = buildFilterString(effect.filter);
+                if (s)
+                    filterStrings.push(s);
             }
         }
         return filterStrings.length > 0 ? filterStrings.join(' ') : null;

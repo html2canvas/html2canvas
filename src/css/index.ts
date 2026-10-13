@@ -1,6 +1,7 @@
 import { contains } from '../core/bitwise';
 import { Context } from '../core/context';
 import { CSSPropertyDescriptor, PropertyDescriptorParsingType } from './IPropertyDescriptor';
+import { backdropFilter } from './property-descriptors/backdrop-filter';
 import { backgroundAttachment } from './property-descriptors/background-attachment';
 import {
     BACKGROUND_BLEND_MODE,
@@ -143,6 +144,7 @@ const scaleLength = (token: Length, factor: number): Length => ({
 
 export class CSSParsedDeclaration {
     animationDuration: ReturnType<typeof duration.parse>;
+    backdropFilter: ReturnType<typeof backdropFilter.parse>;
     backgroundAttachment: ReturnType<typeof backgroundAttachment.parse>;
     backgroundClip: ReturnType<typeof backgroundClip.parse>;
     backgroundBlendMode: BACKGROUND_BLEND_MODE[];
@@ -239,6 +241,7 @@ export class CSSParsedDeclaration {
 
     constructor(context: Context, declaration: CSSStyleDeclaration, zoomFactor = 1) {
         this.animationDuration = parse(context, duration, declaration.animationDuration);
+        this.backdropFilter = parse(context, backdropFilter, declaration.backdropFilter);
         this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
         this.backgroundClip = parse(context, backgroundClip, declaration.backgroundClip);
         this.backgroundBlendMode = parse(context, backgroundBlendModeDescriptor, declaration.backgroundBlendMode);
@@ -464,6 +467,10 @@ export class CSSParsedDeclaration {
 
     isFiltered(): boolean {
         return this.filter.length > 0;
+    }
+
+    isBackdropFiltered(): boolean {
+        return this.backdropFilter.length > 0;
     }
 
     isPositioned(): boolean {

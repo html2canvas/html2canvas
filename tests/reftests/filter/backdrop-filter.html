@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Backdrop-filter tests</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style type="text/css">
+      html {
+        background: #3a84c3;
+      }
+
+      body {
+        margin: 20px;
+      }
+
+      .scene {
+        position: relative;
+        width: 200px;
+        height: 220px;
+        display: inline-block;
+        margin: 10px;
+        vertical-align: top;
+        /* colourful background to make the filter effect visible */
+        background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+      }
+
+      .label {
+        position: absolute;
+        bottom: 6px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font: bold 11px/1.3 monospace;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+      }
+
+      .overlay {
+        position: absolute;
+        top: 30px;
+        left: 40px;
+        width: 120px;
+        height: 120px;
+        background: rgba(255, 255, 255, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+
+      .blur {
+        backdrop-filter: blur(6px);
+      }
+      .bright {
+        backdrop-filter: brightness(1.8);
+      }
+      .contrast {
+        backdrop-filter: contrast(2);
+      }
+      .gray {
+        backdrop-filter: grayscale(1);
+      }
+      .invert {
+        backdrop-filter: invert(1);
+      }
+      .sepia {
+        backdrop-filter: sepia(0.8);
+      }
+      .saturate {
+        backdrop-filter: saturate(3);
+      }
+      .combined {
+        backdrop-filter: blur(4px) brightness(1.4);
+      }
+      .rounded {
+        backdrop-filter: blur(8px);
+        border-radius: 50%;
+      }
+      .hue {
+        backdrop-filter: hue-rotate(90deg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="scene">
+      <div class="overlay blur"></div>
+      <div class="label">blur(6px)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay bright"></div>
+      <div class="label">brightness(1.8)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay contrast"></div>
+      <div class="label">contrast(2)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay gray"></div>
+      <div class="label">grayscale(1)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay invert"></div>
+      <div class="label">invert(1)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay sepia"></div>
+      <div class="label">sepia(0.8)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay saturate"></div>
+      <div class="label">saturate(3)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay combined"></div>
+      <div class="label">blur(4px) brightness(1.4)</div>
+    </div>
+    <div class="scene">
+      <div class="overlay rounded"></div>
+      <div class="label">blur(8px) + border-radius</div>
+    </div>
+    <div class="scene">
+      <div class="overlay hue"></div>
+      <div class="label">hue-rotate(90deg)</div>
+    </div>
+  </body>
+</html>
