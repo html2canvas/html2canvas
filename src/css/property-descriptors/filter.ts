@@ -213,3 +213,53 @@ const parseHueRotate = (values: CSSValue[]): HueRotateFilter => {
 
     return result;
 };
+
+import { asString as colorAsString } from '../types/color';
+
+/**
+ * Converts a CSSFilterList to a CSS filter string for use with
+ * CanvasRenderingContext2D.filter. Exported here so other modules can use it
+ * without importing const enums across module boundaries.
+ */
+export function filterListToString(filterList: CSSFilterList): string {
+    const parts: string[] = [];
+    for (const f of filterList) {
+        switch (f.type) {
+            case FilterType.DROP_SHADOW: {
+                const ds = f as DropShadowFilter;
+                parts.push(
+                    `drop-shadow(${ds.offsetX.number}px ${ds.offsetY.number}px ${ds.blur.number}px ${colorAsString(ds.color)})`,
+                );
+                break;
+            }
+            case FilterType.BLUR:
+                parts.push(`blur(${(f as BlurFilter).radius.number}px)`);
+                break;
+            case FilterType.BRIGHTNESS:
+                parts.push(`brightness(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.CONTRAST:
+                parts.push(`contrast(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.GRAYSCALE:
+                parts.push(`grayscale(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.HUE_ROTATE:
+                parts.push(`hue-rotate(${(f as HueRotateFilter).angle}deg)`);
+                break;
+            case FilterType.INVERT:
+                parts.push(`invert(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.OPACITY:
+                parts.push(`opacity(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.SATURATE:
+                parts.push(`saturate(${(f as AmountFilter).amount})`);
+                break;
+            case FilterType.SEPIA:
+                parts.push(`sepia(${(f as AmountFilter).amount})`);
+                break;
+        }
+    }
+    return parts.join(' ');
+}

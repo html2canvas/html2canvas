@@ -39,10 +39,12 @@ import {
     expandBorderBoxPath,
     expandBorderBoxPathForOutline,
 } from '../bound-curves';
+import { isBackdropFilterEffect } from '../effects';
 import { Path } from '../path';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
 import {
+    buildFilterString,
     canvasMask,
     canvasPath,
     CanvasRenderState,
@@ -1382,9 +1384,111 @@ export async function renderDashedDottedBorder(
 // Full background + borders node rendering
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Backdrop-filter rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Implements CSS `backdrop-filter`.
+ *
+ * The effect is applied to the pixels **already painted** on the canvas behind
+ * this element (i.e. within the html2canvas rendering of the DOM clone — content
+ * outside the clone is simply transparent).
+ *
+ * Algorithm:
+ *   1. Compute the padding-box area of the element in device pixels.
+ *   2. Copy that region of the current canvas into a temporary offscreen canvas.
+ *   3. Apply the ctx.filter string to the offscreen canvas and re-draw the copy.
+ *   4. Clip the main canvas to the padding-box path (respects border-radius).
+ *   5. Paint the filtered offscreen back onto the main canvas.
+ *
+ * This runs synchronously against already-rendered pixels — no async operations
+ * needed. It is called at the very start of background+border rendering so the
+ * backdrop effect is applied before the element's own background is painted.
+ */
+export function renderBackdropFilter(state: CanvasRenderState, paint: ElementPaint): void {
+    // Collect the filter string from the BackdropFilterEffect on this element only
+    // (not inherited ancestors — backdrop-filter is not inherited).
+    let filterString = '';
+    for (const effect of paint.effects) {
+        if (isBackdropFilterEffect(effect)) {
+            filterString = buildFilterString(effect.filter);
+            break;
+        }
+    }
+
+    if (!filterString) {
+        return;
+    }
+
+    const ctx = state.ctx;
+    const scale = state.options.scale;
+
+    // Padding-box in CSS coordinates (clip area for the backdrop effect).
+    const paddingBoxPaths = calculatePaddingBoxPath(paint.curves);
+
+    // Border-box bounds in CSS coordinates (bounding rect of the area to copy).
+    // We use the border-box so rounded corners at the edge don't clip the source region.
+    const bounds = paint.container.bounds;
+
+    // Convert CSS coordinates to device pixels.
+    const ox = state.options.x;
+    const oy = state.options.y;
+    const dLeft = Math.floor((bounds.left - ox) * scale);
+    const dTop = Math.floor((bounds.top - oy) * scale);
+    const dWidth = Math.ceil(bounds.width * scale);
+    const dHeight = Math.ceil(bounds.height * scale);
+
+    if (dWidth <= 0 || dHeight <= 0) {
+        return;
+    }
+
+    // Clamp to the canvas dimensions to avoid errors on getImageData.
+    const canvasW = state.canvas.width;
+    const canvasH = state.canvas.height;
+    const srcX = Math.max(0, dLeft);
+    const srcY = Math.max(0, dTop);
+    const srcW = Math.min(dWidth, canvasW - srcX);
+    const srcH = Math.min(dHeight, canvasH - srcY);
+
+    if (srcW <= 0 || srcH <= 0) {
+        return;
+    }
+
+    // Step 1 — Capture the current pixels in that region.
+    const offscreen = state.canvasPool.acquire(srcW, srcH);
+    const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
+
+    offCtx.drawImage(state.canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+    // Step 2 — Apply the CSS filter to the captured region.
+    const filtered = state.canvasPool.acquire(srcW, srcH);
+    const filteredCtx = filtered.getContext('2d') as CanvasRenderingContext2D;
+    filteredCtx.filter = filterString;
+    filteredCtx.drawImage(offscreen, 0, 0);
+    state.canvasPool.release(offscreen);
+
+    // Step 3 — Paint the filtered region back, clipped to the padding-box shape.
+    ctx.save();
+    // Clip to the padding-box (includes border-radius curves).
+    canvasPath(state, paddingBoxPaths);
+    ctx.clip();
+
+    // Switch to device-pixel identity transform to draw device-pixel-aligned.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(filtered, srcX, srcY);
+
+    ctx.restore();
+    state.canvasPool.release(filtered);
+}
+
 export async function renderNodeBackgroundAndBorders(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
     const styles = paint.container.styles;
     const isInline = styles.display === DISPLAY.INLINE;
+
+    // Apply backdrop-filter first — it operates on already-rendered pixels
+    // behind this element, before the element's own background is painted.
+    renderBackdropFilter(state, paint);
 
     // For inline elements with box-decoration-break: clone, delegate to the
     // fragment-based renderer which repeats the full decoration on each line.

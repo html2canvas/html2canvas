@@ -1,4 +1,5 @@
 import { Context } from '../../core/context';
+import { filterListToString } from '../../css/property-descriptors/filter';
 import { IMAGE_RENDERING } from '../../css/property-descriptors/image-rendering';
 import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import { FontMetrics } from '../font-metrics';
@@ -210,4 +211,17 @@ export function getLinearGradientCanvas(
 
     state.gradientCanvasCache.set(key, canvas);
     return canvas;
+}
+
+// ---------------------------------------------------------------------------
+// Filter string builder (shared by filter and backdrop-filter rendering)
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a CSSFilterList into a CSS `filter` property string usable by
+ * CanvasRenderingContext2D.filter. Delegates to filterListToString (defined
+ * alongside the const enum in filter.ts) to avoid cross-module const enum issues.
+ */
+export function buildFilterString(filterList: import('../../css/property-descriptors/filter').CSSFilterList): string {
+    return filterListToString(filterList);
 }

@@ -13,6 +13,8 @@ export const enum EffectType {
     /** Overflow clip — same canvas behaviour as CLIP but kept separate so
      *  _computeEffects() can filter overflow clips without discarding clip-path clips. */
     OVERFLOW_CLIP = 6,
+    /** Backdrop filter — applied to already-rendered pixels behind the element. */
+    BACKDROP_FILTER = 7,
 }
 
 export const enum EffectTarget {
@@ -87,6 +89,13 @@ export class Path2DClipEffect implements IElementEffect {
     ) {}
 }
 
+export class BackdropFilterEffect implements IElementEffect {
+    readonly type: EffectType = EffectType.BACKDROP_FILTER;
+    readonly target: number = EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT;
+
+    constructor(readonly filter: import('../css/property-descriptors/filter').CSSFilterList) {}
+}
+
 export const isTransformEffect = (effect: IElementEffect): effect is TransformEffect =>
     effect.type === EffectType.TRANSFORM;
 export const isClipEffect = (effect: IElementEffect): effect is ClipEffect => effect.type === EffectType.CLIP;
@@ -98,3 +107,5 @@ export const isMixBlendModeEffect = (effect: IElementEffect): effect is MixBlend
     effect.type === EffectType.MIX_BLEND_MODE;
 export const isPath2DClipEffect = (effect: IElementEffect): effect is Path2DClipEffect =>
     effect.type === EffectType.PATH2D_CLIP;
+export const isBackdropFilterEffect = (effect: IElementEffect): effect is BackdropFilterEffect =>
+    effect.type === EffectType.BACKDROP_FILTER;

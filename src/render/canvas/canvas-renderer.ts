@@ -1,7 +1,6 @@
 import { contains } from '../../core/bitwise';
 import { Context } from '../../core/context';
 import { countStackingContextNodes } from '../../core/progress';
-import { FilterType } from '../../css/property-descriptors/filter';
 import { mixBlendModeToComposite } from '../../css/property-descriptors/mix-blend-mode';
 import { POSITION } from '../../css/property-descriptors/position';
 import { asString } from '../../css/types/color';
@@ -43,7 +42,7 @@ import {
     renderTextInputElement,
 } from './canvas-form-renderer';
 import { CanvasPool } from './canvas-pool';
-import { canvasMask, canvasPath, CanvasRenderState, formatPath } from './canvas-render-state';
+import { buildFilterString, canvasMask, canvasPath, CanvasRenderState, formatPath } from './canvas-render-state';
 import { renderTextNode } from './canvas-text-renderer';
 import { isOutsideViewport } from './cull';
 
@@ -265,42 +264,8 @@ export class CanvasRenderer extends Renderer {
         const filterStrings: string[] = [];
         for (const effect of stack.element.effects) {
             if (isFilterEffect(effect)) {
-                for (const f of effect.filter) {
-                    switch (f.type) {
-                        case FilterType.DROP_SHADOW:
-                            filterStrings.push(
-                                `drop-shadow(${f.offsetX.number}px ${f.offsetY.number}px ${f.blur.number}px ${asString(f.color)})`,
-                            );
-                            break;
-                        case FilterType.BLUR:
-                            filterStrings.push(`blur(${f.radius.number}px)`);
-                            break;
-                        case FilterType.BRIGHTNESS:
-                            filterStrings.push(`brightness(${f.amount})`);
-                            break;
-                        case FilterType.CONTRAST:
-                            filterStrings.push(`contrast(${f.amount})`);
-                            break;
-                        case FilterType.GRAYSCALE:
-                            filterStrings.push(`grayscale(${f.amount})`);
-                            break;
-                        case FilterType.HUE_ROTATE:
-                            filterStrings.push(`hue-rotate(${f.angle}deg)`);
-                            break;
-                        case FilterType.INVERT:
-                            filterStrings.push(`invert(${f.amount})`);
-                            break;
-                        case FilterType.OPACITY:
-                            filterStrings.push(`opacity(${f.amount})`);
-                            break;
-                        case FilterType.SATURATE:
-                            filterStrings.push(`saturate(${f.amount})`);
-                            break;
-                        case FilterType.SEPIA:
-                            filterStrings.push(`sepia(${f.amount})`);
-                            break;
-                    }
-                }
+                const s = buildFilterString(effect.filter);
+                if (s) filterStrings.push(s);
             }
         }
         return filterStrings.length > 0 ? filterStrings.join(' ') : null;

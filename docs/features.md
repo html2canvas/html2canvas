@@ -66,6 +66,19 @@ Below is a list of all the supported CSS properties and values.
     - opacity()
     - saturate()
     - sepia()
+- backdrop-filter
+    - blur()
+    - brightness()
+    - contrast()
+    - drop-shadow()
+    - grayscale()
+    - hue-rotate()
+    - invert()
+    - opacity()
+    - saturate()
+    - sepia()
+    - multiple functions supported
+    - applied to already-rendered pixels (DOM clone only; content outside the clone is transparent)
 - flex
 - float
 - font
