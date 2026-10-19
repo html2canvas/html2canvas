@@ -6,7 +6,9 @@ import { isLengthPercentage, LengthPercentage } from '../types/length-percentage
 
 // Reuse background-size types — mask-size accepts the same values.
 export {
-    BACKGROUND_SIZE as MASK_SIZE, BackgroundSize as MaskSize, BackgroundSizeInfo as MaskSizeInfo
+    BACKGROUND_SIZE as MASK_SIZE,
+    BackgroundSize as MaskSize,
+    BackgroundSizeInfo as MaskSizeInfo,
 } from './background-size';
 
 export const maskSize: IPropertyListDescriptor<(LengthPercentage | StringValueToken)[][]> = {
