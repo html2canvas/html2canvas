@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.14.0](https://github.com/html2canvas/html2canvas/compare/v1.13.0...v1.14.0) (2026-10-19)
+
+### Features
+
+- add CSS `backdrop-filter` support ([e3054b7](https://github.com/html2canvas/html2canvas/commit/e3054b7ad97be0157c7e688b989490ab51646c46))
+- add CSS `mask` / `mask-image` support ([ee91fac](https://github.com/html2canvas/html2canvas/commit/ee91fac5725ea7d55f52882f704aa933fddf7d58))
+- add CSS `outline` support (`outline-color`/`style`/`width`/`offset`) ([86c0485](https://github.com/html2canvas/html2canvas/commit/86c0485c729c3e3a8f5621a65be18e295081fda1))
+- add `imageResolver` hook to bypass `CORS` restrictions ([3d74a3b](https://github.com/html2canvas/html2canvas/commit/3d74a3bdd1478e2afbd5d95f137b4f2a1dc004db))
+- add `onProgress` rendering callback with phase and clone sub-step events ([a3a37e9](https://github.com/html2canvas/html2canvas/commit/a3a37e9b5178e1a7fa48f9490088a9c822fccd78))
+
+### Bug Fixes
+
+- resolve lint errors in `mask-mode` and `mask-size` ([981ebb6](https://github.com/html2canvas/html2canvas/commit/981ebb60001c1dfd2d321d6d75deb4a8382381b4))
+
 ## [1.13.0](https://github.com/html2canvas/html2canvas/compare/v1.12.0...v1.13.0) (2026-09-28)
 
 ### Features
