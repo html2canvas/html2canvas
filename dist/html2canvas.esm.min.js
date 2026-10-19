@@ -1,5 +1,5 @@
 /*!
- * html2canvas 1.13.0 <>
+ * html2canvas 1.14.0 <>
  * Copyright (c) 2026 Niklas von Hertzen <https://hertzen.com>
  * Released under MIT License
  */
