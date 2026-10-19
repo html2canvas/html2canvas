@@ -3,14 +3,10 @@ import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IProp
 import { CSSValue, isIdentToken } from '../syntax/parser';
 
 // mask-mode determines whether the mask uses its alpha channel or luminance as alpha.
+// 'match-source' is treated as ALPHA (the common case for URL images).
 export const enum MASK_MODE {
-    // Use the alpha channel of the mask image directly.
     ALPHA = 0,
-    // Convert the RGB luminance of the mask image to alpha.
     LUMINANCE = 1,
-    // 'match-source': for URL images use alpha, for gradients use luminance.
-    // We treat it as ALPHA since URLs are by far the common case.
-    MATCH_SOURCE = 0,
 }
 
 export type MaskModeList = MASK_MODE[];
