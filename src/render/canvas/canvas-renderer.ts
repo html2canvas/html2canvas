@@ -29,7 +29,7 @@ import {
 import { FontMetrics } from '../font-metrics';
 import { Renderer } from '../renderer';
 import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
-import { renderNodeBackgroundAndBorders } from './canvas-background-renderer';
+import { renderMaskImage, renderNodeBackgroundAndBorders } from './canvas-background-renderer';
 import {
     isTextInputElement,
     renderCheckbox,
@@ -238,16 +238,11 @@ export class CanvasRenderer extends Renderer {
         const styles = stack.element.container.styles;
         if (styles.isVisible()) {
             const offscreenFilters = this._getOffscreenFilters(stack);
-
-            // Group opacity (opacity < 1) must be applied to the flattened subtree,
-            // not to each descendant draw. Applying it per-node via ctx.globalAlpha
-            // double-composites overlapping children (their overlap darkens).
-            // Detect the root opacity effect and, if present, rasterize the whole
-            // subtree offscreen at alpha 1, then composite once with globalAlpha.
             const rootOpacity = stack.element.effects.find(isOpacityEffect) as OpacityEffect | undefined;
+            const needsMask = styles.isMasked();
 
-            if (offscreenFilters || rootOpacity) {
-                await this._renderStackOffscreen(stack, offscreenFilters, rootOpacity);
+            if (offscreenFilters || rootOpacity || needsMask) {
+                await this._renderStackOffscreen(stack, offscreenFilters, rootOpacity, needsMask);
             } else {
                 await this.renderStackContent(stack);
             }
@@ -288,6 +283,7 @@ export class CanvasRenderer extends Renderer {
         stack: StackingContext,
         filterString: string | null,
         rootOpacity?: OpacityEffect,
+        needsMask = false,
     ): Promise<void> {
         const mainCanvas = this.state.canvas;
         const mainCtx = this.state.ctx;
@@ -348,14 +344,23 @@ export class CanvasRenderer extends Renderer {
         // CSS (render → filter → opacity). The Canvas 2D API applies globalAlpha
         // BEFORE ctx.filter on a single drawImage, so combining both on one draw
         // filters an already-dimmed source and darkens the result. When both are
-        // present, filter into a second surface at alpha 1, then composite that
-        // surface with globalAlpha.
+        // CSS compositing order: render → filter → mask → opacity → composite.
+
+        // Step 1 — Apply filter into a separate surface so ctx.filter does not
+        // interfere with ctx.clip() or ctx.globalAlpha on the main context.
         let filtered: HTMLCanvasElement | null = null;
-        if (filterString && rootOpacity) {
+        if (filterString) {
             filtered = this.state.canvasPool.acquire(offscreen.width, offscreen.height);
             const filteredCtx = filtered.getContext('2d') as CanvasRenderingContext2D;
             filteredCtx.filter = filterString;
             filteredCtx.drawImage(offscreen, 0, 0);
+            filteredCtx.filter = 'none';
+        }
+
+        // Step 2 — Apply mask on the post-filter surface (in-place mutation).
+        const postFilter = filtered ?? offscreen;
+        if (needsMask) {
+            await renderMaskImage(this.state, stack.element, postFilter);
         }
 
         this.state.ctx.save();
@@ -383,19 +388,12 @@ export class CanvasRenderer extends Renderer {
             }
         }
 
-        if (filtered) {
-            // Second pass: opacity only, over the already-filtered surface.
-            this.state.ctx.globalAlpha = rootOpacity ? rootOpacity.opacity : 1;
-        } else {
-            if (filterString) {
-                this.state.ctx.filter = filterString;
-            }
-            if (rootOpacity) {
-                this.state.ctx.globalAlpha = rootOpacity.opacity;
-            }
+        // Step 3 — Apply opacity and composite onto main canvas.
+        if (rootOpacity) {
+            this.state.ctx.globalAlpha = rootOpacity.opacity;
         }
         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.state.ctx.drawImage(filtered ?? offscreen, 0, 0);
+        this.state.ctx.drawImage(postFilter, 0, 0);
         this.state.ctx.restore();
 
         // Return the offscreen canvases to the pool for reuse.

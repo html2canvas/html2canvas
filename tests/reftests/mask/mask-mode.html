@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Mask mode tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html { background: #3a84c3; }
+            body { margin: 20px; }
+
+            .scene {
+                position: relative;
+                width: 200px;
+                height: 220px;
+                display: inline-block;
+                margin: 10px;
+                vertical-align: top;
+            }
+
+            .box {
+                width: 200px;
+                height: 200px;
+                background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+            }
+
+            .label {
+                position: absolute;
+                bottom: 4px;
+                left: 0;
+                width: 100%;
+                text-align: center;
+                font: bold 11px/1.3 monospace;
+                color: #fff;
+                text-shadow: 0 1px 2px rgba(0,0,0,.7);
+            }
+
+            /* alpha mode (default): uses transparency of the gradient */
+            .mask-alpha {
+                mask-image: radial-gradient(circle, black 40%, transparent 70%);
+                -webkit-mask-image: radial-gradient(circle, black 40%, transparent 70%);
+                mask-mode: alpha;
+            }
+
+            /* luminance: brightness of the gradient pixel becomes alpha */
+            /* white = fully opaque, black = fully transparent */
+            .mask-luminance {
+                mask-image: radial-gradient(circle, white 40%, black 70%);
+                -webkit-mask-image: radial-gradient(circle, white 40%, black 70%);
+                mask-mode: luminance;
+            }
+
+            /* luminance with greyscale gradient */
+            .mask-luminance-gradient {
+                mask-image: linear-gradient(to right, black, white);
+                -webkit-mask-image: linear-gradient(to right, black, white);
+                mask-mode: luminance;
+            }
+
+            /* match-source (treated as alpha) */
+            .mask-match-source {
+                mask-image: radial-gradient(circle, black 50%, transparent 70%);
+                -webkit-mask-image: radial-gradient(circle, black 50%, transparent 70%);
+                mask-mode: match-source;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="scene">
+            <div class="box mask-alpha"></div>
+            <div class="label">mask-mode: alpha</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-luminance"></div>
+            <div class="label">mask-mode: luminance (white→opaque)</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-luminance-gradient"></div>
+            <div class="label">mask-mode: luminance (black→white)</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-match-source"></div>
+            <div class="label">mask-mode: match-source</div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Mask image gradient tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html { background: #3a84c3; }
+            body { margin: 20px; }
+
+            .scene {
+                position: relative;
+                width: 200px;
+                height: 220px;
+                display: inline-block;
+                margin: 10px;
+                vertical-align: top;
+            }
+
+            .box {
+                width: 200px;
+                height: 200px;
+                background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+            }
+
+            .label {
+                position: absolute;
+                bottom: 4px;
+                left: 0;
+                width: 100%;
+                text-align: center;
+                font: bold 11px/1.3 monospace;
+                color: #fff;
+                text-shadow: 0 1px 2px rgba(0,0,0,.7);
+            }
+
+            /* linear gradient — top opaque to bottom transparent */
+            .mask-linear {
+                mask-image: linear-gradient(to bottom, black, transparent);
+                -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+            }
+
+            /* linear gradient — left to right */
+            .mask-linear-lr {
+                mask-image: linear-gradient(to right, transparent, black 30%, black 70%, transparent);
+                -webkit-mask-image: linear-gradient(to right, transparent, black 30%, black 70%, transparent);
+            }
+
+            /* radial gradient — circle reveal from center */
+            .mask-radial {
+                mask-image: radial-gradient(circle, black 40%, transparent 70%);
+                -webkit-mask-image: radial-gradient(circle, black 40%, transparent 70%);
+            }
+
+            /* radial gradient — ellipse */
+            .mask-radial-ellipse {
+                mask-image: radial-gradient(ellipse 60% 40% at center, black, transparent);
+                -webkit-mask-image: radial-gradient(ellipse 60% 40% at center, black, transparent);
+            }
+
+            /* repeating linear gradient — stripes */
+            .mask-repeating {
+                mask-image: repeating-linear-gradient(45deg, black 0px, black 10px, transparent 10px, transparent 20px);
+                -webkit-mask-image: repeating-linear-gradient(45deg, black 0px, black 10px, transparent 10px, transparent 20px);
+            }
+
+            /* conic gradient */
+            .mask-conic {
+                mask-image: conic-gradient(black 0deg, transparent 90deg, black 180deg, transparent 270deg, black 360deg);
+                -webkit-mask-image: conic-gradient(black 0deg, transparent 90deg, black 180deg, transparent 270deg, black 360deg);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="scene">
+            <div class="box mask-linear"></div>
+            <div class="label">linear top→bottom</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-linear-lr"></div>
+            <div class="label">linear left→right</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-radial"></div>
+            <div class="label">radial circle</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-radial-ellipse"></div>
+            <div class="label">radial ellipse</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-repeating"></div>
+            <div class="label">repeating-linear stripes</div>
+        </div>
+        <div class="scene">
+            <div class="box mask-conic"></div>
+            <div class="label">conic-gradient</div>
+        </div>
+    </body>
+</html>

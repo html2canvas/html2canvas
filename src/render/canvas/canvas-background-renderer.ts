@@ -6,6 +6,9 @@ import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
 import { BOX_DECORATION_BREAK } from '../../css/property-descriptors/box-decoration-break';
 import { DIRECTION } from '../../css/property-descriptors/direction';
 import { DISPLAY } from '../../css/property-descriptors/display';
+import { MASK_CLIP } from '../../css/property-descriptors/mask-clip';
+import { MASK_COMPOSITE, maskCompositeToCanvas } from '../../css/property-descriptors/mask-composite';
+import { MASK_MODE } from '../../css/property-descriptors/mask-mode';
 import { WRITING_MODE } from '../../css/property-descriptors/writing-mode';
 import { asString, isTransparent, pack } from '../../css/types/color';
 import { calculateGradientDirection, calculateRadius, processColorStops } from '../../css/types/functions/gradient';
@@ -23,7 +26,7 @@ import {
 } from '../../css/types/image';
 import { FIFTY_PERCENT, getAbsoluteValue, ZERO_LENGTH } from '../../css/types/length-percentage';
 import { ElementContainer } from '../../dom/element-container';
-import { calculateBackgroundRendering, getBackgroundValueForIndex } from '../background';
+import { calculateBackgroundRendering, calculateMaskRendering, getBackgroundValueForIndex } from '../background';
 import { BezierCurve, isBezierCurve } from '../bezier-curve';
 import {
     parsePathForBorder,
@@ -39,7 +42,8 @@ import {
     expandBorderBoxPath,
     expandBorderBoxPathForOutline,
 } from '../bound-curves';
-import { isBackdropFilterEffect } from '../effects';
+import type { TransformEffect } from '../effects';
+import { isBackdropFilterEffect, isTransformEffect } from '../effects';
 import { Path } from '../path';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
@@ -1527,6 +1531,7 @@ export async function renderNodeBackgroundAndBorders(state: CanvasRenderState, p
 
 async function _renderInlineSlice(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
     const styles = paint.container.styles;
+
     const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
     const hasBorders =
         (styles.borderTopStyle !== BORDER_STYLE.NONE && styles.borderTopWidth > 0) ||
@@ -2244,6 +2249,7 @@ async function _renderBorderImage(state: CanvasRenderState, paint: ElementPaint)
 
 async function _renderSingleBoxBackgroundAndBorders(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
     const styles = paint.container.styles;
+
     const hasBackground = !isTransparent(styles.backgroundColor) || styles.backgroundImage.length;
 
     const borders = [
@@ -2419,4 +2425,326 @@ async function _renderFieldsetTopBorder(
     await renderBorderSide(state, border.color, border.width, 0, border.style, paint.curves);
 
     ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Mask rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Applies CSS `mask-image` to a fully-rendered offscreen canvas.
+ *
+ * Called from _renderStackOffscreen after the element subtree (background,
+ * borders, content, descendants) has been rendered. The mask is applied
+ * in-place to the offscreen canvas by extracting the element region,
+ * masking it, and writing it back.
+ */
+export async function renderMaskImage(
+    state: CanvasRenderState,
+    paint: ElementPaint,
+    offscreenCanvas: HTMLCanvasElement,
+): Promise<void> {
+    const styles = paint.container.styles;
+
+    if (!styles.isMasked()) {
+        return;
+    }
+
+    const scale = state.options.scale;
+    const bounds = paint.container.bounds;
+    const ox = state.options.x;
+    const oy = state.options.y;
+
+    // The mask must be built in the same coordinate space as the offscreen canvas
+    // (which has the same size as the main canvas and includes any CSS transforms
+    // applied to the element). We therefore build the mask at full offscreen size
+    // and apply the same base CTM + element transform effects.
+    const canvasW = offscreenCanvas.width;
+    const canvasH = offscreenCanvas.height;
+
+    if (canvasW <= 0 || canvasH <= 0) {
+        return;
+    }
+
+    // Element bounds in device pixels — used only for gradient geometry (dWidth/dHeight).
+    // dLeft/dTop are not needed since mask canvas is full-size at the offscreen CTM.
+
+    // -------------------------------------------------------------------------
+    // Build the mask canvas — full offscreen size, same CTM as offscreen.
+    // -------------------------------------------------------------------------
+    const maskCanvas = state.canvasPool.acquire(canvasW, canvasH);
+    const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D;
+    maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+    maskCtx.clearRect(0, 0, canvasW, canvasH);
+
+    // dWidth/dHeight for layer canvases (used for mask rendering geometry).
+    const dWidth = Math.ceil(bounds.width * scale);
+    const dHeight = Math.ceil(bounds.height * scale);
+
+    if (dWidth <= 0 || dHeight <= 0) {
+        state.canvasPool.release(maskCanvas);
+        return;
+    }
+
+    const layers = styles.maskImage;
+    for (let i = layers.length - 1; i >= 0; i--) {
+        const maskImg = layers[i];
+
+        let intrinsicSize: [number | null, number | null, number | null] = [null, null, null];
+        if (maskImg.type === CSSImageType.URL) {
+            try {
+                const img = await state.context.cache.match((maskImg as CSSURLImage).url);
+                intrinsicSize = [img.width, img.height, img.width / img.height];
+            } catch (_e) {
+                continue;
+            }
+        }
+
+        const [path, offsetX, offsetY, sizeW, sizeH] = calculateMaskRendering(paint.container, i, intrinsicSize);
+
+        // Layer canvas at full offscreen size with the same CTM as the offscreen,
+        // including the element's CSS transform, so the mask aligns with the
+        // transformed pixels.
+        const layerCanvas = state.canvasPool.acquire(canvasW, canvasH);
+        const layerCtx = layerCanvas.getContext('2d') as CanvasRenderingContext2D;
+        layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+        layerCtx.clearRect(0, 0, canvasW, canvasH);
+        // Base CTM: same as the offscreen canvas (scale + translate for viewport offset).
+        layerCtx.setTransform(scale, 0, 0, scale, -ox * scale, -oy * scale);
+        // Apply the element's own CSS transform effects (rotate, scale, translate…)
+        // so the mask gradient/image is defined in the element's local space.
+        for (const effect of paint.effects) {
+            if (isTransformEffect(effect)) {
+                const te = effect as TransformEffect;
+                layerCtx.translate(te.offsetX, te.offsetY);
+                layerCtx.transform(te.matrix[0], te.matrix[1], te.matrix[2], te.matrix[3], te.matrix[4], te.matrix[5]);
+                layerCtx.translate(-te.offsetX, -te.offsetY);
+            }
+        }
+
+        const savedCtx = state.ctx;
+        state.ctx = layerCtx;
+
+        const clip = getBackgroundValueForIndex(styles.maskClip, i);
+        if (clip !== MASK_CLIP.NO_CLIP) {
+            canvasPath(state, _getMaskClipPath(clip, paint.curves));
+            layerCtx.clip();
+        }
+
+        try {
+            await _renderMaskLayer(state, paint.container, maskImg, path, offsetX, offsetY, sizeW, sizeH, i);
+        } finally {
+            state.ctx = savedCtx;
+        }
+
+        const mode = getBackgroundValueForIndex(styles.maskMode, i);
+        if (mode === MASK_MODE.LUMINANCE) {
+            _applyLuminanceMask(layerCanvas);
+        }
+
+        maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+        const composite = getBackgroundValueForIndex(styles.maskComposite, i);
+        const op: GlobalCompositeOperation =
+            i === layers.length - 1
+                ? 'source-over'
+                : (maskCompositeToCanvas[composite as MASK_COMPOSITE] ?? 'source-over');
+        maskCtx.globalCompositeOperation = op;
+        maskCtx.drawImage(layerCanvas, 0, 0); // full-size: no offset needed
+        maskCtx.globalCompositeOperation = 'source-over';
+
+        state.canvasPool.release(layerCanvas);
+    }
+
+    // -------------------------------------------------------------------------
+    // Apply the mask to the offscreen canvas in-place.
+    // Both maskCanvas and offscreenCanvas are the same size (full canvas).
+    // destination-in keeps only pixels where the mask is opaque.
+    // -------------------------------------------------------------------------
+    const offCtx = offscreenCanvas.getContext('2d') as CanvasRenderingContext2D;
+    offCtx.setTransform(1, 0, 0, 1, 0, 0);
+    offCtx.globalCompositeOperation = 'destination-in';
+    offCtx.drawImage(maskCanvas, 0, 0); // same size, no offset
+    offCtx.globalCompositeOperation = 'source-over';
+
+    state.canvasPool.release(maskCanvas);
+}
+
+// ---------------------------------------------------------------------------
+// Mask helpers
+// ---------------------------------------------------------------------------
+
+/** Returns the Path[] for the mask-clip area using the element's BoundCurves. */
+function _getMaskClipPath(clip: MASK_CLIP, curves: BoundCurves): Path[] {
+    switch (clip) {
+        case MASK_CLIP.PADDING_BOX:
+            return calculatePaddingBoxPath(curves);
+        case MASK_CLIP.CONTENT_BOX:
+            return calculateContentBoxPath(curves);
+        case MASK_CLIP.BORDER_BOX:
+        default:
+            return calculateBorderBoxPath(curves);
+    }
+}
+
+/**
+ * Renders a single mask-image layer (URL or gradient) into the current
+ * state.ctx, reusing the same gradient/image logic as background-image.
+ */
+async function _renderMaskLayer(
+    state: CanvasRenderState,
+    _container: ElementContainer,
+    maskImg: ICSSImage,
+    path: Path[],
+    offsetX: number,
+    offsetY: number,
+    sizeW: number,
+    sizeH: number,
+    _index: number,
+): Promise<void> {
+    const ctx = state.ctx;
+
+    if (maskImg.type === CSSImageType.URL) {
+        const url = (maskImg as CSSURLImage).url;
+        try {
+            const img = await state.context.cache.match(url);
+            if (img && img.width > 0 && img.height > 0) {
+                const pattern = ctx.createPattern(resizeImage(state, img, sizeW, sizeH), 'repeat') as CanvasPattern;
+                renderRepeat(state, path, pattern, offsetX, offsetY);
+            }
+        } catch (e) {
+            state.context.error(`Error loading mask-image ${url}`, e);
+        }
+        return;
+    }
+
+    // Gradients: delegate to the same helpers used by background-image rendering.
+    if (isLinearGradient(maskImg)) {
+        const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(maskImg.angle, sizeW, sizeH);
+        const stops = processColorStops(maskImg.stops, lineLength || 1);
+        const key = `mask-lin|${x0},${y0},${x1},${y1}|${stops.map(s => `${s.color}@${s.stop}`).join(',')}|${sizeW}x${sizeH}`;
+        const gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, (gCtx, w, h) => {
+            const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+            stops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+            gCtx.fillStyle = gradient;
+            gCtx.fillRect(0, 0, w, h);
+        });
+        const pattern = ctx.createPattern(gradCanvas, 'repeat') as CanvasPattern;
+        renderRepeat(state, path, pattern, offsetX, offsetY);
+        return;
+    }
+
+    if (isRepeatingLinearGradient(maskImg)) {
+        const [lineLength, x0, x1, y0, y1] = calculateGradientDirection(maskImg.angle, sizeW, sizeH);
+        const processedStops = processColorStops(maskImg.stops, lineLength || 1);
+        const tileStart = processedStops[0].stop;
+        const tileEnd = processedStops[processedStops.length - 1].stop;
+        const tileSize = tileEnd - tileStart;
+
+        // Build the full tiled stop list spanning [0,1] just like renderSingleBackgroundImageLayer.
+        let finalStops = processedStops;
+        if (tileSize > 0) {
+            const MAX_ITER = 512;
+            const allStops: Array<{ stop: number; color: (typeof processedStops)[0]['color'] }> = [];
+            for (let iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                const offset = iter * tileSize;
+                processedStops.forEach(s => allStops.push({ stop: Math.max(0, s.stop - offset), color: s.color }));
+                if (tileStart - offset <= 0) break;
+            }
+            processedStops.forEach(s => allStops.push({ stop: s.stop, color: s.color }));
+            for (let iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                const offset = iter * tileSize;
+                processedStops.forEach(s => allStops.push({ stop: Math.min(1, s.stop + offset), color: s.color }));
+            }
+            if (allStops[0].stop > 0) allStops.unshift({ stop: 0, color: allStops[0].color });
+            if (allStops[allStops.length - 1].stop < 1)
+                allStops.push({ stop: 1, color: allStops[allStops.length - 1].color });
+            finalStops = allStops;
+        }
+
+        const key = `mask-rlin|${x0},${y0},${x1},${y1}|${finalStops.map(s => `${s.color}@${s.stop}`).join(',')}|${sizeW}x${sizeH}`;
+        const gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, (gCtx, w, h) => {
+            const gradient = gCtx.createLinearGradient(x0, y0, x1, y1);
+            finalStops.forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+            gCtx.fillStyle = gradient;
+            gCtx.fillRect(0, 0, w, h);
+        });
+        const pattern = ctx.createPattern(gradCanvas, 'repeat') as CanvasPattern;
+        renderRepeat(state, path, pattern, offsetX, offsetY);
+        return;
+    }
+
+    if (isRadialGradient(maskImg) || isRepeatingRadialGradient(maskImg)) {
+        const position = maskImg.position.length === 0 ? [FIFTY_PERCENT] : maskImg.position;
+        const x = getAbsoluteValue(position[0], sizeW);
+        const y = getAbsoluteValue(position[position.length - 1], sizeH);
+        const [rx, ry] = calculateRadius(maskImg, x, y, sizeW, sizeH);
+        if (rx > 0 && ry > 0) {
+            const gradient = ctx.createRadialGradient(offsetX + x, offsetY + y, 0, offsetX + x, offsetY + y, rx);
+            processColorStops(maskImg.stops, rx * 2).forEach(s => gradient.addColorStop(s.stop, asString(s.color)));
+            canvasPath(state, path);
+            ctx.fillStyle = gradient;
+            if (rx !== ry) {
+                const midX = offsetX + sizeW / 2;
+                const midY = offsetY + sizeH / 2;
+                const f = ry / rx;
+                ctx.save();
+                ctx.translate(midX, midY);
+                ctx.transform(1, 0, 0, f, 0, 0);
+                ctx.translate(-midX, -midY);
+                ctx.fillRect(offsetX, (offsetY - midY) / f + midY, sizeW, sizeH / f);
+                ctx.restore();
+            } else {
+                ctx.fill();
+            }
+        }
+        return;
+    }
+
+    if (isConicGradient(maskImg) || isRepeatingConicGradient(maskImg)) {
+        if (
+            typeof CanvasRenderingContext2D !== 'undefined' &&
+            typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function'
+        ) {
+            const position = maskImg.position.length === 0 ? [FIFTY_PERCENT] : maskImg.position;
+            const cx = getAbsoluteValue(position[0], sizeW);
+            const cy = getAbsoluteValue(position[position.length - 1], sizeH);
+            const key = `mask-conic|${maskImg.startAngle}|${cx},${cy}|${sizeW}x${sizeH}`;
+            const gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, (gCtx, w, h) => {
+                const conicGrad = gCtx.createConicGradient(maskImg.startAngle - Math.PI / 2, cx, cy);
+                processColorStops(maskImg.stops, 360).forEach(s => conicGrad.addColorStop(s.stop, asString(s.color)));
+                gCtx.fillStyle = conicGrad;
+                gCtx.fillRect(0, 0, w, h);
+            });
+            const pattern = ctx.createPattern(gradCanvas, 'repeat') as CanvasPattern;
+            renderRepeat(state, path, pattern, offsetX, offsetY);
+        }
+        return;
+    }
+}
+
+/**
+ * Converts the RGB luminance of each pixel in `canvas` to its alpha channel,
+ * setting alpha = luminance and RGB = white (matching CSS mask-mode: luminance).
+ *
+ * Formula: L = 0.2126R + 0.7152G + 0.0722B  (linearised sRGB / BT.709)
+ */
+function _applyLuminanceMask(canvas: HTMLCanvasElement): void {
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    const { width, height } = canvas;
+    if (width <= 0 || height <= 0) return;
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] / 255;
+        const g = data[i + 1] / 255;
+        const b = data[i + 2] / 255;
+        const a = data[i + 3] / 255;
+        // Luminance weighted by existing alpha.
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) * a;
+        data[i] = 255;
+        data[i + 1] = 255;
+        data[i + 2] = 255;
+        data[i + 3] = Math.round(lum * 255);
+    }
+    ctx.putImageData(imageData, 0, 0);
 }
