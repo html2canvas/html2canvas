@@ -4,6 +4,7 @@ import { BACKGROUND_CLIP } from '../css/property-descriptors/background-clip';
 import { BACKGROUND_ORIGIN } from '../css/property-descriptors/background-origin';
 import { BACKGROUND_REPEAT } from '../css/property-descriptors/background-repeat';
 import { BACKGROUND_SIZE, BackgroundSizeInfo } from '../css/property-descriptors/background-size';
+import { MASK_CLIP } from '../css/property-descriptors/mask-clip';
 import { CSSValue, isIdentToken } from '../css/syntax/parser';
 import { getAbsoluteValue, getAbsoluteValueForTuple, isLengthPercentage } from '../css/types/length-percentage';
 import { ElementContainer } from '../dom/element-container';
@@ -312,4 +313,81 @@ export const calculateBackgroundRepeatPath = (
                 ),
             ];
     }
+};
+
+// ---------------------------------------------------------------------------
+// Mask rendering geometry
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the mask painting area for a given mask-clip value.
+ * MASK_CLIP.NO_CLIP means the mask is not clipped — we return the element
+ * bounds expanded by a generous margin so patterns / gradients can bleed out.
+ */
+export const calculateMaskPaintingArea = (clip: MASK_CLIP, element: ElementContainer): Bounds => {
+    switch (clip) {
+        case MASK_CLIP.PADDING_BOX:
+            return paddingBox(element);
+        case MASK_CLIP.CONTENT_BOX:
+            return contentBox(element);
+        case MASK_CLIP.NO_CLIP:
+            // Return the element bounds — the caller will skip clipping.
+            return element.bounds;
+        case MASK_CLIP.BORDER_BOX:
+        default:
+            return element.bounds;
+    }
+};
+
+/**
+ * Calculates the geometry needed to render one mask-image layer:
+ * [paintPath, offsetX, offsetY, sizeWidth, sizeHeight].
+ *
+ * Mirrors calculateBackgroundRendering but reads mask-* properties.
+ * mask-attachment is not supported (no CSS property for it); the mask
+ * is always positioned relative to the border-box / padding-box / content-box
+ * according to mask-origin.
+ */
+export const calculateMaskRendering = (
+    container: ElementContainer,
+    index: number,
+    intrinsicSize: [number | null, number | null, number | null],
+): [Path[], number, number, number, number] => {
+    const styles = container.styles;
+
+    // mask-origin → positioning area (same enum values as background-origin)
+    const origin = getBackgroundValueForIndex(styles.maskOrigin, index) as unknown as BACKGROUND_ORIGIN;
+    const maskPositioningArea = calculateBackgroundPositioningArea(origin, container);
+
+    // mask-clip → painting area
+    const clip = getBackgroundValueForIndex(styles.maskClip, index);
+    const maskPaintingArea = calculateMaskPaintingArea(clip, container);
+
+    // mask-size
+    const maskImageSize = calculateBackgroundSize(
+        getBackgroundValueForIndex(styles.maskSize, index),
+        intrinsicSize,
+        maskPositioningArea,
+    );
+
+    let [sizeWidth, sizeHeight] = maskImageSize;
+
+    // mask-position
+    const position = getAbsoluteValueForTuple(
+        getBackgroundValueForIndex(styles.maskPosition, index),
+        maskPositioningArea.width - sizeWidth,
+        maskPositioningArea.height - sizeHeight,
+    );
+
+    // mask-repeat
+    const repeat = getBackgroundValueForIndex(styles.maskRepeat, index) as BACKGROUND_REPEAT;
+    const path = calculateBackgroundRepeatPath(repeat, position, maskImageSize, maskPositioningArea, maskPaintingArea);
+
+    const offsetX = Math.round(maskPositioningArea.left + position[0]);
+    const offsetY = Math.round(maskPositioningArea.top + position[1]);
+
+    sizeWidth = Math.max(1, sizeWidth);
+    sizeHeight = Math.max(1, sizeHeight);
+
+    return [path, offsetX, offsetY, sizeWidth, sizeHeight];
 };

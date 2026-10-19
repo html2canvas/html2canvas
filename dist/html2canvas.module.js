@@ -3842,6 +3842,201 @@ var marginRight = marginForSide('right');
 var marginBottom = marginForSide('bottom');
 var marginLeft = marginForSide('left');
 
+var maskClip = {
+    name: 'mask-clip',
+    initialValue: 'border-box',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.map(function (token) {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'padding-box':
+                        return 1 /* MASK_CLIP.PADDING_BOX */;
+                    case 'content-box':
+                        return 2 /* MASK_CLIP.CONTENT_BOX */;
+                    case 'no-clip':
+                        return 3 /* MASK_CLIP.NO_CLIP */;
+                }
+            }
+            return 0 /* MASK_CLIP.BORDER_BOX */;
+        });
+    },
+};
+
+var _a$1;
+/**
+ * Canvas 2D composite operation for each MASK_COMPOSITE value.
+ *
+ * CSS mask-composite spec: mask-composite[i] defines how layer i (upper)
+ * composites with layers below it (lower). In our merge loop (bottom → top),
+ * maskCtx is the destination (accumulated lower layers) and layerCanvas is
+ * the source (current upper layer).
+ *
+ * CSS semantics:
+ *   add      : upper ∪ lower (both visible)         → source-over
+ *   subtract : upper − lower (keep upper, cut lower) → source-out
+ *              Canvas source-out = keep source where dest is transparent
+ *   intersect: upper ∩ lower (overlap only)          → source-in
+ *              Canvas source-in = keep source where dest is opaque
+ *   exclude  : (upper ∪ lower) − (upper ∩ lower)    → xor
+ */
+var maskCompositeToCanvas = (_a$1 = {},
+    _a$1[0 /* MASK_COMPOSITE.ADD */] = 'source-over',
+    _a$1[1 /* MASK_COMPOSITE.SUBTRACT */] = 'source-out',
+    _a$1[2 /* MASK_COMPOSITE.INTERSECT */] = 'source-in',
+    _a$1[3 /* MASK_COMPOSITE.EXCLUDE */] = 'xor',
+    _a$1);
+var maskComposite = {
+    name: 'mask-composite',
+    initialValue: 'add',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.map(function (token) {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'subtract':
+                        return 1 /* MASK_COMPOSITE.SUBTRACT */;
+                    case 'intersect':
+                        return 2 /* MASK_COMPOSITE.INTERSECT */;
+                    case 'exclude':
+                        return 3 /* MASK_COMPOSITE.EXCLUDE */;
+                    case 'add':
+                    default:
+                        return 0 /* MASK_COMPOSITE.ADD */;
+                }
+            }
+            return 0 /* MASK_COMPOSITE.ADD */;
+        });
+    },
+};
+
+var maskImage = {
+    name: 'mask-image',
+    initialValue: 'none',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: true,
+    parse: function (context, tokens) {
+        if (tokens.length === 0) {
+            return [];
+        }
+        var first = tokens[0];
+        if (first.type === 20 /* TokenType.IDENT_TOKEN */ && first.value === 'none') {
+            return [];
+        }
+        return tokens
+            .filter(function (value) { return nonFunctionArgSeparator(value) && isSupportedImage(value); })
+            .reduce(function (acc, value) {
+            try {
+                acc.push(image.parse(context, value));
+            }
+            catch (e) {
+                context.logger.error("Error parsing mask-image: ".concat(e));
+            }
+            return acc;
+        }, []);
+    },
+};
+
+var maskMode = {
+    name: 'mask-mode',
+    initialValue: 'match-source',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.map(function (token) {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'luminance':
+                        return 1 /* MASK_MODE.LUMINANCE */;
+                    case 'alpha':
+                    case 'match-source':
+                    default:
+                        return 0 /* MASK_MODE.ALPHA */;
+                }
+            }
+            return 0 /* MASK_MODE.ALPHA */;
+        });
+    },
+};
+
+var maskOrigin = {
+    name: 'mask-origin',
+    initialValue: 'border-box',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return tokens.map(function (token) {
+            if (isIdentToken(token)) {
+                switch (token.value) {
+                    case 'padding-box':
+                        return 1 /* BACKGROUND_ORIGIN.PADDING_BOX */;
+                    case 'content-box':
+                        return 2 /* BACKGROUND_ORIGIN.CONTENT_BOX */;
+                }
+            }
+            return 0 /* BACKGROUND_ORIGIN.BORDER_BOX */;
+        });
+    },
+};
+
+var maskPosition = {
+    name: 'mask-position',
+    initialValue: '0% 0%',
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    prefix: true,
+    parse: function (_context, tokens) {
+        return parseFunctionArgs(tokens)
+            .map(function (values) { return values.filter(isLengthPercentage); })
+            .map(parseLengthPercentageTuple);
+    },
+};
+
+var maskRepeat = {
+    name: 'mask-repeat',
+    initialValue: 'no-repeat',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return parseFunctionArgs(tokens)
+            .map(function (values) {
+            return values
+                .filter(isIdentToken)
+                .map(function (token) { return token.value; })
+                .join(' ');
+        })
+            .map(parseMaskRepeat);
+    },
+};
+var parseMaskRepeat = function (value) {
+    switch (value) {
+        case 'no-repeat':
+            return 1 /* BACKGROUND_REPEAT.NO_REPEAT */;
+        case 'repeat-x':
+        case 'repeat no-repeat':
+            return 2 /* BACKGROUND_REPEAT.REPEAT_X */;
+        case 'repeat-y':
+        case 'no-repeat repeat':
+            return 3 /* BACKGROUND_REPEAT.REPEAT_Y */;
+        case 'repeat':
+        default:
+            return 0 /* BACKGROUND_REPEAT.REPEAT */;
+    }
+};
+
+var maskSize = {
+    name: 'mask-size',
+    initialValue: 'auto',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        return parseFunctionArgs(tokens).map(function (values) {
+            return values.filter(function (v) { return isIdentToken(v) || isLengthPercentage(v); });
+        });
+    },
+};
+
 var _a;
 var mixBlendMode = {
     name: 'mix-blend-mode',
@@ -4828,7 +5023,7 @@ var scaleLength = function (token, factor) { return (__assign(__assign({}, token
 var CSSParsedDeclaration = /** @class */ (function () {
     function CSSParsedDeclaration(context, declaration, zoomFactor) {
         if (zoomFactor === void 0) { zoomFactor = 1; }
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         this.animationDuration = parse(context, duration, declaration.animationDuration);
         this.backdropFilter = parse(context, backdropFilter, declaration.backdropFilter);
         this.backgroundAttachment = parse(context, backgroundAttachment, declaration.backgroundAttachment);
@@ -4886,6 +5081,14 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.marginRight = parse(context, marginRight, declaration.marginRight);
         this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
         this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
+        this.maskClip = parse(context, maskClip, (_b = declaration.webkitMaskClip) !== null && _b !== void 0 ? _b : declaration.maskClip);
+        this.maskComposite = parse(context, maskComposite, declaration.maskComposite);
+        this.maskImage = parse(context, maskImage, (_c = declaration.webkitMaskImage) !== null && _c !== void 0 ? _c : declaration.maskImage);
+        this.maskMode = parse(context, maskMode, declaration.maskMode);
+        this.maskOrigin = parse(context, maskOrigin, (_d = declaration.webkitMaskOrigin) !== null && _d !== void 0 ? _d : declaration.maskOrigin);
+        this.maskPosition = parse(context, maskPosition, (_e = declaration.webkitMaskPosition) !== null && _e !== void 0 ? _e : declaration.maskPosition);
+        this.maskRepeat = parse(context, maskRepeat, (_f = declaration.webkitMaskRepeat) !== null && _f !== void 0 ? _f : declaration.maskRepeat);
+        this.maskSize = parse(context, maskSize, (_g = declaration.webkitMaskSize) !== null && _g !== void 0 ? _g : declaration.maskSize);
         this.objectFit = parse(context, objectFit, declaration.objectFit);
         this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
         this.opacity = parse(context, opacity, declaration.opacity);
@@ -4906,9 +5109,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.position = parse(context, position, declaration.position);
         this.rubyAlign = parse(context, rubyAlign, declaration.rubyAlign);
         this.textAlign = parse(context, textAlign, declaration.textAlign);
-        this.textDecorationColor = parse(context, textDecorationColor, (_b = declaration.textDecorationColor) !== null && _b !== void 0 ? _b : declaration.color);
+        this.textDecorationColor = parse(context, textDecorationColor, (_h = declaration.textDecorationColor) !== null && _h !== void 0 ? _h : declaration.color);
         this.textDecorationInset = parse(context, textDecorationInset, declaration.textDecorationInset);
-        this.textDecorationLine = parse(context, textDecorationLine, (_c = declaration.textDecorationLine) !== null && _c !== void 0 ? _c : declaration.textDecoration);
+        this.textDecorationLine = parse(context, textDecorationLine, (_j = declaration.textDecorationLine) !== null && _j !== void 0 ? _j : declaration.textDecoration);
         this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
         this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
@@ -5017,6 +5220,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
     };
     CSSParsedDeclaration.prototype.isBackdropFiltered = function () {
         return this.backdropFilter.length > 0;
+    };
+    CSSParsedDeclaration.prototype.isMasked = function () {
+        return this.maskImage.length > 0;
     };
     CSSParsedDeclaration.prototype.isPositioned = function () {
         return this.position !== 0 /* POSITION.STATIC */;
@@ -6058,6 +6264,7 @@ var createsRealStackingContext = function (node, container, root) {
         container.styles.opacity < 1 ||
         container.styles.isTransformed() ||
         container.styles.isFiltered() ||
+        container.styles.isMasked() ||
         container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */ ||
         (isBodyElement(node) && root.styles.isTransparent()));
 };
@@ -9160,6 +9367,7 @@ var parseStackTree = function (parent, stackingContext, realStackingContext, lis
                 child.styles.opacity < 1 ||
                 child.styles.isTransformed() ||
                 child.styles.isFiltered() ||
+                child.styles.isMasked() ||
                 child.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */) {
                 var order_1 = child.styles.zIndex.order;
                 if (order_1 < 0) {
@@ -9440,6 +9648,59 @@ var calculateBackgroundRepeatPath = function (repeat, _a, _b, backgroundPosition
                 new Vector(Math.round(backgroundPaintingArea.left), Math.round(backgroundPaintingArea.height + backgroundPaintingArea.top)),
             ];
     }
+};
+// ---------------------------------------------------------------------------
+// Mask rendering geometry
+// ---------------------------------------------------------------------------
+/**
+ * Resolves the mask painting area for a given mask-clip value.
+ * MASK_CLIP.NO_CLIP means the mask is not clipped — we return the element
+ * bounds expanded by a generous margin so patterns / gradients can bleed out.
+ */
+var calculateMaskPaintingArea = function (clip, element) {
+    switch (clip) {
+        case 1 /* MASK_CLIP.PADDING_BOX */:
+            return paddingBox(element);
+        case 2 /* MASK_CLIP.CONTENT_BOX */:
+            return contentBox(element);
+        case 3 /* MASK_CLIP.NO_CLIP */:
+            // Return the element bounds — the caller will skip clipping.
+            return element.bounds;
+        case 0 /* MASK_CLIP.BORDER_BOX */:
+        default:
+            return element.bounds;
+    }
+};
+/**
+ * Calculates the geometry needed to render one mask-image layer:
+ * [paintPath, offsetX, offsetY, sizeWidth, sizeHeight].
+ *
+ * Mirrors calculateBackgroundRendering but reads mask-* properties.
+ * mask-attachment is not supported (no CSS property for it); the mask
+ * is always positioned relative to the border-box / padding-box / content-box
+ * according to mask-origin.
+ */
+var calculateMaskRendering = function (container, index, intrinsicSize) {
+    var styles = container.styles;
+    // mask-origin → positioning area (same enum values as background-origin)
+    var origin = getBackgroundValueForIndex(styles.maskOrigin, index);
+    var maskPositioningArea = calculateBackgroundPositioningArea(origin, container);
+    // mask-clip → painting area
+    var clip = getBackgroundValueForIndex(styles.maskClip, index);
+    var maskPaintingArea = calculateMaskPaintingArea(clip, container);
+    // mask-size
+    var maskImageSize = calculateBackgroundSize(getBackgroundValueForIndex(styles.maskSize, index), intrinsicSize, maskPositioningArea);
+    var sizeWidth = maskImageSize[0], sizeHeight = maskImageSize[1];
+    // mask-position
+    var position = getAbsoluteValueForTuple(getBackgroundValueForIndex(styles.maskPosition, index), maskPositioningArea.width - sizeWidth, maskPositioningArea.height - sizeHeight);
+    // mask-repeat
+    var repeat = getBackgroundValueForIndex(styles.maskRepeat, index);
+    var path = calculateBackgroundRepeatPath(repeat, position, maskImageSize, maskPositioningArea, maskPaintingArea);
+    var offsetX = Math.round(maskPositioningArea.left + position[0]);
+    var offsetY = Math.round(maskPositioningArea.top + position[1]);
+    sizeWidth = Math.max(1, sizeWidth);
+    sizeHeight = Math.max(1, sizeHeight);
+    return [path, offsetX, offsetY, sizeWidth, sizeHeight];
 };
 
 var parsePathForBorder = function (curves, borderSide) {
@@ -10576,22 +10837,22 @@ function renderBackgroundImage(state, container) {
 // ---------------------------------------------------------------------------
 function renderSingleBackgroundImageLayer(state, container, backgroundImage, index) {
     return __awaiter(this, void 0, void 0, function () {
-        var image, url, e_1, _a, path, x, y, width, height, pattern, _b, path, x, y, width, height, _c, lineLength, x0_1, x1_1, y0_1, y1_1, stops_1, key, canvas, pattern, _d, path, x, y, width, height, _e, lineLength, x0_2, x1_2, y0_2, y1_2, processedStops, tileStart, tileEnd, tileSize, finalStops_1, MAX_ITER, allStops_1, _loop_1, iter, state_1, _loop_2, iter, key, canvas, pattern, _f, path, left, top_2, width, height, position, x, y, _g, rx, ry, radialGradient_1, midX, midY, f, invF, _h, path, left, top_3, width, height, position, x, y, _j, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_1, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_3, iter, state_2, _loop_4, iter, radialGradient_2, _k, path, left, top_4, width, height, position, tileCx_1, tileCy_1, key, canvas, pattern, _l, path, left, top_5, width, height, position, tileCx_2, tileCy_2, processedStops, allStops_3, key, canvas, pattern;
-        return __generator(this, function (_m) {
-            switch (_m.label) {
+        var image, url, e_1, _a, path, x, y, width, height, pattern, _b, path, x, y, width, height, _c, lineLength, x0_1, x1_1, y0_1, y1_1, stops_1, key, canvas, pattern, _d, path, x, y, width, height, _f, lineLength, x0_2, x1_2, y0_2, y1_2, processedStops, tileStart, tileEnd, tileSize, finalStops_1, MAX_ITER, allStops_1, _loop_1, iter, state_1, _loop_2, iter, key, canvas, pattern, _g, path, left, top_2, width, height, position, x, y, _h, rx, ry, radialGradient_1, midX, midY, f, invF, _j, path, left, top_3, width, height, position, x, y, _k, rx, ry, cx, cy, f, invF, maxDistX, maxDistY, maxRadius, drawRadius, processedStops, scale_1, scaledStops, tileStart, tileEnd, tileSize, allStops_2, MAX_ITER, _loop_3, iter, state_2, _loop_4, iter, radialGradient_2, _l, path, left, top_4, width, height, position, tileCx_1, tileCy_1, key, canvas, pattern, _m, path, left, top_5, width, height, position, tileCx_2, tileCy_2, processedStops, allStops_3, key, canvas, pattern;
+        return __generator(this, function (_o) {
+            switch (_o.label) {
                 case 0:
                     if (!(backgroundImage.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
                     image = void 0;
                     url = backgroundImage.url;
-                    _m.label = 1;
+                    _o.label = 1;
                 case 1:
-                    _m.trys.push([1, 3, , 4]);
+                    _o.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, state.context.cache.match(url)];
                 case 2:
-                    image = _m.sent();
+                    image = _o.sent();
                     return [3 /*break*/, 4];
                 case 3:
-                    e_1 = _m.sent();
+                    e_1 = _o.sent();
                     state.context.error("Error loading background-image ".concat(url), e_1);
                     return [3 /*break*/, 4];
                 case 4:
@@ -10622,7 +10883,7 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                     }
                     else if (isRepeatingLinearGradient(backgroundImage)) {
                         _d = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _d[0], x = _d[1], y = _d[2], width = _d[3], height = _d[4];
-                        _e = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _e[0], x0_2 = _e[1], x1_2 = _e[2], y0_2 = _e[3], y1_2 = _e[4];
+                        _f = calculateGradientDirection(backgroundImage.angle, width, height), lineLength = _f[0], x0_2 = _f[1], x1_2 = _f[2], y0_2 = _f[3], y1_2 = _f[4];
                         processedStops = processColorStops(backgroundImage.stops, lineLength || 1);
                         tileStart = processedStops[0].stop;
                         tileEnd = processedStops[processedStops.length - 1].stop;
@@ -10678,11 +10939,11 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                         }
                     }
                     else if (isRadialGradient(backgroundImage)) {
-                        _f = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _f[0], left = _f[1], top_2 = _f[2], width = _f[3], height = _f[4];
+                        _g = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _g[0], left = _g[1], top_2 = _g[2], width = _g[3], height = _g[4];
                         position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                         x = getAbsoluteValue(position[0], width);
                         y = getAbsoluteValue(position[position.length - 1], height);
-                        _g = calculateRadius(backgroundImage, x, y, width, height), rx = _g[0], ry = _g[1];
+                        _h = calculateRadius(backgroundImage, x, y, width, height), rx = _h[0], ry = _h[1];
                         if (rx > 0 && ry > 0) {
                             radialGradient_1 = state.ctx.createRadialGradient(left + x, top_2 + y, 0, left + x, top_2 + y, rx);
                             prepareStops(processColorStops(backgroundImage.stops, rx * 2)).forEach(function (colorStop) {
@@ -10708,11 +10969,11 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                         }
                     }
                     else if (isRepeatingRadialGradient(backgroundImage)) {
-                        _h = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _h[0], left = _h[1], top_3 = _h[2], width = _h[3], height = _h[4];
+                        _j = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _j[0], left = _j[1], top_3 = _j[2], width = _j[3], height = _j[4];
                         position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                         x = getAbsoluteValue(position[0], width);
                         y = getAbsoluteValue(position[position.length - 1], height);
-                        _j = calculateRadius(backgroundImage, x, y, width, height), rx = _j[0], ry = _j[1];
+                        _k = calculateRadius(backgroundImage, x, y, width, height), rx = _k[0], ry = _k[1];
                         if (rx > 0 && ry > 0) {
                             cx = left + x;
                             cy = top_3 + y;
@@ -10781,7 +11042,7 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                     else if (isConicGradient(backgroundImage)) {
                         if (typeof CanvasRenderingContext2D !== 'undefined' &&
                             typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
-                            _k = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _k[0], left = _k[1], top_4 = _k[2], width = _k[3], height = _k[4];
+                            _l = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _l[0], left = _l[1], top_4 = _l[2], width = _l[3], height = _l[4];
                             if (width > 0 && height > 0) {
                                 position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                                 tileCx_1 = getAbsoluteValue(position[0], width);
@@ -10807,7 +11068,7 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                     else if (isRepeatingConicGradient(backgroundImage)) {
                         if (typeof CanvasRenderingContext2D !== 'undefined' &&
                             typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
-                            _l = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _l[0], left = _l[1], top_5 = _l[2], width = _l[3], height = _l[4];
+                            _m = calculateBackgroundRendering(container, index, [null, null, null], state.context.windowBounds), path = _m[0], left = _m[1], top_5 = _m[2], width = _m[3], height = _m[4];
                             if (width > 0 && height > 0) {
                                 position = backgroundImage.position.length === 0 ? [FIFTY_PERCENT] : backgroundImage.position;
                                 tileCx_2 = getAbsoluteValue(position[0], width);
@@ -10829,7 +11090,7 @@ function renderSingleBackgroundImageLayer(state, container, backgroundImage, ind
                             state.context.logger.error('repeating-conic-gradient is not supported in this browser');
                         }
                     }
-                    _m.label = 6;
+                    _o.label = 6;
                 case 6: return [2 /*return*/];
             }
         });
@@ -10887,8 +11148,8 @@ function renderBackgroundImagePerLayer(state, paint, container) {
 function renderBackgroundClipText(state, paint) {
     return __awaiter(this, void 0, void 0, function () {
         var container, styles, bounds, width, height, offscreen, offCtx, mainCtx, maskCanvas, maskCtx, _a, font, fontFamily, fontSize, wm, baseline, isVertical, _i, _b, textNode, _c, _d, textBound, cx, cy, isSidewaysLR, angle, rotatedBounds;
-        return __generator(this, function (_e) {
-            switch (_e.label) {
+        return __generator(this, function (_f) {
+            switch (_f.label) {
                 case 0:
                     container = paint.container;
                     styles = container.styles;
@@ -10913,7 +11174,7 @@ function renderBackgroundClipText(state, paint) {
                     }
                     return [4 /*yield*/, renderBackgroundImage(state, container)];
                 case 1:
-                    _e.sent();
+                    _f.sent();
                     state.ctx = mainCtx;
                     maskCanvas = state.canvasPool.acquire(width, height);
                     maskCtx = maskCanvas.getContext('2d');
@@ -12338,6 +12599,315 @@ function _renderFieldsetTopBorder(state, paint, border, legendBounds) {
         });
     });
 }
+// ---------------------------------------------------------------------------
+// Mask rendering
+// ---------------------------------------------------------------------------
+/**
+ * Applies CSS `mask-image` to a fully-rendered offscreen canvas.
+ *
+ * Called from _renderStackOffscreen after the element subtree (background,
+ * borders, content, descendants) has been rendered. The mask is applied
+ * in-place to the offscreen canvas by extracting the element region,
+ * masking it, and writing it back.
+ */
+function renderMaskImage(state, paint, offscreenCanvas) {
+    return __awaiter(this, void 0, void 0, function () {
+        var styles, scale, bounds, ox, oy, canvasW, canvasH, maskCanvas, maskCtx, dWidth, dHeight, layers, i, maskImg, intrinsicSize, img, _a, path, offsetX, offsetY, sizeW, sizeH, layerCanvas, layerCtx, _i, _b, effect, te, savedCtx, clip, mode, composite, op, offCtx;
+        var _c;
+        return __generator(this, function (_d) {
+            switch (_d.label) {
+                case 0:
+                    styles = paint.container.styles;
+                    if (!styles.isMasked()) {
+                        return [2 /*return*/];
+                    }
+                    scale = state.options.scale;
+                    bounds = paint.container.bounds;
+                    ox = state.options.x;
+                    oy = state.options.y;
+                    canvasW = offscreenCanvas.width;
+                    canvasH = offscreenCanvas.height;
+                    if (canvasW <= 0 || canvasH <= 0) {
+                        return [2 /*return*/];
+                    }
+                    maskCanvas = state.canvasPool.acquire(canvasW, canvasH);
+                    maskCtx = maskCanvas.getContext('2d');
+                    maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    maskCtx.clearRect(0, 0, canvasW, canvasH);
+                    dWidth = Math.ceil(bounds.width * scale);
+                    dHeight = Math.ceil(bounds.height * scale);
+                    if (dWidth <= 0 || dHeight <= 0) {
+                        state.canvasPool.release(maskCanvas);
+                        return [2 /*return*/];
+                    }
+                    layers = styles.maskImage;
+                    i = layers.length - 1;
+                    _d.label = 1;
+                case 1:
+                    if (!(i >= 0)) return [3 /*break*/, 11];
+                    maskImg = layers[i];
+                    intrinsicSize = [null, null, null];
+                    if (!(maskImg.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
+                    _d.label = 2;
+                case 2:
+                    _d.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, state.context.cache.match(maskImg.url)];
+                case 3:
+                    img = _d.sent();
+                    intrinsicSize = [img.width, img.height, img.width / img.height];
+                    return [3 /*break*/, 5];
+                case 4:
+                    _d.sent();
+                    return [3 /*break*/, 10];
+                case 5:
+                    _a = calculateMaskRendering(paint.container, i, intrinsicSize), path = _a[0], offsetX = _a[1], offsetY = _a[2], sizeW = _a[3], sizeH = _a[4];
+                    layerCanvas = state.canvasPool.acquire(canvasW, canvasH);
+                    layerCtx = layerCanvas.getContext('2d');
+                    layerCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    layerCtx.clearRect(0, 0, canvasW, canvasH);
+                    // Base CTM: same as the offscreen canvas (scale + translate for viewport offset).
+                    layerCtx.setTransform(scale, 0, 0, scale, -ox * scale, -oy * scale);
+                    // Apply the element's own CSS transform effects (rotate, scale, translate…)
+                    // so the mask gradient/image is defined in the element's local space.
+                    for (_i = 0, _b = paint.effects; _i < _b.length; _i++) {
+                        effect = _b[_i];
+                        if (isTransformEffect(effect)) {
+                            te = effect;
+                            layerCtx.translate(te.offsetX, te.offsetY);
+                            layerCtx.transform(te.matrix[0], te.matrix[1], te.matrix[2], te.matrix[3], te.matrix[4], te.matrix[5]);
+                            layerCtx.translate(-te.offsetX, -te.offsetY);
+                        }
+                    }
+                    savedCtx = state.ctx;
+                    state.ctx = layerCtx;
+                    clip = getBackgroundValueForIndex(styles.maskClip, i);
+                    if (clip !== 3 /* MASK_CLIP.NO_CLIP */) {
+                        canvasPath(state, _getMaskClipPath(clip, paint.curves));
+                        layerCtx.clip();
+                    }
+                    _d.label = 6;
+                case 6:
+                    _d.trys.push([6, , 8, 9]);
+                    return [4 /*yield*/, _renderMaskLayer(state, paint.container, maskImg, path, offsetX, offsetY, sizeW, sizeH)];
+                case 7:
+                    _d.sent();
+                    return [3 /*break*/, 9];
+                case 8:
+                    state.ctx = savedCtx;
+                    return [7 /*endfinally*/];
+                case 9:
+                    mode = getBackgroundValueForIndex(styles.maskMode, i);
+                    if (mode === 1 /* MASK_MODE.LUMINANCE */) {
+                        _applyLuminanceMask(layerCanvas);
+                    }
+                    maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    composite = getBackgroundValueForIndex(styles.maskComposite, i);
+                    op = i === layers.length - 1
+                        ? 'source-over'
+                        : ((_c = maskCompositeToCanvas[composite]) !== null && _c !== void 0 ? _c : 'source-over');
+                    maskCtx.globalCompositeOperation = op;
+                    maskCtx.drawImage(layerCanvas, 0, 0); // full-size: no offset needed
+                    maskCtx.globalCompositeOperation = 'source-over';
+                    state.canvasPool.release(layerCanvas);
+                    _d.label = 10;
+                case 10:
+                    i--;
+                    return [3 /*break*/, 1];
+                case 11:
+                    offCtx = offscreenCanvas.getContext('2d');
+                    offCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    offCtx.globalCompositeOperation = 'destination-in';
+                    offCtx.drawImage(maskCanvas, 0, 0); // same size, no offset
+                    offCtx.globalCompositeOperation = 'source-over';
+                    state.canvasPool.release(maskCanvas);
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+// ---------------------------------------------------------------------------
+// Mask helpers
+// ---------------------------------------------------------------------------
+/** Returns the Path[] for the mask-clip area using the element's BoundCurves. */
+function _getMaskClipPath(clip, curves) {
+    switch (clip) {
+        case 1 /* MASK_CLIP.PADDING_BOX */:
+            return calculatePaddingBoxPath(curves);
+        case 2 /* MASK_CLIP.CONTENT_BOX */:
+            return calculateContentBoxPath(curves);
+        case 0 /* MASK_CLIP.BORDER_BOX */:
+        default:
+            return calculateBorderBoxPath(curves);
+    }
+}
+/**
+ * Renders a single mask-image layer (URL or gradient) into the current
+ * state.ctx, reusing the same gradient/image logic as background-image.
+ */
+function _renderMaskLayer(state, _container, maskImg, path, offsetX, offsetY, sizeW, sizeH, _index) {
+    return __awaiter(this, void 0, void 0, function () {
+        var ctx, url, img, pattern, e_3, _a, lineLength, x0_3, x1_3, y0_3, y1_3, stops_2, key, gradCanvas, pattern, _b, lineLength, x0_4, x1_4, y0_4, y1_4, processedStops, tileStart, tileEnd, tileSize, finalStops_2, MAX_ITER, allStops_4, _loop_7, iter, state_4, _loop_8, iter, key, gradCanvas, pattern, position, x, y, _c, rx, ry, gradient_3, midX, midY, f, position, cx_1, cy_1, key, gradCanvas, pattern;
+        return __generator(this, function (_d) {
+            switch (_d.label) {
+                case 0:
+                    ctx = state.ctx;
+                    if (!(maskImg.type === 0 /* CSSImageType.URL */)) return [3 /*break*/, 5];
+                    url = maskImg.url;
+                    _d.label = 1;
+                case 1:
+                    _d.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, state.context.cache.match(url)];
+                case 2:
+                    img = _d.sent();
+                    if (img && img.width > 0 && img.height > 0) {
+                        pattern = ctx.createPattern(resizeImage(state, img, sizeW, sizeH), 'repeat');
+                        renderRepeat(state, path, pattern, offsetX, offsetY);
+                    }
+                    return [3 /*break*/, 4];
+                case 3:
+                    e_3 = _d.sent();
+                    state.context.error("Error loading mask-image ".concat(url), e_3);
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
+                case 5:
+                    // Gradients: delegate to the same helpers used by background-image rendering.
+                    if (isLinearGradient(maskImg)) {
+                        _a = calculateGradientDirection(maskImg.angle, sizeW, sizeH), lineLength = _a[0], x0_3 = _a[1], x1_3 = _a[2], y0_3 = _a[3], y1_3 = _a[4];
+                        stops_2 = processColorStops(maskImg.stops, lineLength || 1);
+                        key = "mask-lin|".concat(x0_3, ",").concat(y0_3, ",").concat(x1_3, ",").concat(y1_3, "|").concat(stops_2.map(function (s) { return "".concat(s.color, "@").concat(s.stop); }).join(','), "|").concat(sizeW, "x").concat(sizeH);
+                        gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, function (gCtx, w, h) {
+                            var gradient = gCtx.createLinearGradient(x0_3, y0_3, x1_3, y1_3);
+                            stops_2.forEach(function (s) { return gradient.addColorStop(s.stop, asString(s.color)); });
+                            gCtx.fillStyle = gradient;
+                            gCtx.fillRect(0, 0, w, h);
+                        });
+                        pattern = ctx.createPattern(gradCanvas, 'repeat');
+                        renderRepeat(state, path, pattern, offsetX, offsetY);
+                        return [2 /*return*/];
+                    }
+                    if (isRepeatingLinearGradient(maskImg)) {
+                        _b = calculateGradientDirection(maskImg.angle, sizeW, sizeH), lineLength = _b[0], x0_4 = _b[1], x1_4 = _b[2], y0_4 = _b[3], y1_4 = _b[4];
+                        processedStops = processColorStops(maskImg.stops, lineLength || 1);
+                        tileStart = processedStops[0].stop;
+                        tileEnd = processedStops[processedStops.length - 1].stop;
+                        tileSize = tileEnd - tileStart;
+                        finalStops_2 = processedStops;
+                        if (tileSize > 0) {
+                            MAX_ITER = 512;
+                            allStops_4 = [];
+                            _loop_7 = function (iter) {
+                                var offset = iter * tileSize;
+                                processedStops.forEach(function (s) { return allStops_4.push({ stop: Math.max(0, s.stop - offset), color: s.color }); });
+                                if (tileStart - offset <= 0)
+                                    return "break";
+                            };
+                            for (iter = 1; iter <= MAX_ITER && tileStart - iter * tileSize > -tileSize; iter++) {
+                                state_4 = _loop_7(iter);
+                                if (state_4 === "break")
+                                    break;
+                            }
+                            processedStops.forEach(function (s) { return allStops_4.push({ stop: s.stop, color: s.color }); });
+                            _loop_8 = function (iter) {
+                                var offset = iter * tileSize;
+                                processedStops.forEach(function (s) { return allStops_4.push({ stop: Math.min(1, s.stop + offset), color: s.color }); });
+                            };
+                            for (iter = 1; iter <= MAX_ITER && tileEnd + (iter - 1) * tileSize < 1; iter++) {
+                                _loop_8(iter);
+                            }
+                            if (allStops_4[0].stop > 0)
+                                allStops_4.unshift({ stop: 0, color: allStops_4[0].color });
+                            if (allStops_4[allStops_4.length - 1].stop < 1)
+                                allStops_4.push({ stop: 1, color: allStops_4[allStops_4.length - 1].color });
+                            finalStops_2 = allStops_4;
+                        }
+                        key = "mask-rlin|".concat(x0_4, ",").concat(y0_4, ",").concat(x1_4, ",").concat(y1_4, "|").concat(finalStops_2.map(function (s) { return "".concat(s.color, "@").concat(s.stop); }).join(','), "|").concat(sizeW, "x").concat(sizeH);
+                        gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, function (gCtx, w, h) {
+                            var gradient = gCtx.createLinearGradient(x0_4, y0_4, x1_4, y1_4);
+                            finalStops_2.forEach(function (s) { return gradient.addColorStop(s.stop, asString(s.color)); });
+                            gCtx.fillStyle = gradient;
+                            gCtx.fillRect(0, 0, w, h);
+                        });
+                        pattern = ctx.createPattern(gradCanvas, 'repeat');
+                        renderRepeat(state, path, pattern, offsetX, offsetY);
+                        return [2 /*return*/];
+                    }
+                    if (isRadialGradient(maskImg) || isRepeatingRadialGradient(maskImg)) {
+                        position = maskImg.position.length === 0 ? [FIFTY_PERCENT] : maskImg.position;
+                        x = getAbsoluteValue(position[0], sizeW);
+                        y = getAbsoluteValue(position[position.length - 1], sizeH);
+                        _c = calculateRadius(maskImg, x, y, sizeW, sizeH), rx = _c[0], ry = _c[1];
+                        if (rx > 0 && ry > 0) {
+                            gradient_3 = ctx.createRadialGradient(offsetX + x, offsetY + y, 0, offsetX + x, offsetY + y, rx);
+                            processColorStops(maskImg.stops, rx * 2).forEach(function (s) { return gradient_3.addColorStop(s.stop, asString(s.color)); });
+                            canvasPath(state, path);
+                            ctx.fillStyle = gradient_3;
+                            if (rx !== ry) {
+                                midX = offsetX + sizeW / 2;
+                                midY = offsetY + sizeH / 2;
+                                f = ry / rx;
+                                ctx.save();
+                                ctx.translate(midX, midY);
+                                ctx.transform(1, 0, 0, f, 0, 0);
+                                ctx.translate(-midX, -midY);
+                                ctx.fillRect(offsetX, (offsetY - midY) / f + midY, sizeW, sizeH / f);
+                                ctx.restore();
+                            }
+                            else {
+                                ctx.fill();
+                            }
+                        }
+                        return [2 /*return*/];
+                    }
+                    if (isConicGradient(maskImg) || isRepeatingConicGradient(maskImg)) {
+                        if (typeof CanvasRenderingContext2D !== 'undefined' &&
+                            typeof CanvasRenderingContext2D.prototype.createConicGradient === 'function') {
+                            position = maskImg.position.length === 0 ? [FIFTY_PERCENT] : maskImg.position;
+                            cx_1 = getAbsoluteValue(position[0], sizeW);
+                            cy_1 = getAbsoluteValue(position[position.length - 1], sizeH);
+                            key = "mask-conic|".concat(maskImg.startAngle, "|").concat(cx_1, ",").concat(cy_1, "|").concat(sizeW, "x").concat(sizeH);
+                            gradCanvas = getLinearGradientCanvas(state, key, sizeW, sizeH, function (gCtx, w, h) {
+                                var conicGrad = gCtx.createConicGradient(maskImg.startAngle - Math.PI / 2, cx_1, cy_1);
+                                processColorStops(maskImg.stops, 360).forEach(function (s) { return conicGrad.addColorStop(s.stop, asString(s.color)); });
+                                gCtx.fillStyle = conicGrad;
+                                gCtx.fillRect(0, 0, w, h);
+                            });
+                            pattern = ctx.createPattern(gradCanvas, 'repeat');
+                            renderRepeat(state, path, pattern, offsetX, offsetY);
+                        }
+                        return [2 /*return*/];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+/**
+ * Converts the RGB luminance of each pixel in `canvas` to its alpha channel,
+ * setting alpha = luminance and RGB = white (matching CSS mask-mode: luminance).
+ *
+ * Formula: L = 0.2126R + 0.7152G + 0.0722B  (linearised sRGB / BT.709)
+ */
+function _applyLuminanceMask(canvas) {
+    var ctx = canvas.getContext('2d');
+    var width = canvas.width, height = canvas.height;
+    if (width <= 0 || height <= 0)
+        return;
+    var imageData = ctx.getImageData(0, 0, width, height);
+    var data = imageData.data;
+    for (var i = 0; i < data.length; i += 4) {
+        var r = data[i] / 255;
+        var g = data[i + 1] / 255;
+        var b = data[i + 2] / 255;
+        var a = data[i + 3] / 255;
+        // Luminance weighted by existing alpha.
+        var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) * a;
+        data[i] = 255;
+        data[i + 1] = 255;
+        data[i + 2] = 255;
+        data[i + 3] = Math.round(lum * 255);
+    }
+    ctx.putImageData(imageData, 0, 0);
+}
 
 var calculateObjectFitBounds = function (objectFit, naturalWidth, naturalHeight, clientWidth, clientHeight, objectPositionX, objectPositionY) {
     if (objectPositionX === void 0) { objectPositionX = 0.5; }
@@ -13387,7 +13957,7 @@ var CanvasRenderer = /** @class */ (function (_super) {
     // -------------------------------------------------------------------------
     CanvasRenderer.prototype.renderStack = function (stack) {
         return __awaiter(this, void 0, void 0, function () {
-            var styles, offscreenFilters, rootOpacity;
+            var styles, offscreenFilters, rootOpacity, needsMask;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -13395,8 +13965,9 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         if (!styles.isVisible()) return [3 /*break*/, 4];
                         offscreenFilters = this._getOffscreenFilters(stack);
                         rootOpacity = stack.element.effects.find(isOpacityEffect);
-                        if (!(offscreenFilters || rootOpacity)) return [3 /*break*/, 2];
-                        return [4 /*yield*/, this._renderStackOffscreen(stack, offscreenFilters, rootOpacity)];
+                        needsMask = styles.isMasked();
+                        if (!(offscreenFilters || rootOpacity || needsMask)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this._renderStackOffscreen(stack, offscreenFilters, rootOpacity, needsMask)];
                     case 1:
                         _a.sent();
                         return [3 /*break*/, 4];
@@ -13441,11 +14012,12 @@ var CanvasRenderer = /** @class */ (function (_super) {
      * order would be render → filter → clip, which is not achievable with Canvas 2D
      * clip primitives alone. This is a known Canvas 2D limitation.
      */
-    CanvasRenderer.prototype._renderStackOffscreen = function (stack, filterString, rootOpacity) {
-        return __awaiter(this, void 0, void 0, function () {
-            var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, ancestorClips, activeCount, i, filtered, filteredCtx, _i, ancestorClips_1, clip;
+    CanvasRenderer.prototype._renderStackOffscreen = function (stack_1, filterString_1, rootOpacity_1) {
+        return __awaiter(this, arguments, void 0, function (stack, filterString, rootOpacity, needsMask) {
+            var mainCanvas, mainCtx, savedActiveEffects, offscreen, offCtx, ancestorClips, activeCount, i, filtered, filteredCtx, postFilter, _i, ancestorClips_1, clip;
             var _a;
             var _b;
+            if (needsMask === void 0) { needsMask = false; }
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
@@ -13492,12 +14064,20 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         }
                         this._activeEffects.length = 0;
                         filtered = null;
-                        if (filterString && rootOpacity) {
+                        if (filterString) {
                             filtered = this.state.canvasPool.acquire(offscreen.width, offscreen.height);
                             filteredCtx = filtered.getContext('2d');
                             filteredCtx.filter = filterString;
                             filteredCtx.drawImage(offscreen, 0, 0);
+                            filteredCtx.filter = 'none';
                         }
+                        postFilter = filtered !== null && filtered !== void 0 ? filtered : offscreen;
+                        if (!needsMask) return [3 /*break*/, 6];
+                        return [4 /*yield*/, renderMaskImage(this.state, stack.element, postFilter)];
+                    case 5:
+                        _c.sent();
+                        _c.label = 6;
+                    case 6:
                         this.state.ctx.save();
                         // Re-apply ancestor clips in device space. Their paths are in CSS (world)
                         // coordinates, so lay them down under the base scale/translate transform;
@@ -13516,20 +14096,12 @@ var CanvasRenderer = /** @class */ (function (_super) {
                                 }
                             }
                         }
-                        if (filtered) {
-                            // Second pass: opacity only, over the already-filtered surface.
-                            this.state.ctx.globalAlpha = rootOpacity ? rootOpacity.opacity : 1;
-                        }
-                        else {
-                            if (filterString) {
-                                this.state.ctx.filter = filterString;
-                            }
-                            if (rootOpacity) {
-                                this.state.ctx.globalAlpha = rootOpacity.opacity;
-                            }
+                        // Step 3 — Apply opacity and composite onto main canvas.
+                        if (rootOpacity) {
+                            this.state.ctx.globalAlpha = rootOpacity.opacity;
                         }
                         this.state.ctx.setTransform(1, 0, 0, 1, 0, 0);
-                        this.state.ctx.drawImage(filtered !== null && filtered !== void 0 ? filtered : offscreen, 0, 0);
+                        this.state.ctx.drawImage(postFilter, 0, 0);
                         this.state.ctx.restore();
                         // Return the offscreen canvases to the pool for reuse.
                         if (filtered) {

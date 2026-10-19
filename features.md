@@ -102,6 +102,21 @@ Below is a list of all the supported CSS properties and values.
 - min-height
 - min-width
 - mix-blend-mode
+- mask
+    - mask-image
+        - url() — SVG and PNG images via alpha channel
+        - linear-gradient(), repeating-linear-gradient()
+        - radial-gradient(), repeating-radial-gradient()
+        - conic-gradient(), repeating-conic-gradient()
+        - multiple layers supported
+    - mask-size (`auto`, `cover`, `contain`, lengths, percentages)
+    - mask-position
+    - mask-repeat (`repeat`, `no-repeat`, `repeat-x`, `repeat-y`)
+    - mask-origin (`border-box`, `padding-box`, `content-box`)
+    - mask-clip (`border-box`, `padding-box`, `content-box`, `no-clip`)
+    - mask-mode (`alpha`, `luminance`, `match-source`)
+    - mask-composite (`add`, `subtract`, `intersect`, `exclude`)
+    - `-webkit-mask-*` prefixed properties supported as fallback
 - object-fit
 - object-position
 - opacity

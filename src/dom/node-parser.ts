@@ -193,6 +193,7 @@ const createsRealStackingContext = (node: Element, container: ElementContainer, 
         container.styles.opacity < 1 ||
         container.styles.isTransformed() ||
         container.styles.isFiltered() ||
+        container.styles.isMasked() ||
         container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL ||
         (isBodyElement(node) && root.styles.isTransparent())
     );

@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Mask mixed tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <script type="text/javascript" src="../../test.js"></script>
+        <style type="text/css">
+            html { background: #1a1a2e; }
+            body { margin: 20px; font-family: sans-serif; }
+
+            /* ----------------------------------------------------------------
+               Card with mask + text + box-shadow
+            ---------------------------------------------------------------- */
+            .card {
+                display: inline-block;
+                vertical-align: top;
+                width: 220px;
+                margin: 10px;
+                padding: 20px;
+                background: linear-gradient(135deg, #e96c6c, #f5a623, #4ecdc4);
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                color: #fff;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            .card h2 {
+                margin: 0 0 8px;
+                font-size: 18px;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            }
+
+            .card p {
+                margin: 0 0 12px;
+                opacity: 0.9;
+            }
+
+            /* ----------------------------------------------------------------
+               Case 1 — mask-image: radial gradient on a card with text
+            ---------------------------------------------------------------- */
+            .card-radial-mask {
+                mask-image: radial-gradient(ellipse 90% 80% at 30% 40%, black 50%, transparent 80%);
+                -webkit-mask-image: radial-gradient(ellipse 90% 80% at 30% 40%, black 50%, transparent 80%);
+            }
+
+            /* ----------------------------------------------------------------
+               Case 2 — mask + border-radius + text-shadow + border
+            ---------------------------------------------------------------- */
+            .card-corner-mask {
+                border: 3px solid rgba(255,255,255,0.5);
+                mask-image: linear-gradient(to bottom right, black 60%, transparent 100%);
+                -webkit-mask-image: linear-gradient(to bottom right, black 60%, transparent 100%);
+            }
+
+            /* ----------------------------------------------------------------
+               Case 3 — mask on a card with a nested element that has opacity
+            ---------------------------------------------------------------- */
+            .card-opacity-child {
+                mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+                -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
+            }
+
+            .card-opacity-child .badge {
+                display: inline-block;
+                background: rgba(0, 0, 0, 0.35);
+                border-radius: 4px;
+                padding: 2px 8px;
+                font-size: 11px;
+                opacity: 0.85;
+                letter-spacing: 0.5px;
+            }
+
+            /* ----------------------------------------------------------------
+               Case 4 — mask + transform (rotated card)
+            ---------------------------------------------------------------- */
+            .card-transform {
+                transform: rotate(-3deg);
+                mask-image: radial-gradient(circle at 70% 30%, black 45%, transparent 70%);
+                -webkit-mask-image: radial-gradient(circle at 70% 30%, black 45%, transparent 70%);
+            }
+
+            /* ----------------------------------------------------------------
+               Case 5 — text-heavy card with repeating stripe mask
+            ---------------------------------------------------------------- */
+            .card-stripe-mask {
+                mask-image: repeating-linear-gradient(
+                    0deg,
+                    black 0px, black 14px,
+                    transparent 14px, transparent 20px
+                );
+                -webkit-mask-image: repeating-linear-gradient(
+                    0deg,
+                    black 0px, black 14px,
+                    transparent 14px, transparent 20px
+                );
+            }
+
+            /* ----------------------------------------------------------------
+               Case 6 — SVG mask on a card with multiple styled children
+            ---------------------------------------------------------------- */
+            .card-svg-mask {
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='180'%3E%3Cellipse cx='130' cy='90' rx='120' ry='75' fill='white'/%3E%3C/svg%3E");
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='180'%3E%3Cellipse cx='130' cy='90' rx='120' ry='75' fill='white'/%3E%3C/svg%3E");
+                mask-size: cover;
+                -webkit-mask-size: cover;
+            }
+
+            .card-svg-mask .tag {
+                display: inline-block;
+                background: rgba(255,255,255,0.2);
+                border-radius: 20px;
+                padding: 3px 10px;
+                font-size: 11px;
+                margin: 2px 2px 0 0;
+                border: 1px solid rgba(255,255,255,0.4);
+            }
+
+            /* ----------------------------------------------------------------
+               Case 7 — mask on element with filter (blur on child)
+            ---------------------------------------------------------------- */
+            .card-filter-mask {
+                mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 65%);
+                -webkit-mask-image: radial-gradient(circle at 50% 50%, black 30%, transparent 65%);
+                background: linear-gradient(45deg, #667eea, #764ba2);
+            }
+
+            .card-filter-mask .blurred {
+                filter: blur(1px);
+                opacity: 0.8;
+            }
+
+            /* ----------------------------------------------------------------
+               Case 8 — mask on an element with overflow:hidden children
+            ---------------------------------------------------------------- */
+            .card-overflow {
+                padding: 0;
+                overflow: hidden;
+                mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+                -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+            }
+
+            .card-overflow .header {
+                background: rgba(0,0,0,0.3);
+                padding: 12px 20px;
+                font-weight: bold;
+                font-size: 13px;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+            }
+
+            .card-overflow .body {
+                padding: 12px 20px 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Case 1: radial gradient mask on card with text -->
+        <div class="card card-radial-mask">
+            <h2>Radial mask</h2>
+            <p>This card has a radial gradient mask that fades the bottom-right corner to transparent.</p>
+            <span style="font-size:12px; opacity:0.7;">gradient mask · text · shadow</span>
+        </div>
+
+        <!-- Case 2: diagonal linear mask + border + border-radius -->
+        <div class="card card-corner-mask">
+            <h2>Corner fade</h2>
+            <p>Linear mask diagonally fading to transparent, combined with border-radius and border.</p>
+            <span style="font-size:12px; opacity:0.7;">linear mask · border · radius</span>
+        </div>
+
+        <!-- Case 3: fade-in/out mask with nested opacity child -->
+        <div class="card card-opacity-child">
+            <h2>Fade sides</h2>
+            <p>Mask fades on left and right. <span class="badge">BADGE</span> has opacity.</p>
+            <span style="font-size:12px; opacity:0.7;">linear mask · nested opacity</span>
+        </div>
+
+        <!-- Case 4: transform + radial mask -->
+        <div class="card card-transform">
+            <h2>Rotated card</h2>
+            <p>This card is rotated 3° and has a radial mask at the top-right.</p>
+            <span style="font-size:12px; opacity:0.7;">radial mask · transform</span>
+        </div>
+
+        <!-- Case 5: repeating stripe mask on text-heavy card -->
+        <div class="card card-stripe-mask">
+            <h2>Stripe mask</h2>
+            <p>Horizontal stripes mask the card. Text is only visible through the opaque bands.</p>
+            <p style="font-size:12px;">Line 1 · Line 2 · Line 3</p>
+            <span style="font-size:12px; opacity:0.7;">repeating-linear · text</span>
+        </div>
+
+        <!-- Case 6: SVG ellipse mask with tags -->
+        <div class="card card-svg-mask">
+            <h2>SVG ellipse</h2>
+            <p>An SVG ellipse mask clips the card to an oval shape.</p>
+            <span class="tag">HTML</span>
+            <span class="tag">CSS</span>
+            <span class="tag">Canvas</span>
+        </div>
+
+        <!-- Case 7: radial mask + blur filter on child -->
+        <div class="card card-filter-mask">
+            <h2>Filter child</h2>
+            <p class="blurred">This paragraph has blur(1px) applied via filter.</p>
+            <span style="font-size:12px; opacity:0.7;">radial mask · filter</span>
+        </div>
+
+        <!-- Case 8: fade-out bottom + overflow:hidden -->
+        <div class="card card-overflow">
+            <div class="header">Overflow hidden</div>
+            <div class="body">
+                <p style="margin:0 0 6px">Card content with overflow:hidden and a bottom fade mask.</p>
+                <span style="font-size:12px; opacity:0.7;">linear mask · overflow</span>
+            </div>
+        </div>
+    </body>
+</html>

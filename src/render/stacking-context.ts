@@ -196,6 +196,7 @@ const parseStackTree = (
                 child.styles.opacity < 1 ||
                 child.styles.isTransformed() ||
                 child.styles.isFiltered() ||
+                child.styles.isMasked() ||
                 child.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL
             ) {
                 const order = child.styles.zIndex.order;

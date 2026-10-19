@@ -72,6 +72,14 @@ import { listStyleImage } from './property-descriptors/list-style-image';
 import { listStylePosition } from './property-descriptors/list-style-position';
 import { listStyleType } from './property-descriptors/list-style-type';
 import { marginBottom, marginLeft, marginRight, marginTop } from './property-descriptors/margin';
+import { maskClip } from './property-descriptors/mask-clip';
+import { maskComposite, MaskCompositeList } from './property-descriptors/mask-composite';
+import { maskImage } from './property-descriptors/mask-image';
+import { maskMode, MaskModeList } from './property-descriptors/mask-mode';
+import { maskOrigin } from './property-descriptors/mask-origin';
+import { maskPosition } from './property-descriptors/mask-position';
+import { maskRepeat } from './property-descriptors/mask-repeat';
+import { maskSize } from './property-descriptors/mask-size';
 import { MIX_BLEND_MODE, mixBlendMode as mixBlendModeDescriptor } from './property-descriptors/mix-blend-mode';
 import { objectFit } from './property-descriptors/object-fit';
 import { objectPosition } from './property-descriptors/object-position';
@@ -200,6 +208,14 @@ export class CSSParsedDeclaration {
     marginRight: CSSValue;
     marginBottom: CSSValue;
     marginLeft: CSSValue;
+    maskClip: ReturnType<typeof maskClip.parse>;
+    maskComposite: MaskCompositeList;
+    maskImage: ReturnType<typeof maskImage.parse>;
+    maskMode: MaskModeList;
+    maskOrigin: ReturnType<typeof maskOrigin.parse>;
+    maskPosition: ReturnType<typeof maskPosition.parse>;
+    maskRepeat: ReturnType<typeof maskRepeat.parse>;
+    maskSize: ReturnType<typeof maskSize.parse>;
     objectFit: ReturnType<typeof objectFit.parse>;
     objectPosition: ReturnType<typeof objectPosition.parse>;
     opacity: ReturnType<typeof opacity.parse>;
@@ -301,6 +317,42 @@ export class CSSParsedDeclaration {
         this.marginRight = parse(context, marginRight, declaration.marginRight);
         this.marginBottom = parse(context, marginBottom, declaration.marginBottom);
         this.marginLeft = parse(context, marginLeft, declaration.marginLeft);
+        this.maskClip = parse(
+            context,
+            maskClip,
+            (declaration as CSSStyleDeclaration & { webkitMaskClip?: string }).webkitMaskClip ?? declaration.maskClip,
+        );
+        this.maskComposite = parse(context, maskComposite, declaration.maskComposite);
+        this.maskImage = parse(
+            context,
+            maskImage,
+            (declaration as CSSStyleDeclaration & { webkitMaskImage?: string }).webkitMaskImage ??
+                declaration.maskImage,
+        );
+        this.maskMode = parse(context, maskMode, declaration.maskMode);
+        this.maskOrigin = parse(
+            context,
+            maskOrigin,
+            (declaration as CSSStyleDeclaration & { webkitMaskOrigin?: string }).webkitMaskOrigin ??
+                declaration.maskOrigin,
+        );
+        this.maskPosition = parse(
+            context,
+            maskPosition,
+            (declaration as CSSStyleDeclaration & { webkitMaskPosition?: string }).webkitMaskPosition ??
+                declaration.maskPosition,
+        );
+        this.maskRepeat = parse(
+            context,
+            maskRepeat,
+            (declaration as CSSStyleDeclaration & { webkitMaskRepeat?: string }).webkitMaskRepeat ??
+                declaration.maskRepeat,
+        );
+        this.maskSize = parse(
+            context,
+            maskSize,
+            (declaration as CSSStyleDeclaration & { webkitMaskSize?: string }).webkitMaskSize ?? declaration.maskSize,
+        );
         this.objectFit = parse(context, objectFit, declaration.objectFit);
         this.objectPosition = parse(context, objectPosition, declaration.objectPosition);
         this.opacity = parse(context, opacity, declaration.opacity);
@@ -471,6 +523,10 @@ export class CSSParsedDeclaration {
 
     isBackdropFiltered(): boolean {
         return this.backdropFilter.length > 0;
+    }
+
+    isMasked(): boolean {
+        return this.maskImage.length > 0;
     }
 
     isPositioned(): boolean {
