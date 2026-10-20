@@ -22,6 +22,7 @@ import {
     OpacityEffect,
     OverflowClipEffect,
     Path2DClipEffect,
+    ReflectEffect,
     TransformEffect,
 } from './effects';
 import { equalPath } from './path';
@@ -129,6 +130,11 @@ export class ElementPaint {
 
         if (this.container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL) {
             this.effects.push(new MixBlendModeEffect(this.container.styles.mixBlendMode));
+        }
+
+        if (this.container.styles.webkitBoxReflect !== null) {
+            const reflect = this.container.styles.webkitBoxReflect;
+            this.effects.push(new ReflectEffect(reflect.direction, reflect.offset, reflect.mask));
         }
     }
 

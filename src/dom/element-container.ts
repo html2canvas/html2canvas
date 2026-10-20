@@ -1,7 +1,9 @@
 import { Context } from '../core/context';
 import { DebuggerType, isDebugging } from '../core/debugger';
-import { CSSParsedDeclaration } from '../css/index';
+import { CSSParsedDeclaration, parse as parseCSSProperty } from '../css/index';
 import { Bounds, parseBounds } from '../css/layout/bounds';
+import { webkitBoxReflect as webkitBoxReflectDescriptor } from '../css/property-descriptors/webkit-box-reflect';
+import { DATA_ATTR_BOX_REFLECT } from './clone-attributes';
 import { isHTMLElementNode } from './node-parser';
 import { TextContainer } from './text-container';
 
@@ -73,6 +75,18 @@ export class ElementContainer {
         }
 
         this.styles = new CSSParsedDeclaration(context, computedStyle, zoomFactor);
+
+        // On Firefox, -webkit-box-reflect is not in getComputedStyle. The document-cloner
+        // stores the value in a data attribute; read it here and override the parsed style.
+        if (isHTMLElementNode(element)) {
+            const reflectAttr = (element as HTMLElement).getAttribute(DATA_ATTR_BOX_REFLECT);
+            if (reflectAttr && this.styles.webkitBoxReflect === null) {
+                const parsed = parseCSSProperty(context, webkitBoxReflectDescriptor, reflectAttr);
+                if (parsed !== null) {
+                    this.styles.webkitBoxReflect = parsed;
+                }
+            }
+        }
 
         if (isHTMLElementNode(element)) {
             if (this.styles.animationDuration.some(duration => duration > 0)) {
