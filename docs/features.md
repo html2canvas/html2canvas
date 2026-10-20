@@ -11,10 +11,11 @@ Below is a list of all the supported CSS properties and values.
 
 ## Properties
 
+- accent-color (`<color>` and `auto`; controls the glyph colour of checked `<input type="checkbox">` and `<input type="radio">`)
 - background
     - background-attachment (`scroll`, `fixed`, `local`)
     - background-blend-mode
-    - background-clip
+    - background-clip (includes `text`)
     - background-color
     - background-image
         - url()
@@ -24,6 +25,7 @@ Below is a list of all the supported CSS properties and values.
         - repeating-radial-gradient()
         - conic-gradient()
         - repeating-conic-gradient()
+        - image-set() / -webkit-image-set() (selects best candidate by device pixel ratio)
         - multiple layers supported for every gradient type
         - double-position color stops (e.g. `red 0% 25%`)
     - background-origin
@@ -51,6 +53,8 @@ Below is a list of all the supported CSS properties and values.
     - ellipse()
     - polygon()
     - path()
+    - rect() (CSS Basic Shapes Level 2; `auto` keyword supported)
+    - xywh() (CSS Basic Shapes Level 2)
 - content
 - color
 - direction
@@ -89,6 +93,7 @@ Below is a list of all the supported CSS properties and values.
     - font-weight
 - height
 - image-rendering (`auto`, `pixelated`, `crisp-edges`, `smooth`; also `-webkit-optimize-contrast` and vendor `crisp-edges` prefixes)
+- isolation (`auto`, `isolate` — creates a stacking context that scopes `mix-blend-mode` compositing of descendants)
 - left
 - letter-spacing
 - line-break
@@ -108,6 +113,7 @@ Below is a list of all the supported CSS properties and values.
         - linear-gradient(), repeating-linear-gradient()
         - radial-gradient(), repeating-radial-gradient()
         - conic-gradient(), repeating-conic-gradient()
+        - image-set() / -webkit-image-set()
         - multiple layers supported
     - mask-size (`auto`, `cover`, `contain`, lengths, percentages)
     - mask-position
@@ -140,6 +146,11 @@ Below is a list of all the supported CSS properties and values.
     - text-decoration-style
     - text-decoration-thickness
     - text-decoration-inset
+- text-emphasis
+    - text-emphasis-color
+    - text-emphasis-style (`none`, `filled`/`open` + `dot`/`circle`/`double-circle`/`triangle`/`sesame`, custom `<string>`)
+    - text-emphasis-position (`over`/`under` + `left`/`right`)
+    - shorthand `text-emphasis` supported
 - text-underline-offset
 - text-underline-position
 - text-shadow
@@ -181,8 +192,14 @@ Below is a list of all the supported CSS properties and values.
 - -webkit-text-stroke
     - -webkit-text-stroke-color
     - -webkit-text-stroke-width
+- -webkit-text-fill-color (overrides `color` for the text fill layer; transparent/unset falls back to `color`)
+- -webkit-box-reflect
+    - `above`, `below`, `left`, `right` directions
+    - length and percentage offset
+    - optional gradient mask (linear-gradient fade supported; URL masks skipped)
+    - **Firefox**: `-webkit-box-reflect` must be set as an **inline style** (`style="-webkit-box-reflect: ..."`) to be captured. Firefox strips unknown CSS properties from its CSSOM, so stylesheet-defined values cannot be read. Inline values are extracted from the raw `style` HTML attribute before Firefox discards them.
 
-## Values
+## Values
 
 - bend-mode
     - multiply
@@ -242,8 +259,8 @@ These CSS properties are **NOT** currently supported
 ### Form controls
 
 - `<input type="text|password|email|tel|url|search|number">` — text rendered with vertical centering; password masked with bullets
-- `<input type="checkbox">` — styled checkbox with checkmark when checked
-- `<input type="radio">` — styled radio with filled circle when checked
+- `<input type="checkbox">` — styled checkbox with checkmark when checked; glyph colour follows `accent-color`
+- `<input type="radio">` — styled radio with filled circle when checked; glyph colour follows `accent-color`
 - `<input type="range">` — track and thumb rendered based on min/max/value
 - `<textarea>` — multi-line text with word-wrap, scroll offset, and letter-spacing
 - `<select>` — closed dropdown: selected option text rendered; list box (`multiple` or `size > 1`): one option per line with selected rows highlighted

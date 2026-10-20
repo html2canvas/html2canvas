@@ -195,6 +195,7 @@ const createsRealStackingContext = (node: Element, container: ElementContainer, 
         container.styles.isFiltered() ||
         container.styles.isMasked() ||
         container.styles.mixBlendMode !== MIX_BLEND_MODE.NORMAL ||
+        container.styles.isIsolated() ||
         (isBodyElement(node) && root.styles.isTransparent())
     );
 };
