@@ -40,12 +40,12 @@ private window) after adding the attribute, since the non-CORS response can ling
 ### 2. `imageResolver` (when the host does _not_ send CORS headers)
 
 Intercept image URLs and return a base64 data URL you fetched yourself. See the
-[imageResolver example](./configuration#imageresolver-example). Useful as a fallback for the
+[imageResolver example](../configuration#imageresolver-example). Useful as a fallback for the
 specific hosts that lack CORS, while letting everything else go through `useCORS`.
 
 ### 3. Proxy
 
-Use a [proxy](./proxy) to fetch the image through the same origin.
+Use a [proxy](../proxy) to fetch the image through the same origin.
 
 ## Why is the produced canvas empty or cuts off half way through?
 
@@ -79,7 +79,7 @@ output without throwing an error — which is why this is hard to debug.
 
 Every CSS property must be manually implemented to render correctly, so html2canvas will never
 have full CSS support. The library targets the most
-[commonly used CSS properties](./features). If a property is missing or incomplete, create
+[commonly used CSS properties](../features). If a property is missing or incomplete, create
 a test case and open an issue.
 
 ## How do I get html2canvas to work in a browser extension?

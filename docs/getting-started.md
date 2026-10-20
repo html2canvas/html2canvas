@@ -96,4 +96,4 @@ html2canvas(document.body, {
 });
 ```
 
-See the [Proxy](./proxy) page for available options.
+See the [Proxy](../proxy) page for available options.
