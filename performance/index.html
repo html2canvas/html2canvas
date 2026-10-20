@@ -4,7 +4,7 @@ tree), and <strong>render</strong> (that tree is painted to the canvas). On most
 but on large or complex pages one phase can dominate. This page explains how to find the
 bottleneck and the levers available to reduce it.</p>
 <h2>Measure first</h2>
-<p>Before optimizing, find out which phase is slow. The <a href="./configuration#onprogress"><code>onProgress</code></a>
+<p>Before optimizing, find out which phase is slow. The <a href="../configuration#onprogress"><code>onProgress</code></a>
 callback reports each phase boundary with an <code>elapsedMs</code> timestamp, so you can see where
 the time goes:</p>
 <pre class="shiki solarized-light" style="background-color:#FDF6E3;color:#657B83" tabindex="0"><code><span class="line"><span style="color:#268BD2">html2canvas</span><span style="color:#657B83">(</span><span style="color:#268BD2">element</span><span style="color:#657B83">, {</span></span>
@@ -33,7 +33,7 @@ cheap, but on a large app (many DOM nodes, menus, dialogs, long lists) the clone
 dominate total render time, because every element triggers several <code>getComputedStyle</code>
 calls and a full copy of its computed styles.</p>
 <p>If you are capturing a <strong>small element inside a large page</strong>, you can cut most of that
-cost with <a href="./configuration"><code>ignoreElements</code></a>: skip the subtrees that are not part of
+cost with <a href="../configuration"><code>ignoreElements</code></a>: skip the subtrees that are not part of
 your target. When <code>ignoreElements</code> returns <code>true</code> for an element, html2canvas does not
 clone it, does not read its computed styles, and does not descend into it — so entire
 branches are dropped from the expensive clone walk.</p>
@@ -75,7 +75,7 @@ page before shipping.</p>
 <p>When the render phase is the bottleneck — usually because the output is large or the page
 has many elements — these options can help:</p>
 <ul>
-<li><strong><a href="./configuration"><code>cullOffscreen</code></a></strong> — skip painting element nodes whose bounds fall
+<li><strong><a href="../configuration"><code>cullOffscreen</code></a></strong> — skip painting element nodes whose bounds fall
 entirely outside the captured viewport. Useful when capturing a viewport-sized region
 of a long page. It is conservative: nodes with a CSS transform (own or inherited) or
 fixed/sticky positioning are always painted.</li>
@@ -89,15 +89,15 @@ the number of pixels to fill. Lower it when you do not need the extra resolution
 fast. In long-lived apps (SPAs) that capture many <strong>distinct</strong> screenshots, this cache can
 grow indefinitely. Two options bound it:</p>
 <ul>
-<li><strong><a href="./configuration"><code>maxCacheSize</code></a></strong> — cap the number of images kept; least-recently-used
+<li><strong><a href="../configuration"><code>maxCacheSize</code></a></strong> — cap the number of images kept; least-recently-used
 entries are evicted when the limit is exceeded.</li>
-<li><strong><a href="./configuration"><code>clearImageCache</code></a></strong> — empty the cache after a render completes. Do
+<li><strong><a href="../configuration"><code>clearImageCache</code></a></strong> — empty the cache after a render completes. Do
 not enable it when sharing a cache between concurrent captures.</li>
 </ul>
 <h2>Keeping the UI responsive</h2>
 <p>Rendering a large page is CPU-bound and runs on the main thread, so the UI will not update
-on its own while it is in progress. Use <a href="./configuration#onprogress"><code>onProgress</code></a> to drive
-a progress bar, and <a href="./configuration#progressweights"><code>progressWeights</code></a> to tune where the
+on its own while it is in progress. Use <a href="../configuration#onprogress"><code>onProgress</code></a> to drive
+a progress bar, and <a href="../configuration#progressweights"><code>progressWeights</code></a> to tune where the
 percentage breakpoints fall so the bar advances in a way that matches your page&#39;s actual
 timing (for example, giving the clone phase more weight when it dominates).</p>
   </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/features" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">

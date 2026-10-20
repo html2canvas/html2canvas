@@ -15,7 +15,7 @@ bottleneck and the levers available to reduce it.
 
 ## Measure first
 
-Before optimizing, find out which phase is slow. The [`onProgress`](./configuration#onprogress)
+Before optimizing, find out which phase is slow. The [`onProgress`](../configuration#onprogress)
 callback reports each phase boundary with an `elapsedMs` timestamp, so you can see where
 the time goes:
 
@@ -57,7 +57,7 @@ dominate total render time, because every element triggers several `getComputedS
 calls and a full copy of its computed styles.
 
 If you are capturing a **small element inside a large page**, you can cut most of that
-cost with [`ignoreElements`](./configuration): skip the subtrees that are not part of
+cost with [`ignoreElements`](../configuration): skip the subtrees that are not part of
 your target. When `ignoreElements` returns `true` for an element, html2canvas does not
 clone it, does not read its computed styles, and does not descend into it — so entire
 branches are dropped from the expensive clone walk.
@@ -110,7 +110,7 @@ page before shipping.
 When the render phase is the bottleneck — usually because the output is large or the page
 has many elements — these options can help:
 
-- **[`cullOffscreen`](./configuration)** — skip painting element nodes whose bounds fall
+- **[`cullOffscreen`](../configuration)** — skip painting element nodes whose bounds fall
   entirely outside the captured viewport. Useful when capturing a viewport-sized region
   of a long page. It is conservative: nodes with a CSS transform (own or inherited) or
   fixed/sticky positioning are always painted.
@@ -125,15 +125,15 @@ Images are cached across html2canvas calls so repeated captures of the same reso
 fast. In long-lived apps (SPAs) that capture many **distinct** screenshots, this cache can
 grow indefinitely. Two options bound it:
 
-- **[`maxCacheSize`](./configuration)** — cap the number of images kept; least-recently-used
+- **[`maxCacheSize`](../configuration)** — cap the number of images kept; least-recently-used
   entries are evicted when the limit is exceeded.
-- **[`clearImageCache`](./configuration)** — empty the cache after a render completes. Do
+- **[`clearImageCache`](../configuration)** — empty the cache after a render completes. Do
   not enable it when sharing a cache between concurrent captures.
 
 ## Keeping the UI responsive
 
 Rendering a large page is CPU-bound and runs on the main thread, so the UI will not update
-on its own while it is in progress. Use [`onProgress`](./configuration#onprogress) to drive
-a progress bar, and [`progressWeights`](./configuration#progressweights) to tune where the
+on its own while it is in progress. Use [`onProgress`](../configuration#onprogress) to drive
+a progress bar, and [`progressWeights`](../configuration#progressweights) to tune where the
 percentage breakpoints fall so the bar advances in a way that matches your page's actual
 timing (for example, giving the clone phase more weight when it dominates).

@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="Release notes for @html2canvas/html2canvas since the fork from v1.4.1"><title>What&#39;s New - html2canvas</title><link rel="icon" type="image/svg+xml" href="/html2canvas/logo_icon.svg"><link rel="stylesheet" href="/html2canvas/_astro/_slug_.DBT2aWM6.css"></head> <body>  <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var e=async t=>{await(await t())()};(self.Astro||(self.Astro={})).load=e;window.dispatchEvent(new Event("astro:load"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="Z1olfbu" prefix="r3" component-url="/html2canvas/_astro/navigation.Cq4K-hcE.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Navigation&quot;,&quot;value&quot;:true}" await-children><nav class="nav-sidebar"><div class="nav-header"><img src="/html2canvas/ic_menu_black_24px.svg" alt="Menu" class="nav-menu-icon"/><a href="/html2canvas/"><img class="nav-logo" src="/html2canvas/logo.svg" alt="html2canvas"/></a></div><ul class="nav-links"><li class="nav-item"><a href="/html2canvas/documentation" class="nav-link">About</a></li><li class="nav-item"><a href="/html2canvas/getting-started" class="nav-link">Getting started</a></li><li class="nav-item"><a href="/html2canvas/configuration" class="nav-link">Configuration</a></li><li class="nav-item"><a href="/html2canvas/features" class="nav-link">Features</a></li><li class="nav-item"><a href="/html2canvas/performance" class="nav-link">Performance</a></li><li class="nav-item"><a href="/html2canvas/examples" class="nav-link">Examples</a></li><li class="nav-item"><a href="/html2canvas/proxy" class="nav-link">Proxy</a></li><li class="nav-item"><a href="/html2canvas/faq" class="nav-link">FAQ</a></li></ul></nav><!--astro:end--></astro-island> <div class="docs-wrapper"> <!-- Page header --> <div class="docs-header"> <div class="docs-header-inner"> <div class="docs-header-row"> <div class="docs-header-text"> <h1 class="docs-title">What&#39;s New</h1> <h4 class="docs-desc">Release notes for @html2canvas/html2canvas since the fork from v1.4.1</h4> </div> </div> </div> </div> <!-- Content --> <div class="docs-body"> <div class="docs-content">  <p>This page summarises every release since the fork from the original <strong>html2canvas</strong> project at
+<code>v1.4.1</code>. Versions are listed newest-first.</p>
+<hr>
+<h2>v1.14.0 — 2026-10-19</h2>
+<h3>Features</h3>
+<ul>
+<li><strong>CSS <code>backdrop-filter</code></strong> — full support (<code>blur</code>, <code>brightness</code>, <code>contrast</code>, <code>drop-shadow</code>, <code>grayscale</code>, <code>hue-rotate</code>, <code>invert</code>, <code>opacity</code>, <code>saturate</code>, <code>sepia</code>; multiple functions)</li>
+<li><strong>CSS <code>mask</code> / <code>mask-image</code></strong> — images, all gradient types, multiple layers, <code>mask-size</code>, <code>mask-position</code>, <code>mask-repeat</code>, <code>mask-origin</code>, <code>mask-clip</code>, <code>mask-mode</code>, <code>mask-composite</code>; <code>-webkit-mask-*</code> fallback supported</li>
+<li><strong>CSS <code>outline</code></strong> — <code>outline-color</code>, <code>outline-style</code>, <code>outline-width</code>, <code>outline-offset</code></li>
+<li><strong><code>imageResolver</code> hook</strong> — bypass CORS restrictions by providing a custom image-loading function</li>
+<li><strong><code>onProgress</code> callback</strong> — rendering progress events with phase and clone sub-step details</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Lint errors in <code>mask-mode</code> and <code>mask-size</code> resolved</li>
+</ul>
+<hr>
+<h2>v1.13.0 — 2026-09-28</h2>
+<h3>Bug Fixes</h3>
+<ul>
+<li><strong>Gradients</strong> — double-position color stops (e.g. <code>red 0% 25%</code>) now parse and render correctly</li>
+<li><strong>List markers</strong> — <code>::marker</code> <code>font-size</code> honoured when drawing list markers; markers now align with the first text line; <code>linear-gradient</code> <code>list-style-image</code> markers supported</li>
+<li><strong>Group opacity</strong> — elements with <code>opacity &lt; 1</code> composited correctly on an offscreen surface, eliminating bleed-through artefacts</li>
+</ul>
+<hr>
+<h2>v1.12.0 — 2026-09-04</h2>
+<h3>Features</h3>
+<ul>
+<li><strong>Borders</strong> — <code>groove</code>, <code>ridge</code>, <code>inset</code>, <code>outset</code> border styles; <code>&lt;fieldset&gt;</code>/<code>&lt;legend&gt;</code> top-border gap</li>
+<li><strong>Image cache</strong> — <code>Cache.clear()</code> method; <code>clearImageCache</code> option; LRU-bounded cache via <code>maxCacheSize</code>; <code>isResourceSameOrigin</code> override option</li>
+<li><strong><code>onError</code> callback</strong> — notified when any resource fails to load</li>
+<li><strong><code>image-rendering</code></strong> — <code>pixelated</code>, <code>crisp-edges</code>, <code>smooth</code> and vendor prefixes respected</li>
+<li><strong>Ruby annotations</strong> — <code>ruby-align</code> and <code>ruby-position</code> rendered</li>
+<li><strong><code>-webkit-line-clamp</code></strong> — truncates to N lines with a trailing ellipsis</li>
+<li><strong><code>unicode-bidi</code></strong> — <code>bidi-override</code> for <code>&lt;bdo&gt;</code> elements</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Border corner seams on solid borders eliminated</li>
+<li>Document clone serialised with a valid doctype (keeps standards mode)</li>
+<li><code>&lt;select&gt;</code> list-box rendering corrected across browser engines</li>
+</ul>
+<h3>Performance</h3>
+<ul>
+<li>Rasterised <code>linear-gradient</code> canvases cached and reused</li>
+<li>Resized background images memoised</li>
+<li>Opt-in viewport culling of offscreen nodes (<code>viewportCulling</code> option)</li>
+<li>Offscreen canvas pool reduces GC pressure</li>
+<li>Native <code>ctx.letterSpacing</code> used where available with per-grapheme fallback</li>
+</ul>
+<hr>
+<h2>v1.11.0 — 2026-08-31</h2>
+<h3>Features</h3>
+<ul>
+<li><strong>Pseudo-elements</strong> — <code>::first-letter</code>, <code>::first-line</code>, <code>::placeholder</code>, <code>::marker</code></li>
+<li><strong><code>&lt;canvas&gt;</code> elements</strong> — actual pixel content of the canvas captured</li>
+<li><strong><code>&lt;details&gt;</code> / <code>&lt;summary&gt;</code></strong> — open/closed state respected</li>
+<li><strong><code>background-attachment</code></strong> — <code>scroll</code>, <code>fixed</code>, <code>local</code></li>
+<li><strong><code>&lt;object&gt;</code> element</strong> — rendered as image when <code>data</code> points to an image; fallback children otherwise</li>
+<li><strong><code>border-image</code></strong> — full shorthand plus <code>border-image-source</code>, <code>slice</code>, <code>width</code>, <code>outset</code>, <code>repeat</code></li>
+<li><strong><code>object-position</code></strong> — controls the alignment of replaced elements</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li><code>::placeholder</code> improved; input text vertical centering fixed</li>
+<li>Per-layer <code>background-clip</code> with <code>border-radius</code> applied correctly</li>
+<li><code>&lt;q&gt;</code> element <code>open-quote</code>/<code>close-quote</code> rendered via <code>quotes: auto</code></li>
+</ul>
+<hr>
+<h2>v1.10.0 — 2026-08-28</h2>
+<h3>Features</h3>
+<ul>
+<li><strong><code>text-decoration-style: wavy</code></strong> — continuous wavy underlines</li>
+<li><strong><code>text-decoration-inset</code></strong> and <strong><code>text-underline-offset</code></strong> / <strong><code>text-underline-position</code></strong></li>
+<li><strong>CSS <code>zoom</code></strong> — accumulated nested zoom supported</li>
+<li><strong><code>box-decoration-break</code></strong> — <code>slice</code> and <code>clone</code> for inline elements</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li><code>linear-gradient</code> offscreen canvas height restored</li>
+<li>Text-decoration lines drawn once per visual line (performance and visual correctness)</li>
+</ul>
+<hr>
+<h2>v1.9.0 — 2026-08-23</h2>
+<h3>Features</h3>
+<ul>
+<li><strong>CSS <code>clip-path</code></strong> — <code>inset()</code>, <code>circle()</code>, <code>ellipse()</code>, <code>polygon()</code>, <code>path()</code>; legacy <code>clip: rect()</code> also supported</li>
+<li><strong>Full CSS <code>transform</code></strong> — all 2D functions; 3D functions projected to 2D</li>
+<li><strong>Additional gradient types</strong> — <code>repeating-linear-gradient</code>, <code>repeating-radial-gradient</code>, <code>conic-gradient</code>, <code>repeating-conic-gradient</code></li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Stylesheet rules applied correctly in Chromium iframe clone</li>
+<li><code>iframeLoader</code> race condition in Firefox resolved</li>
+<li><code>getComputedStyle</code> now uses the element&#39;s own <code>window</code></li>
+</ul>
+<hr>
+<h2>v1.8.0 — 2026-08-22</h2>
+<h3>Features</h3>
+<ul>
+<li><strong><code>background-blend-mode</code></strong> — all blend modes</li>
+<li><strong><code>background-clip: text</code></strong></li>
+<li><strong>CSS <code>filter</code></strong> — <code>blur</code>, <code>brightness</code>, <code>contrast</code>, <code>drop-shadow</code>, <code>grayscale</code>, <code>hue-rotate</code>, <code>invert</code>, <code>opacity</code>, <code>saturate</code>, <code>sepia</code>; rendered via offscreen canvas</li>
+<li><strong><code>mix-blend-mode</code></strong> — all blend modes</li>
+<li><strong><code>text-decoration-style</code></strong> and <strong><code>text-decoration-thickness</code></strong></li>
+<li><strong><code>text-transform</code></strong> — <code>full-width</code>, <code>full-size-kana</code>, <code>math-auto</code></li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li><code>text-shadow</code> and <code>text-decoration-color</code> rendering improved</li>
+</ul>
+<hr>
+<h2>v1.7.1 — 2026-08-20</h2>
+<h3>Build</h3>
+<ul>
+<li>Proper TypeScript type declarations added to build output</li>
+<li>Unbundled ESM build added to deduplicate <strong>colorjs.io</strong> in TypeScript projects</li>
+</ul>
+<h3>Performance</h3>
+<ul>
+<li>Hot paths in CSS parsing, DOM cloning, and rendering optimised</li>
+<li>Bundle size reduced via minimal <strong>colorjs.io</strong> import</li>
+</ul>
+<hr>
+<h2>v1.7.0 — 2026-08-20</h2>
+<h3>Features</h3>
+<ul>
+<li><strong><code>writing-mode</code></strong> — <code>vertical-rl</code>, <code>vertical-lr</code>, <code>sideways-rl</code>, <code>sideways-lr</code> on text and list markers</li>
+<li><strong>Form elements</strong> — <code>&lt;input type=&quot;range&quot;&gt;</code>, <code>&lt;meter&gt;</code>, <code>&lt;progress&gt;</code> rendered</li>
+<li><strong>Extended color functions</strong> — <code>oklab()</code>, <code>oklch()</code>, <code>lch()</code>, <code>lab()</code>, <code>hwb()</code>, <code>hsl()</code>, <code>color()</code>, <code>color-mix()</code> via <a href="https://colorjs.io/">colorjs.io</a></li>
+<li><strong><code>calc()</code></strong> — supported in CSS length and other numeric values</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li><strong><code>&lt;textarea&gt;</code></strong> — multi-line wrapping on word boundaries, explicit newlines, <code>padding</code>, <code>line-height</code>, <code>letter-spacing</code>, <code>scrollTop</code>; long words break character by character; break after hyphens</li>
+<li><strong><code>letter-spacing</code></strong> — inter-character gaps rendered and wrap-budget calculated correctly</li>
+<li><strong><code>box-shadow</code></strong> — Bézier curves rebuilt with spread-adjusted <code>border-radius</code></li>
+<li><strong>Text baseline</strong> — measured font baseline used for consistent cross-browser vertical alignment</li>
+<li><strong>CSS custom properties</strong> — performance issue fixed; associated <code>box-shadow</code> regression resolved</li>
+<li><strong>SVG</strong> — embedded images inside <code>&lt;svg&gt;</code> elements render correctly</li>
+</ul>
+<h3>Infrastructure</h3>
+<ul>
+<li>Documentation migrated from Gatsby to <strong>Astro</strong></li>
+<li>Bundler migrated from webpack to <strong>Rollup</strong></li>
+</ul>
+<hr>
+<h2>v1.6.3 — 2024-07-18</h2>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Build for browsers fixed</li>
+<li><code>TextNode</code> content no longer overlooked during rendering</li>
+<li>Characters moving up in non-Firefox browsers corrected</li>
+<li><code>textDecorationLine</code> offset on high-resolution devices corrected (uses element heights)</li>
+</ul>
+<hr>
+<h2>v1.6.2 — 2024-06-15</h2>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Underline rendering fixed</li>
+<li><code>renderBackgroundImage</code> no longer crashes on zero-width or zero-height images</li>
+<li>Font loading fixed</li>
+<li>Concurrent invocations now clean up all created iframes on completion</li>
+<li>CORS and browser-extension image handling fixed</li>
+<li>Global cache used; images retried after cache eviction</li>
+</ul>
+<hr>
+<h2>v1.6.1 — 2024-06-04</h2>
+<h3>Features</h3>
+<ul>
+<li>CSS <code>lch()</code> color function parsed and rendered</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Image loading in Firefox fixed</li>
+</ul>
+<hr>
+<h2>v1.6.0 — 2024-05-08</h2>
+<blockquote>
+<p>First release after forking to <code>@html2canvas/html2canvas</code></p>
+</blockquote>
+<h3>Features</h3>
+<ul>
+<li><strong><code>object-fit</code></strong> for <code>&lt;img&gt;</code> elements (<code>contain</code>, <code>cover</code>, <code>fill</code>, <code>scale-down</code>, <code>none</code>)</li>
+<li><code>style.content</code> accepts the <code>&quot;normal&quot;</code> value</li>
+<li>Vertical text alignment improvements</li>
+</ul>
+<h3>Bug Fixes</h3>
+<ul>
+<li>Text alignment issues resolved</li>
+<li>Rendering order of <code>transform</code> and <code>clip</code> effects corrected</li>
+<li><code>object-fit</code> on SVG images in Safari fixed</li>
+<li>Deprecated <code>String.prototype.substr()</code> replaced</li>
+<li><code>&lt;base&gt;</code> tag added to iframe clone to fix relative URL resolution</li>
+<li>Duplicate <code>LIST_STYLE_TYPE</code> enum value removed</li>
+<li><code>box-shadow</code> without <code>inset</code>, and blur-radius rendering fixed</li>
+<li><code>willReadFrequently</code> attribute set on canvases to suppress Chrome warnings</li>
+</ul>
+  </div> </div> <!-- Pagination --> <div class="docs-pagination"> <div class="docs-pagination-inner"> <a href="/html2canvas/proxy" class="docs-pagination-link"> <div class="docs-pagination-icon"><svg fill="#ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+</svg>
+</div> <div> <span class="docs-pagination-label">Previous</span> <div class="docs-pagination-title">Proxy</div> </div> </a>  </div> </div> <footer><div class="footer-inner">Created by <a href="https://hertzen.com">Niklas von Hertzen</a>. Licensed under the MIT License.</div></footer> </div>  <astro-island uid="DeebH" prefix="r5" component-url="/html2canvas/_astro/example.CQ9jHP-2.js" component-export="default" renderer-url="/html2canvas/_astro/client.Bz692-Ao.js" props="{&quot;base&quot;:[0,&quot;/html2canvas&quot;]}" ssr client="load" opts="{&quot;name&quot;:&quot;Example&quot;,&quot;value&quot;:true}" await-children><div data-html2canvas-ignore="true"><div class="example-fab-container" style="visibility:hidden;transition:visibility 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-anchor"><div id="tryhtml2canvas" class="example-fab-btn"><img src="/html2canvas/ic_camera_alt_black_24px.svg" alt="Try html2canvas"/></div></div><div class="example-fab-menu" style="opacity:0;transform:scale(0);transition:transform 0.3s cubic-bezier(0.42, 0, 0.58, 1), opacity 0.3s cubic-bezier(0.42, 0, 0.58, 1)"><div class="example-fab-panel"><h4>Try out html2canvas</h4><p>Test out html2canvas by rendering the viewport from the current page.</p><div class="example-capture-btn">Capture</div></div></div></div></div><!--astro:end--></astro-island> </body></html>

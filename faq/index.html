@@ -22,10 +22,10 @@ it, so cross-origin backgrounds still taint the canvas — use <code>imageResolv
 </blockquote>
 <h3>2. <code>imageResolver</code> (when the host does <em>not</em> send CORS headers)</h3>
 <p>Intercept image URLs and return a base64 data URL you fetched yourself. See the
-<a href="./configuration#imageresolver-example">imageResolver example</a>. Useful as a fallback for the
+<a href="../configuration#imageresolver-example">imageResolver example</a>. Useful as a fallback for the
 specific hosts that lack CORS, while letting everything else go through <code>useCORS</code>.</p>
 <h3>3. Proxy</h3>
-<p>Use a <a href="./proxy">proxy</a> to fetch the image through the same origin.</p>
+<p>Use a <a href="../proxy">proxy</a> to fetch the image through the same origin.</p>
 <h2>Why is the produced canvas empty or cuts off half way through?</h2>
 <p>The canvas may hit <a href="https://stackoverflow.com/questions/6081483/maximum-size-of-a-canvas-element">browser size limits</a>.
 Use the <code>windowWidth</code> / <code>windowHeight</code> options to match the element&#39;s scroll dimensions:</p>
@@ -70,7 +70,7 @@ output without throwing an error — which is why this is hard to debug.</p>
 <h2>Why doesn&#39;t CSS property X render correctly or only partially?</h2>
 <p>Every CSS property must be manually implemented to render correctly, so html2canvas will never
 have full CSS support. The library targets the most
-<a href="./features">commonly used CSS properties</a>. If a property is missing or incomplete, create
+<a href="../features">commonly used CSS properties</a>. If a property is missing or incomplete, create
 a test case and open an issue.</p>
 <h2>How do I get html2canvas to work in a browser extension?</h2>
 <p>You should not use html2canvas in a browser extension. All major browsers expose a native

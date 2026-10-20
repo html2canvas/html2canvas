@@ -74,7 +74,7 @@ html2canvas(document.querySelector('#capture'), {
 ## Cross-origin images
 
 If your page includes images from another domain, configure `useCORS` or point to a
-[proxy](./proxy) server.
+[proxy](../proxy) server.
 
 ```javascript
 html2canvas(document.querySelector('#capture'), {
