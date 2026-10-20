@@ -8,6 +8,7 @@ import { PAINT_ORDER_LAYER } from '../../css/property-descriptors/paint-order';
 import { RUBY_ALIGN } from '../../css/property-descriptors/ruby-align';
 import { TEXT_DECORATION_LINE } from '../../css/property-descriptors/text-decoration-line';
 import { TEXT_DECORATION_STYLE } from '../../css/property-descriptors/text-decoration-style';
+import { TEXT_EMPHASIS_POSITION } from '../../css/property-descriptors/text-emphasis-position';
 import { TextShadow } from '../../css/property-descriptors/text-shadow';
 import { TEXT_UNDERLINE_POSITION } from '../../css/property-descriptors/text-underline-position';
 import { UNICODE_BIDI } from '../../css/property-descriptors/unicode-bidi';
@@ -534,7 +535,12 @@ export async function renderTextNode(
                         break;
                     }
                     state.ctx.font = activeFont;
-                    state.ctx.fillStyle = asString(activeStyles.color);
+                    // -webkit-text-fill-color overrides `color` for the fill layer when set.
+                    state.ctx.fillStyle = asString(
+                        !isTransparent(activeStyles.webkitTextFillColor)
+                            ? activeStyles.webkitTextFillColor
+                            : activeStyles.color,
+                    );
                     _renderTextFill(
                         state,
                         textBound,
@@ -547,6 +553,10 @@ export async function renderTextNode(
                         lineEndMap,
                         isFirstInLine,
                     );
+                    // text-emphasis marks (CJK emphasis dots/shapes above or below glyphs)
+                    if (activeStyles.textEmphasisStyle && textBound.text.trim().length) {
+                        _renderTextEmphasis(state, textBound, activeStyles, activeBaseline, wm);
+                    }
                     // Restore the base font for subsequent segments.
                     state.ctx.font = font;
                     break;
@@ -843,4 +853,101 @@ function _renderTextDecorations(
             );
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// text-emphasis rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Render text-emphasis marks for a single text segment.
+ *
+ * For each grapheme cluster in the segment, a small emphasis mark (stored in
+ * `styles.textEmphasisStyle` as a Unicode character) is drawn centred above
+ * (over) or below (under) the glyph using a font approximately 50% smaller
+ * than the base font size.
+ *
+ * Only horizontal writing modes are supported here; vertical emphasis would
+ * need left/right placement and is left as a future enhancement.
+ */
+function _renderTextEmphasis(
+    state: CanvasRenderState,
+    textBound: TextBounds,
+    styles: CSSParsedDeclaration,
+    baseline: number,
+    wm: WRITING_MODE,
+): void {
+    const mark = styles.textEmphasisStyle;
+    if (!mark) return;
+
+    const isOver = (styles.textEmphasisPosition & TEXT_EMPHASIS_POSITION.OVER) !== 0;
+    const emphasisColor = !isTransparent(styles.textEmphasisColor) ? styles.textEmphasisColor : styles.color;
+
+    const { bounds } = textBound;
+    const fontSizePx = getNumber(styles.fontSize);
+    // Marks are rendered at ~50 % of the base font size (common browser behaviour)
+    const markSize = fontSizePx * 0.5;
+    const baseFontDesc = state.ctx.font.replace(/^\S+\s+/, '');
+    const markFont = `${markSize}px ${baseFontDesc}`;
+
+    const graphemes = segmentGraphemes(textBound.text);
+    if (graphemes.length === 0) return;
+
+    state.ctx.save();
+
+    // Measure each grapheme individually so marks are centred on the correct
+    // glyph regardless of proportional widths (critical for Latin text).
+    // We accumulate advances from bounds.left using measureText.
+    const glyphCenters: number[] = [];
+    let cursorX = bounds.left;
+    for (const g of graphemes) {
+        const w = state.ctx.measureText(g).width;
+        glyphCenters.push(cursorX + w / 2);
+        cursorX += w;
+    }
+
+    // baseline is the offset from bounds.top to the alphabetic baseline (from fontMetrics).
+    // This is the correct reference for mark placement regardless of browser or script —
+    // fontMetrics already applies the browser-specific baselineAdjustment (1 on Firefox, 2 elsewhere).
+    const absoluteBaseline = bounds.top + baseline;
+
+    // Use the font's ascender height as the reference for mark placement.
+    // Approximate it by measuring 'Í' (tallest Latin cap), then take the max with the
+    // actual text so CJK glyphs that exceed the cap-height are covered.
+    // On Firefox, actualBoundingBoxAscent is over-reported for CJK — clamp to `baseline`.
+    const capAscent = state.ctx.measureText('Í').actualBoundingBoxAscent || fontSizePx * 0.8;
+    const textAscent = state.ctx.measureText(textBound.text.trim() || 'X').actualBoundingBoxAscent || fontSizePx * 0.75;
+    const rawAscent = Math.max(capAscent, textAscent);
+    const glyphAscent = state.isFirefox ? Math.min(rawAscent, baseline) : rawAscent;
+    const glyphDescent = bounds.height - baseline;
+
+    state.ctx.font = markFont;
+    state.ctx.fillStyle = asString(emphasisColor);
+    state.ctx.textAlign = 'center';
+    state.ctx.textBaseline = 'alphabetic';
+
+    // Measure the mark in its own (smaller) font
+    const markMetrics = state.ctx.measureText(mark);
+    const markAscent = markMetrics.actualBoundingBoxAscent || markSize * 0.8;
+
+    const isHorizontal = wm === WRITING_MODE.HORIZONTAL_TB || wm === undefined || (wm as number) === 0;
+
+    graphemes.forEach((_, i) => {
+        const glyphCenterX = glyphCenters[i];
+        let markY: number;
+
+        if (isHorizontal) {
+            if (isOver) {
+                markY = absoluteBaseline - glyphAscent + markAscent / 2;
+            } else {
+                markY = absoluteBaseline + glyphDescent + markAscent;
+            }
+        } else {
+            markY = absoluteBaseline - glyphAscent + markAscent / 2;
+        }
+
+        state.ctx.fillText(mark, glyphCenterX, markY);
+    });
+
+    state.ctx.restore();
 }

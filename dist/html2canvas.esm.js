@@ -9194,6 +9194,11 @@ var parseNamedSide = function (tokens) {
 };
 var deg = function (deg) { return (Math.PI * deg) / 180; };
 
+var parseColorStop = function (context, args) {
+    var color = color$1.parse(context, args[0]);
+    var stop = args[1];
+    return stop && isLengthPercentage(stop) ? { color: color, stop: stop } : { color: color, stop: null };
+};
 /**
  * Parses a color stop argument that may carry one *or two* position hints
  * (the "double-position" shorthand defined in CSS Images Level 4).
@@ -9374,6 +9379,15 @@ var calculateRadius = function (gradient, x, y, width, height) {
     }
     return [rx, ry];
 };
+
+var gradient = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    calculateGradientDirection: calculateGradientDirection,
+    calculateRadius: calculateRadius,
+    parseColorStop: parseColorStop,
+    parseColorStops: parseColorStops,
+    processColorStops: processColorStops
+});
 
 var prefixLinearGradient = function (context, tokens) {
     var angle$1 = deg(180);
@@ -9669,6 +9683,140 @@ var conicGradient = function (context, tokens) {
     return { startAngle: startAngle, stops: stops, position: position, type: 5 /* CSSImageType.CONIC_GRADIENT */ };
 };
 
+/**
+ * image-set() / -webkit-image-set()
+ *
+ * Selects the best image candidate based on the device pixel ratio (DPR).
+ *
+ * Syntax:
+ *   image-set( <image-set-option># )
+ *   <image-set-option> = [ <image> | <string> ] [ <resolution> | type(<string>) ]
+ *
+ * Examples:
+ *   image-set(url("img.png") 1x, url("img@2x.png") 2x)
+ *   image-set("img.avif" type("image/avif"), "img.jpg" 1x)
+ *
+ * The candidate with the resolution closest to `context.options.scale`
+ * (or `window.devicePixelRatio` as fallback) is selected, then parsed as a
+ * regular image so all consumers (background-image, mask-image, etc.) work
+ * unchanged.
+ */
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+/** Resolve the resolution number from a dimension token (1x, 2x, 1dppx, 96dpi…). */
+function parseResolution(token) {
+    if (token.type === 15 /* TokenType.DIMENSION_TOKEN */) {
+        var dim = token;
+        switch (dim.unit.toLowerCase()) {
+            case 'x':
+            case 'dppx':
+                return dim.number;
+            case 'dpi':
+                return dim.number / 96; // 96dpi ≡ 1dppx
+            case 'dpcm':
+                return (dim.number * 2.54) / 96;
+            default:
+                return null;
+        }
+    }
+    // Plain number with no unit is treated as x-resolution (legacy syntax)
+    if (token.type === 17 /* TokenType.NUMBER_TOKEN */) {
+        return token.number;
+    }
+    return null;
+}
+/**
+ * Determine the target DPR.
+ * `context.options.scale` mirrors devicePixelRatio.
+ */
+function targetDpr(context) {
+    var _a;
+    var scale = (_a = context.options) === null || _a === void 0 ? void 0 : _a.scale;
+    if (typeof scale === 'number' && scale > 0)
+        return scale;
+    if (typeof window !== 'undefined' && window.devicePixelRatio > 0)
+        return window.devicePixelRatio;
+    return 1;
+}
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+/**
+ * Parse an `image-set()` function and return the best-matching image.
+ * Called by SUPPORTED_IMAGE_FUNCTIONS in image.ts.
+ */
+var imageSet = function (context, args) {
+    var _a;
+    var dpr = targetDpr(context);
+    // parseFunctionArgs splits on top-level commas → one entry per candidate
+    var groups = parseFunctionArgs(args);
+    var bestImage = null;
+    var bestDiff = Infinity;
+    for (var _i = 0, groups_1 = groups; _i < groups_1.length; _i++) {
+        var group = groups_1[_i];
+        // Each group looks like: [ <url-token | string-token | url-function>, <resolution>? ]
+        var tokens = group.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+        if (tokens.length === 0)
+            continue;
+        var imageToken = null;
+        var resolution = 1; // default 1x when omitted
+        for (var _b = 0, tokens_1 = tokens; _b < tokens_1.length; _b++) {
+            var token = tokens_1[_b];
+            if (token.type === 22 /* TokenType.URL_TOKEN */ || token.type === 0 /* TokenType.STRING_TOKEN */) {
+                imageToken = token;
+            }
+            else if (token.type === 18 /* TokenType.FUNCTION */) {
+                var fn = token;
+                var fnName = fn.name.toLowerCase();
+                if (fnName === 'url') {
+                    // url("…") inside image-set — use it directly
+                    imageToken = token;
+                }
+                // type("image/avif") is a format hint — ignore it
+            }
+            else {
+                var res = parseResolution(token);
+                if (res !== null)
+                    resolution = res;
+            }
+        }
+        if (imageToken === null)
+            continue;
+        var diff = Math.abs(resolution - dpr);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            if (imageToken.type === 0 /* TokenType.STRING_TOKEN */) {
+                // Bare string candidate: treat as URL
+                var url = imageToken.value;
+                var urlImage = { url: url, type: 0 /* CSSImageType.URL */ };
+                context.cache.addImage(url);
+                bestImage = urlImage;
+            }
+            else {
+                try {
+                    bestImage = image.parse(context, imageToken);
+                }
+                catch (_c) {
+                    // url() FUNCTION inside image-set: extract inner URL/string token
+                    var fn = imageToken;
+                    var inner = ((_a = fn.values) !== null && _a !== void 0 ? _a : []).find(function (t) { return t.type === 0 /* TokenType.STRING_TOKEN */ || t.type === 22 /* TokenType.URL_TOKEN */; });
+                    if (inner) {
+                        var url = inner.value;
+                        var urlImage = { url: url, type: 0 /* CSSImageType.URL */ };
+                        context.cache.addImage(url);
+                        bestImage = urlImage;
+                    }
+                }
+            }
+        }
+    }
+    if (bestImage === null) {
+        throw new Error('image-set(): no valid image candidate found');
+    }
+    return bestImage;
+};
+
 var linearGradient = function (context, tokens) {
     var angle$1 = deg(180);
     var stops = [];
@@ -9895,7 +10043,21 @@ var SUPPORTED_IMAGE_FUNCTIONS = {
     'repeating-radial-gradient': repeatingRadialGradient,
     'conic-gradient': conicGradient,
     'repeating-conic-gradient': repeatingConicGradient,
+    'image-set': imageSet,
+    '-webkit-image-set': imageSet,
 };
+
+var image$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    image: image,
+    isConicGradient: isConicGradient,
+    isLinearGradient: isLinearGradient,
+    isRadialGradient: isRadialGradient,
+    isRepeatingConicGradient: isRepeatingConicGradient,
+    isRepeatingLinearGradient: isRepeatingLinearGradient,
+    isRepeatingRadialGradient: isRepeatingRadialGradient,
+    isSupportedImage: isSupportedImage
+});
 
 var backgroundImage = {
     name: 'background-image',
@@ -10381,7 +10543,7 @@ var clip = {
         if (filtered.length === 1 && filtered[0].type === 18 /* TokenType.FUNCTION */) {
             var fn = filtered[0];
             if (fn.name.toLowerCase() === 'rect') {
-                return parseRect(fn.values);
+                return parseRect$1(fn.values);
             }
         }
         return NO_CLIP;
@@ -10393,7 +10555,7 @@ var clip = {
  * `auto` for top/left → 0 (start edge); `auto` for right → 100% width; `auto` for bottom → 100% height.
  * We store positional index so the resolver in stacking-context can pick the right sentinel.
  */
-var parseRect = function (values) {
+var parseRect$1 = function (values) {
     var lengths = [];
     for (var _i = 0, values_1 = values; _i < values_1.length; _i++) {
         var token = values_1[_i];
@@ -10471,6 +10633,10 @@ var parseClipPathFunction = function (fn) {
             return parsePolygon(fn.values);
         case 'path':
             return parsePath(fn.values);
+        case 'rect':
+            return parseRect(fn.values);
+        case 'xywh':
+            return parseXywh(fn.values);
         default:
             return NONE_CLIP_PATH;
     }
@@ -10639,6 +10805,68 @@ var parsePath = function (values) {
         }
     }
     return NONE_CLIP_PATH;
+};
+// ---------------------------------------------------------------------------
+// rect()
+// ---------------------------------------------------------------------------
+/**
+ * rect( <top> <right> <bottom> <left> [ round <border-radius> ] )
+ *
+ * Distances from the respective edges of the reference box.
+ * Geometrically identical to inset() — reuses expandSides and parseInsetRadii.
+ * The `auto` keyword is allowed per spec (treated as 0 here for simplicity,
+ * which matches the initial/default behaviour).
+ */
+var parseRect = function (values) {
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    var lengths = [];
+    var roundIndex = -1;
+    for (var i = 0; i < tokens.length; i++) {
+        var t = tokens[i];
+        if (isLengthPercentage(t)) {
+            lengths.push(t);
+        }
+        else if (t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'auto') {
+            // `auto` resolves to the corresponding edge — treat as 0
+            lengths.push(ZERO_LENGTH);
+        }
+        else if (t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'round') {
+            roundIndex = i + 1;
+            break;
+        }
+    }
+    var _a = expandSides(lengths), top = _a[0], right = _a[1], bottom = _a[2], left = _a[3];
+    var radii = roundIndex >= 0 ? parseInsetRadii(tokens.slice(roundIndex)) : [];
+    return { type: 6 /* ClipPathType.RECT */, top: top, right: right, bottom: bottom, left: left, radii: radii };
+};
+// ---------------------------------------------------------------------------
+// xywh()
+// ---------------------------------------------------------------------------
+/**
+ * xywh( <x> <y> <width> <height> [ round <border-radius> ] )
+ *
+ * Origin (x, y) from the top-left corner of the reference box, plus
+ * explicit width and height.
+ */
+var parseXywh = function (values) {
+    var tokens = values.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+    var lengths = [];
+    var roundIndex = -1;
+    for (var i = 0; i < tokens.length; i++) {
+        var t = tokens[i];
+        if (isLengthPercentage(t)) {
+            lengths.push(t);
+        }
+        else if (t.type === 20 /* TokenType.IDENT_TOKEN */ && t.value.toLowerCase() === 'round') {
+            roundIndex = i + 1;
+            break;
+        }
+    }
+    if (lengths.length < 4)
+        return NONE_CLIP_PATH;
+    var x = lengths[0], y = lengths[1], width = lengths[2], height = lengths[3];
+    var radii = roundIndex >= 0 ? parseInsetRadii(tokens.slice(roundIndex)) : [];
+    return { type: 7 /* ClipPathType.XYWH */, x: x, y: y, width: width, height: height, radii: radii };
 };
 
 var color = {
@@ -10965,6 +11193,16 @@ var imageRendering = {
             default:
                 return 0 /* IMAGE_RENDERING.AUTO */;
         }
+    },
+};
+
+var isolation = {
+    name: 'isolation',
+    initialValue: 'auto',
+    prefix: false,
+    type: 2 /* PropertyDescriptorParsingType.IDENT_VALUE */,
+    parse: function (_context, value) {
+        return value === 'isolate' ? 1 /* ISOLATION.ISOLATE */ : 0 /* ISOLATION.AUTO */;
     },
 };
 
@@ -11864,6 +12102,128 @@ var textDecorationThickness = {
     },
 };
 
+/**
+ * text-emphasis-color
+ *
+ * Sets the colour of emphasis marks. Defaults to `currentcolor` (same as
+ * the text colour). We store it as `transparent` so that the renderer can
+ * detect "not set" and fall back to `styles.color`.
+ */
+var textEmphasisColor = {
+    name: 'text-emphasis-color',
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color',
+};
+
+var textEmphasisPosition = {
+    name: 'text-emphasis-position',
+    initialValue: 'over right',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        // Filter out whitespace, keep only ident tokens
+        var idents = tokens
+            .filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */ && isIdentToken(t); })
+            .map(function (t) { return t.value.toLowerCase(); });
+        var flags = 0;
+        for (var _i = 0, idents_1 = idents; _i < idents_1.length; _i++) {
+            var id = idents_1[_i];
+            switch (id) {
+                case 'over':
+                    flags |= 1 /* TEXT_EMPHASIS_POSITION.OVER */;
+                    break;
+                case 'under':
+                    /* UNDER = 0, no-op */ break;
+                case 'right':
+                    flags |= 2 /* TEXT_EMPHASIS_POSITION.RIGHT */;
+                    break;
+            }
+        }
+        // If neither over nor under was specified, default to OVER
+        if (!idents.includes('over') && !idents.includes('under')) {
+            flags |= 1 /* TEXT_EMPHASIS_POSITION.OVER */;
+        }
+        return flags;
+    },
+};
+
+/**
+ * text-emphasis-style
+ *
+ * Parsed value is the Unicode string of the emphasis mark glyph, or empty
+ * string for `none`.
+ *
+ * getComputedStyle returns compound values like "filled dot", "open circle",
+ * which are multiple space-separated tokens.  We must use LIST so
+ * parseComponentValues() is called instead of parseComponentValue(), which
+ * would throw on the second token.
+ *
+ * Compound keyword → glyph mapping (fill keyword + shape keyword):
+ *   none                  → ''
+ *   filled dot / dot      → '•'  U+2022
+ *   open dot              → '◦'  U+25E6
+ *   filled circle / circle→ '•'  (alias of dot)
+ *   open circle           → '◦'
+ *   filled double-circle  → '◉'  U+25C9
+ *   open double-circle    → '◎'  U+25CE
+ *   filled triangle/triangle→ '▲' U+25B2
+ *   open triangle         → '△'  U+25B3
+ *   filled sesame / sesame→ '﹅'  U+FE45
+ *   open sesame           → '﹆'  U+FE46
+ *
+ * A <string> token is returned as-is (single character, per spec).
+ */
+var textEmphasisStyle = {
+    name: 'text-emphasis-style',
+    initialValue: 'none',
+    prefix: false,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (_context, tokens) {
+        var _a;
+        // Check for a string token first (custom mark, e.g. text-emphasis-style: '✿')
+        for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+            var token = tokens_1[_i];
+            if (token.type === 0 /* TokenType.STRING_TOKEN */) {
+                return token.value;
+            }
+        }
+        // Collect all ident tokens, skip whitespace
+        var idents = tokens
+            .filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */ && isIdentToken(t); })
+            .map(function (t) { return t.value.toLowerCase(); });
+        if (idents.length === 0 || idents.includes('none'))
+            return '';
+        // Determine fill style (filled / open) and shape
+        var isFilled = !idents.includes('open'); // default is filled
+        var shape = (_a = idents.find(function (id) { return id !== 'filled' && id !== 'open'; })) !== null && _a !== void 0 ? _a : 'circle';
+        var key = "".concat(isFilled ? 'filled' : 'open', " ").concat(shape);
+        switch (key) {
+            case 'filled dot':
+            case 'filled circle':
+                return '\u2022'; // •
+            case 'open dot':
+            case 'open circle':
+                return '\u25E6'; // ◦
+            case 'filled double-circle':
+                return '\u25C9'; // ◉
+            case 'open double-circle':
+                return '\u25CE'; // ◎
+            case 'filled triangle':
+                return '\u25B2'; // ▲
+            case 'open triangle':
+                return '\u25B3'; // △
+            case 'filled sesame':
+                return '\uFE45'; // ﹅
+            case 'open sesame':
+                return '\uFE46'; // ﹆
+            default:
+                return '\u2022'; // fallback: filled dot
+        }
+    },
+};
+
 var textShadow = {
     name: 'text-shadow',
     initialValue: 'none',
@@ -12243,6 +12603,77 @@ var visibility = {
 };
 
 /**
+ * -webkit-box-reflect
+ *
+ * Creates a mirrored reflection of the element below, above, to the left or
+ * right, with an optional offset and optional mask image (usually a gradient).
+ *
+ * Syntax: -webkit-box-reflect: <direction> <offset> [ <image> ]?
+ *   direction : above | below | left | right
+ *   offset    : <length> | <percentage>   (default 0)
+ *   image     : none | <gradient> | url(…) (optional mask)
+ *
+ * The parsed value carries enough information for the renderer to:
+ *   1. Identify which axis to flip (direction → scaleX / scaleY of -1).
+ *   2. Know how far from the element edge to place the reflection (offset).
+ *   3. Optionally apply a gradient mask to the reflection.
+ */
+var NONE_BOX_REFLECT = null;
+// ---------------------------------------------------------------------------
+// Property descriptor
+// ---------------------------------------------------------------------------
+var webkitBoxReflect = {
+    name: '-webkit-box-reflect',
+    initialValue: 'none',
+    prefix: true,
+    type: 1 /* PropertyDescriptorParsingType.LIST */,
+    parse: function (context, tokens) {
+        var filtered = tokens.filter(function (t) { return t.type !== 31 /* TokenType.WHITESPACE_TOKEN */; });
+        if (filtered.length === 0)
+            return NONE_BOX_REFLECT;
+        // First token must be the direction keyword
+        var first = filtered[0];
+        if (!isIdentToken(first))
+            return NONE_BOX_REFLECT;
+        var dirValue = first.value.toLowerCase();
+        if (dirValue === 'none')
+            return NONE_BOX_REFLECT;
+        if (dirValue !== 'above' && dirValue !== 'below' && dirValue !== 'left' && dirValue !== 'right') {
+            return NONE_BOX_REFLECT;
+        }
+        var direction = dirValue;
+        // Second token (optional): offset length/percentage
+        var offset = ZERO_LENGTH;
+        var maskStartIndex = 1;
+        if (filtered.length > 1) {
+            var second = filtered[1];
+            if (isLengthPercentage(second)) {
+                offset = second;
+                maskStartIndex = 2;
+            }
+        }
+        // Remaining tokens (optional): mask image (gradient or url)
+        var mask = null;
+        if (filtered.length > maskStartIndex) {
+            var maskToken = filtered[maskStartIndex];
+            // 'none' keyword → no mask
+            if (isIdentWithValue(maskToken, 'none')) {
+                mask = null;
+            }
+            else if (isSupportedImage(maskToken)) {
+                try {
+                    mask = image.parse(context, maskToken);
+                }
+                catch (_a) {
+                    mask = null;
+                }
+            }
+        }
+        return { direction: direction, offset: offset, mask: mask };
+    },
+};
+
+/**
  * `-webkit-line-clamp`: limits the content to the given number of lines,
  * adding an ellipsis after the last visible line.
  *
@@ -12260,6 +12691,25 @@ var webkitLineClamp = {
         }
         return 0;
     },
+};
+
+/**
+ * -webkit-text-fill-color
+ *
+ * Overrides the fill colour of text glyphs independently of `color`.
+ * When set to a non-transparent value it takes precedence over `color`
+ * for the fill paint layer (but not for decorations or shadows).
+ *
+ * Initial value: `currentcolor` — treated as transparent/absent so that
+ * the normal `color` property is used when the fill colour is not explicitly
+ * set.
+ */
+var webkitTextFillColor = {
+    name: '-webkit-text-fill-color',
+    initialValue: 'transparent',
+    prefix: false,
+    type: 3 /* PropertyDescriptorParsingType.TYPE_VALUE */,
+    format: 'color',
 };
 
 var webkitTextStrokeColor = {
@@ -12416,6 +12866,7 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
         this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
         this.imageRendering = parse(context, imageRendering, declaration.imageRendering);
+        this.isolation = parse(context, isolation, declaration.isolation);
         this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
         this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
         this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
@@ -12459,6 +12910,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.textDecorationLine = parse(context, textDecorationLine, (_j = declaration.textDecorationLine) !== null && _j !== void 0 ? _j : declaration.textDecoration);
         this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
         this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
+        this.textEmphasisColor = parse(context, textEmphasisColor, declaration.textEmphasisColor);
+        this.textEmphasisStyle = parse(context, textEmphasisStyle, declaration.textEmphasisStyle);
+        this.textEmphasisPosition = parse(context, textEmphasisPosition, declaration.textEmphasisPosition);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
         this.textUnderlineOffset = parse(context, textUnderlineOffset, declaration.textUnderlineOffset);
@@ -12468,6 +12922,14 @@ var CSSParsedDeclaration = /** @class */ (function () {
         this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
         this.visibility = parse(context, visibility, declaration.visibility);
         this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
+        this.webkitBoxReflect = parse(context, webkitBoxReflect, 
+        // Firefox does not expose webkitBoxReflect as a JS property on CSSStyleDeclaration,
+        // but it may be readable via getPropertyValue (for inline styles).
+        // We also try the camelCase JS property as a fallback for Chromium.
+        declaration.webkitBoxReflect ||
+            declaration.getPropertyValue('-webkit-box-reflect') ||
+            undefined);
+        this.webkitTextFillColor = parse(context, webkitTextFillColor, declaration.webkitTextFillColor);
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
         this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
@@ -12569,6 +13031,9 @@ var CSSParsedDeclaration = /** @class */ (function () {
     CSSParsedDeclaration.prototype.isMasked = function () {
         return this.maskImage.length > 0;
     };
+    CSSParsedDeclaration.prototype.isIsolated = function () {
+        return this.isolation === 1 /* ISOLATION.ISOLATE */;
+    };
     CSSParsedDeclaration.prototype.isPositioned = function () {
         return this.position !== 0 /* POSITION.STATIC */;
     };
@@ -12659,6 +13124,8 @@ var DATA_ATTR_FIRST_LINE = 'data-h2c-first-line';
 var DATA_ATTR_PLACEHOLDER = 'data-h2c-placeholder';
 /** Serialised ::marker style delta (JSON object of CSS property → value). */
 var DATA_ATTR_MARKER = 'data-h2c-marker';
+/** Serialised -webkit-box-reflect value (CSS string), used as fallback on Firefox. */
+var DATA_ATTR_BOX_REFLECT = 'data-h2c-box-reflect';
 
 var elementDebuggerAttribute = 'data-html2canvas-debug';
 var getElementDebugType = function (element) {
@@ -12764,6 +13231,17 @@ var ElementContainer = /** @class */ (function () {
             }
         }
         this.styles = new CSSParsedDeclaration(context, computedStyle, zoomFactor);
+        // On Firefox, -webkit-box-reflect is not in getComputedStyle. The document-cloner
+        // stores the value in a data attribute; read it here and override the parsed style.
+        if (isHTMLElementNode(element)) {
+            var reflectAttr = element.getAttribute(DATA_ATTR_BOX_REFLECT);
+            if (reflectAttr && this.styles.webkitBoxReflect === null) {
+                var parsed = parse(context, webkitBoxReflect, reflectAttr);
+                if (parsed !== null) {
+                    this.styles.webkitBoxReflect = parsed;
+                }
+            }
+        }
         if (isHTMLElementNode(element)) {
             if (this.styles.animationDuration.some(function (duration) { return duration > 0; })) {
                 element.style.animationDuration = '0s';
@@ -12998,10 +13476,27 @@ var CHECKBOX = 'checkbox';
 var RADIO = 'radio';
 var PASSWORD = 'password';
 var RANGE = 'range';
-var INPUT_COLOR = 0x2a2a2aff;
+/** Default accent colour used when `accent-color` is `auto` or unavailable. */
+var DEFAULT_ACCENT_COLOR = 0x0075ffff; // browser-like blue
+/**
+ * Parse `accent-color` from `getComputedStyle`.
+ * Returns `DEFAULT_ACCENT_COLOR` when the value is `auto`, empty, or unparseable.
+ */
+function parseAccentColor(context, computedStyle) {
+    var raw = computedStyle.accentColor;
+    if (!raw || raw === 'auto')
+        return DEFAULT_ACCENT_COLOR;
+    try {
+        return color$1.parse(context, Parser.parseValue(raw));
+    }
+    catch (_a) {
+        return DEFAULT_ACCENT_COLOR;
+    }
+}
 var InputElementContainer = /** @class */ (function (_super) {
     __extends(InputElementContainer, _super);
     function InputElementContainer(context, input) {
+        var _a, _b;
         var _this = _super.call(this, context, input) || this;
         _this.type = input.type.toLowerCase();
         _this.checked = input.checked;
@@ -13012,7 +13507,11 @@ var InputElementContainer = /** @class */ (function (_super) {
         _this.min = parseFloat(input.min) || 0;
         _this.max = parseFloat(input.max) || 100;
         _this.valueAsNumber = isNaN(input.valueAsNumber) ? (_this.min + _this.max) / 2 : input.valueAsNumber;
+        // Default — overridden below for checkbox/radio
+        _this.accentColor = DEFAULT_ACCENT_COLOR;
         if (_this.type === CHECKBOX || _this.type === RADIO) {
+            var computedStyle = ((_b = (_a = input.ownerDocument) === null || _a === void 0 ? void 0 : _a.defaultView) !== null && _b !== void 0 ? _b : window).getComputedStyle(input);
+            _this.accentColor = parseAccentColor(context, computedStyle);
             _this.styles.backgroundColor = 0xdededeff;
             _this.styles.borderTopColor =
                 _this.styles.borderRightColor =
@@ -13993,6 +14492,7 @@ var createsRealStackingContext = function (node, container, root) {
         container.styles.isFiltered() ||
         container.styles.isMasked() ||
         container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */ ||
+        container.styles.isIsolated() ||
         (isBodyElement(node) && root.styles.isTransparent()));
 };
 var createsStackingContext = function (styles) { return styles.isPositioned() || styles.isFloating(); };
@@ -15523,6 +16023,13 @@ var DocumentCloner = /** @class */ (function () {
                         clone.setAttribute(DATA_ATTR_MARKER, JSON.stringify(delta));
                     }
                 }
+                // -webkit-box-reflect: Firefox does not expose this property via getComputedStyle.
+                // Read it from the inline style or by scanning the document's stylesheets,
+                // then store it as a data attribute so CSSParsedDeclaration can read it in the clone.
+                var reflectValue = _getBoxReflectValue(node, style);
+                if (reflectValue) {
+                    clone.setAttribute(DATA_ATTR_BOX_REFLECT, reflectValue);
+                }
             }
             if ((style && (this.options.copyStyles || isSVGElementNode(node)) && !isIFrameElement(node)) ||
                 copyStyles) {
@@ -16158,6 +16665,89 @@ var addBase = function (targetELement, referenceDocument) {
     var headEle = targetELement.getElementsByTagName('head').item(0);
     headEle === null || headEle === void 0 ? void 0 : headEle.insertBefore(baseNode, (_a = headEle === null || headEle === void 0 ? void 0 : headEle.firstChild) !== null && _a !== void 0 ? _a : null);
 };
+/**
+ * Read the `-webkit-box-reflect` value for an element.
+ *
+ * On Chromium, `getComputedStyle` exposes `webkitBoxReflect` as a JS property.
+ * On Firefox, the property is unknown to the CSS engine, so:
+ *  1. Check inline style (element.style).
+ *  2. Scan stylesheets for matching rules and extract the value from raw cssText,
+ *     since Firefox does not parse -webkit-box-reflect into CSSStyleRule.style.
+ *
+ * Returns the raw CSS string value, or empty string if not found.
+ */
+function _getBoxReflectValue(element, computedStyle) {
+    var _a;
+    // Already available via getComputedStyle (Chromium)
+    var fromComputed = computedStyle.webkitBoxReflect ||
+        computedStyle.getPropertyValue('-webkit-box-reflect');
+    if (fromComputed && fromComputed !== 'none')
+        return fromComputed;
+    // Fallback: inline style (works if set via element.style)
+    var fromInline = element.style.getPropertyValue('-webkit-box-reflect');
+    if (fromInline && fromInline !== 'none')
+        return fromInline;
+    // Fallback: inline style — read from the raw HTML `style` attribute before
+    // Firefox strips the unknown property from the parsed CSSStyleDeclaration.
+    var rawStyle = (_a = element.getAttribute('style')) !== null && _a !== void 0 ? _a : '';
+    var inlineMatch = /-webkit-box-reflect\s*:\s*([^;}\n]+)/i.exec(rawStyle);
+    if (inlineMatch) {
+        var val = inlineMatch[1].trim();
+        if (val && val !== 'none')
+            return val;
+    }
+    // Fallback: scan stylesheets in the element's document.
+    // Firefox does not parse -webkit-box-reflect into CSSStyleRule.style,
+    // so we extract the value by matching the property in raw cssText.
+    var doc = element.ownerDocument;
+    if (!doc)
+        return '';
+    // Regex to extract: -webkit-box-reflect: <value>;
+    // Value ends at ';' or end-of-block, allowing nested parens for gradients.
+    var RE = /-webkit-box-reflect\s*:\s*([^;}\n]+)/i;
+    try {
+        for (var i = 0; i < doc.styleSheets.length; i++) {
+            var sheet = doc.styleSheets[i];
+            var rules = null;
+            try {
+                rules = sheet.cssRules;
+            }
+            catch (_b) {
+                continue; // Cross-origin stylesheet
+            }
+            if (!rules)
+                continue;
+            for (var r = 0; r < rules.length; r++) {
+                var rule = rules[r];
+                if (!(rule instanceof CSSStyleRule))
+                    continue;
+                // Check if this rule matches the element
+                try {
+                    if (!element.matches(rule.selectorText))
+                        continue;
+                }
+                catch (_c) {
+                    continue;
+                }
+                // Try parsed style first (works on Chromium)
+                var parsed = rule.style.getPropertyValue('-webkit-box-reflect');
+                if (parsed && parsed !== 'none')
+                    return parsed;
+                // Fallback: extract from raw cssText (works on Firefox)
+                var match = RE.exec(rule.cssText);
+                if (match) {
+                    var val = match[1].trim();
+                    if (val && val !== 'none')
+                        return val;
+                }
+            }
+        }
+    }
+    catch (_d) {
+        // Stylesheet access denied — ignore
+    }
+    return '';
+}
 
 var TransformEffect = /** @class */ (function () {
     function TransformEffect(offsetX, offsetY, matrix) {
@@ -16247,6 +16837,17 @@ var isPath2DClipEffect = function (effect) {
 var isBackdropFilterEffect = function (effect) {
     return effect.type === 7 /* EffectType.BACKDROP_FILTER */;
 };
+var ReflectEffect = /** @class */ (function () {
+    function ReflectEffect(direction, offset, mask) {
+        this.direction = direction;
+        this.offset = offset;
+        this.mask = mask;
+        this.type = 8 /* EffectType.REFLECT */;
+        this.target = 2 /* EffectTarget.BACKGROUND_BORDERS */ | 4 /* EffectTarget.CONTENT */;
+    }
+    return ReflectEffect;
+}());
+var isReflectEffect = function (effect) { return effect.type === 8 /* EffectType.REFLECT */; };
 
 var SMALL_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -16781,6 +17382,10 @@ var buildClipPath = function (clipPath, bounds) {
             };
         case 5 /* ClipPathType.PATH */:
             return buildPath2D(clipPath, bounds);
+        case 6 /* ClipPathType.RECT */:
+            return { kind: 'path', paths: buildRectPath(clipPath, bounds) };
+        case 7 /* ClipPathType.XYWH */:
+            return { kind: 'path', paths: buildXywhPath(clipPath, bounds) };
     }
 };
 // ---------------------------------------------------------------------------
@@ -16963,6 +17568,62 @@ var buildPath2D = function (clip, bounds) {
         return null;
     }
 };
+// ---------------------------------------------------------------------------
+// rect()
+// ---------------------------------------------------------------------------
+/**
+ * Build a clip path for `rect(top right bottom left [ round … ])`.
+ *
+ * The four values are distances from their respective edges of the reference
+ * box, identical in semantics to `inset()`. We convert to inset-style
+ * coordinates and delegate to the shared corner-Bézier logic already used by
+ * `buildInsetPath`.
+ */
+var buildRectPath = function (clip, bounds) {
+    // rect() and inset() share the same geometry: each value is the distance
+    // inward from the corresponding edge. Delegate directly to buildInsetPath
+    // by casting to InsetClipPath shape (same fields, different .type).
+    return buildInsetPath({
+        top: clip.top,
+        right: clip.right,
+        bottom: clip.bottom,
+        left: clip.left,
+        radii: clip.radii,
+    }, bounds);
+};
+// ---------------------------------------------------------------------------
+// xywh()
+// ---------------------------------------------------------------------------
+/**
+ * Build a clip path for `xywh(x y width height [ round … ])`.
+ *
+ * The origin (x, y) is relative to the top-left of the reference box, and
+ * (width, height) define the clip rectangle's size.
+ *
+ * We convert to inset-style distances so we can reuse `buildInsetPath`:
+ *   top    = y
+ *   left   = x
+ *   right  = boxWidth  - (x + width)
+ *   bottom = boxHeight - (y + height)
+ */
+var buildXywhPath = function (clip, bounds) {
+    var bWidth = bounds.width, bHeight = bounds.height;
+    var xVal = getAbsoluteValue(clip.x, bWidth);
+    var yVal = getAbsoluteValue(clip.y, bHeight);
+    var wVal = getAbsoluteValue(clip.width, bWidth);
+    var hVal = getAbsoluteValue(clip.height, bHeight);
+    /** Create an absolute-pixel LengthPercentage token. */
+    var px = function (n) {
+        return ({ type: 17 /* TokenType.NUMBER_TOKEN */, flags: 0, number: n });
+    };
+    return buildInsetPath({
+        top: clip.y,
+        left: clip.x,
+        right: px(Math.max(0, bWidth - xVal - wVal)),
+        bottom: px(Math.max(0, bHeight - yVal - hVal)),
+        radii: clip.radii,
+    }, bounds);
+};
 
 var StackingContext = /** @class */ (function () {
     function StackingContext(container) {
@@ -17044,6 +17705,10 @@ var ElementPaint = /** @class */ (function () {
         }
         if (this.container.styles.mixBlendMode !== 0 /* MIX_BLEND_MODE.NORMAL */) {
             this.effects.push(new MixBlendModeEffect(this.container.styles.mixBlendMode));
+        }
+        if (this.container.styles.webkitBoxReflect !== null) {
+            var reflect = this.container.styles.webkitBoxReflect;
+            this.effects.push(new ReflectEffect(reflect.direction, reflect.offset, reflect.mask));
         }
     }
     ElementPaint.prototype.getEffects = function (target) {
@@ -18076,8 +18741,15 @@ function renderTextNode(state, text, styles, firstLineStyles) {
                                 break;
                             }
                             state.ctx.font = activeFont;
-                            state.ctx.fillStyle = asString(activeStyles.color);
+                            // -webkit-text-fill-color overrides `color` for the fill layer when set.
+                            state.ctx.fillStyle = asString(!isTransparent(activeStyles.webkitTextFillColor)
+                                ? activeStyles.webkitTextFillColor
+                                : activeStyles.color);
                             _renderTextFill(state, textBound, activeStyles, activeBaseline, wm, fontSizePx, isVertical, lineStartMap, lineEndMap, isFirstInLine);
+                            // text-emphasis marks (CJK emphasis dots/shapes above or below glyphs)
+                            if (activeStyles.textEmphasisStyle && textBound.text.trim().length) {
+                                _renderTextEmphasis(state, textBound, activeStyles, activeBaseline, wm);
+                            }
                             // Restore the base font for subsequent segments.
                             state.ctx.font = font;
                             break;
@@ -18289,6 +18961,86 @@ function _renderTextDecorations(state, textBound, styles, baseline, wm, isVertic
             renderDecorationLine(state, styles.textDecorationStyle, insetX, lineY, insetW, thickness, false, textDecorationLine, lineStart);
         }
     });
+}
+// ---------------------------------------------------------------------------
+// text-emphasis rendering
+// ---------------------------------------------------------------------------
+/**
+ * Render text-emphasis marks for a single text segment.
+ *
+ * For each grapheme cluster in the segment, a small emphasis mark (stored in
+ * `styles.textEmphasisStyle` as a Unicode character) is drawn centred above
+ * (over) or below (under) the glyph using a font approximately 50% smaller
+ * than the base font size.
+ *
+ * Only horizontal writing modes are supported here; vertical emphasis would
+ * need left/right placement and is left as a future enhancement.
+ */
+function _renderTextEmphasis(state, textBound, styles, baseline, wm) {
+    var mark = styles.textEmphasisStyle;
+    if (!mark)
+        return;
+    var isOver = (styles.textEmphasisPosition & 1 /* TEXT_EMPHASIS_POSITION.OVER */) !== 0;
+    var emphasisColor = !isTransparent(styles.textEmphasisColor) ? styles.textEmphasisColor : styles.color;
+    var bounds = textBound.bounds;
+    var fontSizePx = getNumber(styles.fontSize);
+    // Marks are rendered at ~50 % of the base font size (common browser behaviour)
+    var markSize = fontSizePx * 0.5;
+    var baseFontDesc = state.ctx.font.replace(/^\S+\s+/, '');
+    var markFont = "".concat(markSize, "px ").concat(baseFontDesc);
+    var graphemes = segmentGraphemes(textBound.text);
+    if (graphemes.length === 0)
+        return;
+    state.ctx.save();
+    // Measure each grapheme individually so marks are centred on the correct
+    // glyph regardless of proportional widths (critical for Latin text).
+    // We accumulate advances from bounds.left using measureText.
+    var glyphCenters = [];
+    var cursorX = bounds.left;
+    for (var _i = 0, graphemes_1 = graphemes; _i < graphemes_1.length; _i++) {
+        var g = graphemes_1[_i];
+        var w = state.ctx.measureText(g).width;
+        glyphCenters.push(cursorX + w / 2);
+        cursorX += w;
+    }
+    // baseline is the offset from bounds.top to the alphabetic baseline (from fontMetrics).
+    // This is the correct reference for mark placement regardless of browser or script —
+    // fontMetrics already applies the browser-specific baselineAdjustment (1 on Firefox, 2 elsewhere).
+    var absoluteBaseline = bounds.top + baseline;
+    // Use the font's ascender height as the reference for mark placement.
+    // Approximate it by measuring 'Í' (tallest Latin cap), then take the max with the
+    // actual text so CJK glyphs that exceed the cap-height are covered.
+    // On Firefox, actualBoundingBoxAscent is over-reported for CJK — clamp to `baseline`.
+    var capAscent = state.ctx.measureText('Í').actualBoundingBoxAscent || fontSizePx * 0.8;
+    var textAscent = state.ctx.measureText(textBound.text.trim() || 'X').actualBoundingBoxAscent || fontSizePx * 0.75;
+    var rawAscent = Math.max(capAscent, textAscent);
+    var glyphAscent = state.isFirefox ? Math.min(rawAscent, baseline) : rawAscent;
+    var glyphDescent = bounds.height - baseline;
+    state.ctx.font = markFont;
+    state.ctx.fillStyle = asString(emphasisColor);
+    state.ctx.textAlign = 'center';
+    state.ctx.textBaseline = 'alphabetic';
+    // Measure the mark in its own (smaller) font
+    var markMetrics = state.ctx.measureText(mark);
+    var markAscent = markMetrics.actualBoundingBoxAscent || markSize * 0.8;
+    var isHorizontal = wm === 0 /* WRITING_MODE.HORIZONTAL_TB */ || wm === undefined || wm === 0;
+    graphemes.forEach(function (_, i) {
+        var glyphCenterX = glyphCenters[i];
+        var markY;
+        if (isHorizontal) {
+            if (isOver) {
+                markY = absoluteBaseline - glyphAscent + markAscent / 2;
+            }
+            else {
+                markY = absoluteBaseline + glyphDescent + markAscent;
+            }
+        }
+        else {
+            markY = absoluteBaseline - glyphAscent + markAscent / 2;
+        }
+        state.ctx.fillText(mark, glyphCenterX, markY);
+    });
+    state.ctx.restore();
 }
 
 /**
@@ -20635,6 +21387,190 @@ function _applyLuminanceMask(canvas) {
     }
     ctx.putImageData(imageData, 0, 0);
 }
+// ---------------------------------------------------------------------------
+// -webkit-box-reflect rendering
+// ---------------------------------------------------------------------------
+/**
+ * Render a `-webkit-box-reflect` effect.
+ *
+ * Algorithm:
+ *   1. Capture the element's border-box region from the already-painted canvas.
+ *   2. Create a reflected canvas (flipped horizontally or vertically).
+ *   3. Optionally apply a gradient mask to fade the reflection.
+ *   4. Paint the reflection at the correct offset from the element edge.
+ *
+ * The reflection is painted AFTER the element itself so it appears on top of
+ * any content that was behind the element but below the reflection area.
+ */
+function renderBoxReflect(state, paint) {
+    return __awaiter(this, void 0, void 0, function () {
+        var reflectEffect, _i, _a, effect, direction, offset, mask, bounds, scale, ox, oy, dLeft, dTop, dWidth, dHeight, canvasW, canvasH, srcX, srcY, srcW, srcH, captured, capturedCtx, reflected, reflectedCtx, offsetPx, destX, destY;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    reflectEffect = null;
+                    for (_i = 0, _a = paint.effects; _i < _a.length; _i++) {
+                        effect = _a[_i];
+                        if (isReflectEffect(effect)) {
+                            reflectEffect = effect;
+                            break;
+                        }
+                    }
+                    if (!reflectEffect)
+                        return [2 /*return*/];
+                    direction = reflectEffect.direction, offset = reflectEffect.offset, mask = reflectEffect.mask;
+                    bounds = paint.container.bounds;
+                    scale = state.options.scale;
+                    ox = state.options.x;
+                    oy = state.options.y;
+                    dLeft = Math.floor((bounds.left - ox) * scale);
+                    dTop = Math.floor((bounds.top - oy) * scale);
+                    dWidth = Math.ceil(bounds.width * scale);
+                    dHeight = Math.ceil(bounds.height * scale);
+                    if (dWidth <= 0 || dHeight <= 0) {
+                        return [2 /*return*/];
+                    }
+                    canvasW = state.canvas.width;
+                    canvasH = state.canvas.height;
+                    srcX = Math.max(0, dLeft);
+                    srcY = Math.max(0, dTop);
+                    srcW = Math.min(dWidth, canvasW - srcX);
+                    srcH = Math.min(dHeight, canvasH - srcY);
+                    if (srcW <= 0 || srcH <= 0) {
+                        return [2 /*return*/];
+                    }
+                    captured = state.canvasPool.acquire(srcW, srcH);
+                    capturedCtx = captured.getContext('2d');
+                    capturedCtx.drawImage(state.canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+                    reflected = state.canvasPool.acquire(srcW, srcH);
+                    reflectedCtx = reflected.getContext('2d');
+                    if (direction === 'above' || direction === 'below') {
+                        // Flip vertically
+                        reflectedCtx.translate(0, srcH);
+                        reflectedCtx.scale(1, -1);
+                    }
+                    else {
+                        // Flip horizontally
+                        reflectedCtx.translate(srcW, 0);
+                        reflectedCtx.scale(-1, 1);
+                    }
+                    reflectedCtx.drawImage(captured, 0, 0);
+                    state.canvasPool.release(captured);
+                    // Reset transform
+                    reflectedCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    if (!(mask !== null)) return [3 /*break*/, 2];
+                    return [4 /*yield*/, _applyReflectMask(state, reflected, reflectedCtx, srcW, srcH, mask, direction)];
+                case 1:
+                    _b.sent();
+                    _b.label = 2;
+                case 2:
+                    offsetPx = getAbsoluteValue(offset, direction === 'above' || direction === 'below' ? bounds.height : bounds.width) * scale;
+                    destX = srcX;
+                    destY = srcY;
+                    switch (direction) {
+                        case 'below':
+                            destX = srcX;
+                            destY = srcY + srcH + Math.round(offsetPx);
+                            break;
+                        case 'above':
+                            destX = srcX;
+                            destY = srcY - srcH - Math.round(offsetPx);
+                            break;
+                        case 'right':
+                            destX = srcX + srcW + Math.round(offsetPx);
+                            destY = srcY;
+                            break;
+                        case 'left':
+                            destX = srcX - srcW - Math.round(offsetPx);
+                            destY = srcY;
+                            break;
+                    }
+                    // Paint the reflection using identity transform (device pixels)
+                    state.ctx.save();
+                    state.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    state.ctx.drawImage(reflected, destX, destY);
+                    state.ctx.restore();
+                    state.canvasPool.release(reflected);
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+/**
+ * Apply a mask image (typically a gradient) to the reflection canvas so it
+ * fades out. Uses Canvas 2D globalCompositeOperation 'destination-in'.
+ */
+function _applyReflectMask(state, _reflectCanvas, reflectCtx, w, h, mask, direction) {
+    return __awaiter(this, void 0, void 0, function () {
+        var maskCanvas, maskCtx, cssW, cssH, _a, processColorStops_1, calculateGradientDirection_1, isLinearGradient_1, _b, x0, x1, y0, y1, gradient_4, stops;
+        return __generator(this, function (_d) {
+            switch (_d.label) {
+                case 0:
+                    maskCanvas = state.canvasPool.acquire(w, h);
+                    maskCtx = maskCanvas.getContext('2d');
+                    _d.label = 1;
+                case 1:
+                    _d.trys.push([1, 4, , 5]);
+                    maskCtx.scale(state.options.scale, state.options.scale);
+                    cssW = w / state.options.scale;
+                    cssH = h / state.options.scale;
+                    return [4 /*yield*/, Promise.resolve().then(function () { return gradient; })];
+                case 2:
+                    _a = _d.sent(), processColorStops_1 = _a.processColorStops, calculateGradientDirection_1 = _a.calculateGradientDirection;
+                    return [4 /*yield*/, Promise.resolve().then(function () { return image$1; })];
+                case 3:
+                    isLinearGradient_1 = (_d.sent()).isLinearGradient;
+                    if (isLinearGradient_1(mask)) {
+                        _b = calculateGradientDirection_1(mask.angle, cssW, cssH), x0 = _b[1], x1 = _b[2], y0 = _b[3], y1 = _b[4];
+                        // The reflection canvas is already flipped. The gradient must be flipped too
+                        // so the fade goes in the correct visual direction (away from the original).
+                        // For vertical reflections (above/below): mirror Y coordinates.
+                        // For horizontal reflections (left/right): mirror X coordinates.
+                        if (direction === 'above' || direction === 'below') {
+                            y0 = cssH - y0;
+                            y1 = cssH - y1;
+                        }
+                        else {
+                            x0 = cssW - x0;
+                            x1 = cssW - x1;
+                        }
+                        gradient_4 = maskCtx.createLinearGradient(x0, y0, x1, y1);
+                        stops = processColorStops_1(mask.stops, Math.sqrt(cssW * cssW + cssH * cssH));
+                        stops.forEach(function (_a) {
+                            var color = _a.color, stop = _a.stop;
+                            var r = (color >>> 24) & 0xff;
+                            var g = (color >>> 16) & 0xff;
+                            var b = (color >>> 8) & 0xff;
+                            var a = (color & 0xff) / 255;
+                            gradient_4.addColorStop(stop, "rgba(".concat(r, ",").concat(g, ",").concat(b, ",").concat(a, ")"));
+                        });
+                        maskCtx.fillStyle = gradient_4;
+                        maskCtx.fillRect(0, 0, cssW, cssH);
+                    }
+                    else {
+                        maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+                        maskCtx.fillStyle = 'white';
+                        maskCtx.fillRect(0, 0, w, h);
+                    }
+                    return [3 /*break*/, 5];
+                case 4:
+                    _d.sent();
+                    maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    maskCtx.fillStyle = 'white';
+                    maskCtx.fillRect(0, 0, w, h);
+                    return [3 /*break*/, 5];
+                case 5:
+                    // Apply mask: keep only pixels where the mask is non-transparent
+                    reflectCtx.globalCompositeOperation = 'destination-in';
+                    reflectCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    reflectCtx.drawImage(maskCanvas, 0, 0);
+                    reflectCtx.globalCompositeOperation = 'source-over';
+                    state.canvasPool.release(maskCanvas);
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
 
 var calculateObjectFitBounds = function (objectFit, naturalWidth, naturalHeight, clientWidth, clientHeight, objectPositionX, objectPositionY) {
     if (objectPositionX === void 0) { objectPositionX = 0.5; }
@@ -20784,7 +21720,7 @@ function renderCheckbox(state, container) {
         new Vector(bounds.left + size * 0.84, bounds.top + size * 0.34085),
         new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
     ]);
-    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fillStyle = asString(container.accentColor);
     state.ctx.fill();
     state.ctx.restore();
 }
@@ -20796,7 +21732,7 @@ function renderRadio(state, container) {
     state.ctx.save();
     state.ctx.beginPath();
     state.ctx.arc(bounds.left + size / 2, bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
-    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fillStyle = asString(container.accentColor);
     state.ctx.fill();
     state.ctx.restore();
 }
@@ -21689,11 +22625,11 @@ var CanvasRenderer = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         styles = stack.element.container.styles;
-                        if (!styles.isVisible()) return [3 /*break*/, 4];
+                        if (!styles.isVisible()) return [3 /*break*/, 6];
                         offscreenFilters = this._getOffscreenFilters(stack);
                         rootOpacity = stack.element.effects.find(isOpacityEffect);
                         needsMask = styles.isMasked();
-                        if (!(offscreenFilters || rootOpacity || needsMask)) return [3 /*break*/, 2];
+                        if (!(offscreenFilters || rootOpacity || needsMask || styles.isIsolated())) return [3 /*break*/, 2];
                         return [4 /*yield*/, this._renderStackOffscreen(stack, offscreenFilters, rootOpacity, needsMask)];
                     case 1:
                         _a.sent();
@@ -21703,6 +22639,12 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         _a.sent();
                         _a.label = 4;
                     case 4:
+                        if (!(stack.element.container.styles.webkitBoxReflect !== null)) return [3 /*break*/, 6];
+                        return [4 /*yield*/, renderBoxReflect(this.state, stack.element)];
+                    case 5:
+                        _a.sent();
+                        _a.label = 6;
+                    case 6:
                         this._reportElementProgress();
                         return [2 /*return*/];
                 }
@@ -21967,15 +22909,19 @@ var CanvasRenderer = /** @class */ (function (_super) {
                         if (contains(paint.container.flags, 16 /* FLAGS.DEBUG_RENDER */)) {
                             debugger;
                         }
-                        if (!(paint.container.styles.isVisible() && !this._isCulled(paint))) return [3 /*break*/, 3];
+                        if (!(paint.container.styles.isVisible() && !this._isCulled(paint))) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.renderNodeBackgroundAndBorders(paint)];
                     case 1:
                         _a.sent();
                         return [4 /*yield*/, this.renderNodeContent(paint)];
                     case 2:
                         _a.sent();
-                        _a.label = 3;
+                        if (!(paint.container.styles.webkitBoxReflect !== null)) return [3 /*break*/, 4];
+                        return [4 /*yield*/, renderBoxReflect(this.state, paint)];
                     case 3:
+                        _a.sent();
+                        _a.label = 4;
+                    case 4:
                         this._reportElementProgress();
                         return [2 /*return*/];
                 }

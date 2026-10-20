@@ -15,6 +15,8 @@ export const enum EffectType {
     OVERFLOW_CLIP = 6,
     /** Backdrop filter — applied to already-rendered pixels behind the element. */
     BACKDROP_FILTER = 7,
+    /** Box reflect — mirror of the element above/below/left/right. */
+    REFLECT = 8,
 }
 
 export const enum EffectTarget {
@@ -109,3 +111,16 @@ export const isPath2DClipEffect = (effect: IElementEffect): effect is Path2DClip
     effect.type === EffectType.PATH2D_CLIP;
 export const isBackdropFilterEffect = (effect: IElementEffect): effect is BackdropFilterEffect =>
     effect.type === EffectType.BACKDROP_FILTER;
+
+export class ReflectEffect implements IElementEffect {
+    readonly type: EffectType = EffectType.REFLECT;
+    readonly target: number = EffectTarget.BACKGROUND_BORDERS | EffectTarget.CONTENT;
+
+    constructor(
+        readonly direction: import('../css/property-descriptors/webkit-box-reflect').BoxReflectDirection,
+        readonly offset: import('../css/types/length-percentage').LengthPercentage,
+        readonly mask: import('../css/types/image').ICSSImage | null,
+    ) {}
+}
+
+export const isReflectEffect = (effect: IElementEffect): effect is ReflectEffect => effect.type === EffectType.REFLECT;

@@ -43,7 +43,7 @@ import {
     expandBorderBoxPathForOutline,
 } from '../bound-curves';
 import type { TransformEffect } from '../effects';
-import { isBackdropFilterEffect, isTransformEffect } from '../effects';
+import { isBackdropFilterEffect, isReflectEffect, isTransformEffect, ReflectEffect } from '../effects';
 import { Path } from '../path';
 import { ElementPaint } from '../stacking-context';
 import { Vector } from '../vector';
@@ -2747,4 +2747,190 @@ function _applyLuminanceMask(canvas: HTMLCanvasElement): void {
         data[i + 3] = Math.round(lum * 255);
     }
     ctx.putImageData(imageData, 0, 0);
+}
+
+// ---------------------------------------------------------------------------
+// -webkit-box-reflect rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Render a `-webkit-box-reflect` effect.
+ *
+ * Algorithm:
+ *   1. Capture the element's border-box region from the already-painted canvas.
+ *   2. Create a reflected canvas (flipped horizontally or vertically).
+ *   3. Optionally apply a gradient mask to fade the reflection.
+ *   4. Paint the reflection at the correct offset from the element edge.
+ *
+ * The reflection is painted AFTER the element itself so it appears on top of
+ * any content that was behind the element but below the reflection area.
+ */
+export async function renderBoxReflect(state: CanvasRenderState, paint: ElementPaint): Promise<void> {
+    // Collect the ReflectEffect on this element (not inherited)
+    let reflectEffect: ReflectEffect | null = null;
+    for (const effect of paint.effects) {
+        if (isReflectEffect(effect)) {
+            reflectEffect = effect as ReflectEffect;
+            break;
+        }
+    }
+    if (!reflectEffect) return;
+
+    const { direction, offset, mask } = reflectEffect;
+    const bounds = paint.container.bounds;
+    const scale = state.options.scale;
+    const ox = state.options.x;
+    const oy = state.options.y;
+
+    // Device-pixel coordinates of the border-box
+    const dLeft = Math.floor((bounds.left - ox) * scale);
+    const dTop = Math.floor((bounds.top - oy) * scale);
+    const dWidth = Math.ceil(bounds.width * scale);
+    const dHeight = Math.ceil(bounds.height * scale);
+
+    if (dWidth <= 0 || dHeight <= 0) {
+        return;
+    }
+
+    // Clamp source region to canvas bounds
+    const canvasW = state.canvas.width;
+    const canvasH = state.canvas.height;
+    const srcX = Math.max(0, dLeft);
+    const srcY = Math.max(0, dTop);
+    const srcW = Math.min(dWidth, canvasW - srcX);
+    const srcH = Math.min(dHeight, canvasH - srcY);
+    if (srcW <= 0 || srcH <= 0) {
+        return;
+    }
+
+    // Step 1 — Capture the element region
+    const captured = state.canvasPool.acquire(srcW, srcH);
+    const capturedCtx = captured.getContext('2d') as CanvasRenderingContext2D;
+    capturedCtx.drawImage(state.canvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+    // Step 2 — Create flipped reflection canvas
+    const reflected = state.canvasPool.acquire(srcW, srcH);
+    const reflectedCtx = reflected.getContext('2d') as CanvasRenderingContext2D;
+
+    if (direction === 'above' || direction === 'below') {
+        // Flip vertically
+        reflectedCtx.translate(0, srcH);
+        reflectedCtx.scale(1, -1);
+    } else {
+        // Flip horizontally
+        reflectedCtx.translate(srcW, 0);
+        reflectedCtx.scale(-1, 1);
+    }
+    reflectedCtx.drawImage(captured, 0, 0);
+    state.canvasPool.release(captured);
+    // Reset transform
+    reflectedCtx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Step 3 — Apply gradient mask if present
+    if (mask !== null) {
+        await _applyReflectMask(state, reflected, reflectedCtx, srcW, srcH, mask, direction);
+    }
+
+    // Step 4 — Compute destination position
+    const offsetPx =
+        getAbsoluteValue(offset, direction === 'above' || direction === 'below' ? bounds.height : bounds.width) * scale;
+
+    let destX: number = srcX;
+    let destY: number = srcY;
+
+    switch (direction) {
+        case 'below':
+            destX = srcX;
+            destY = srcY + srcH + Math.round(offsetPx);
+            break;
+        case 'above':
+            destX = srcX;
+            destY = srcY - srcH - Math.round(offsetPx);
+            break;
+        case 'right':
+            destX = srcX + srcW + Math.round(offsetPx);
+            destY = srcY;
+            break;
+        case 'left':
+            destX = srcX - srcW - Math.round(offsetPx);
+            destY = srcY;
+            break;
+    }
+
+    // Paint the reflection using identity transform (device pixels)
+    state.ctx.save();
+    state.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    state.ctx.drawImage(reflected, destX, destY);
+    state.ctx.restore();
+
+    state.canvasPool.release(reflected);
+}
+
+/**
+ * Apply a mask image (typically a gradient) to the reflection canvas so it
+ * fades out. Uses Canvas 2D globalCompositeOperation 'destination-in'.
+ */
+async function _applyReflectMask(
+    state: CanvasRenderState,
+    _reflectCanvas: HTMLCanvasElement,
+    reflectCtx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+    mask: import('../../css/types/image').ICSSImage,
+    direction: import('../../css/property-descriptors/webkit-box-reflect').BoxReflectDirection,
+): Promise<void> {
+    const maskCanvas = state.canvasPool.acquire(w, h);
+    const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D;
+
+    try {
+        maskCtx.scale(state.options.scale, state.options.scale);
+        const cssW = w / state.options.scale;
+        const cssH = h / state.options.scale;
+
+        const { processColorStops, calculateGradientDirection } = await import('../../css/types/functions/gradient');
+        const { isLinearGradient } = await import('../../css/types/image');
+
+        if (isLinearGradient(mask)) {
+            let [, x0, x1, y0, y1] = calculateGradientDirection(mask.angle, cssW, cssH);
+
+            // The reflection canvas is already flipped. The gradient must be flipped too
+            // so the fade goes in the correct visual direction (away from the original).
+            // For vertical reflections (above/below): mirror Y coordinates.
+            // For horizontal reflections (left/right): mirror X coordinates.
+            if (direction === 'above' || direction === 'below') {
+                y0 = cssH - y0;
+                y1 = cssH - y1;
+            } else {
+                x0 = cssW - x0;
+                x1 = cssW - x1;
+            }
+
+            const gradient = maskCtx.createLinearGradient(x0, y0, x1, y1);
+            const stops = processColorStops(mask.stops, Math.sqrt(cssW * cssW + cssH * cssH));
+            stops.forEach(({ color, stop }) => {
+                const r = (color >>> 24) & 0xff;
+                const g = (color >>> 16) & 0xff;
+                const b = (color >>> 8) & 0xff;
+                const a = (color & 0xff) / 255;
+                gradient.addColorStop(stop, `rgba(${r},${g},${b},${a})`);
+            });
+            maskCtx.fillStyle = gradient;
+            maskCtx.fillRect(0, 0, cssW, cssH);
+        } else {
+            maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+            maskCtx.fillStyle = 'white';
+            maskCtx.fillRect(0, 0, w, h);
+        }
+    } catch {
+        maskCtx.setTransform(1, 0, 0, 1, 0, 0);
+        maskCtx.fillStyle = 'white';
+        maskCtx.fillRect(0, 0, w, h);
+    }
+
+    // Apply mask: keep only pixels where the mask is non-transparent
+    reflectCtx.globalCompositeOperation = 'destination-in';
+    reflectCtx.setTransform(1, 0, 0, 1, 0, 0);
+    reflectCtx.drawImage(maskCanvas, 0, 0);
+    reflectCtx.globalCompositeOperation = 'source-over';
+    state.canvasPool.release(maskCanvas);
 }

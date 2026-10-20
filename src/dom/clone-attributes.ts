@@ -15,3 +15,6 @@ export const DATA_ATTR_PLACEHOLDER = 'data-h2c-placeholder';
 
 /** Serialised ::marker style delta (JSON object of CSS property → value). */
 export const DATA_ATTR_MARKER = 'data-h2c-marker';
+
+/** Serialised -webkit-box-reflect value (CSS string), used as fallback on Firefox. */
+export const DATA_ATTR_BOX_REFLECT = 'data-h2c-box-reflect';

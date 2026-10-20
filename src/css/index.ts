@@ -65,6 +65,7 @@ import { fontStyle } from './property-descriptors/font-style';
 import { fontVariant } from './property-descriptors/font-variant';
 import { fontWeight } from './property-descriptors/font-weight';
 import { imageRendering } from './property-descriptors/image-rendering';
+import { ISOLATION, isolation } from './property-descriptors/isolation';
 import { letterSpacing } from './property-descriptors/letter-spacing';
 import { lineBreak } from './property-descriptors/line-break';
 import { lineHeight } from './property-descriptors/line-height';
@@ -101,6 +102,9 @@ import { textDecorationInset } from './property-descriptors/text-decoration-inse
 import { textDecorationLine } from './property-descriptors/text-decoration-line';
 import { textDecorationStyle } from './property-descriptors/text-decoration-style';
 import { textDecorationThickness } from './property-descriptors/text-decoration-thickness';
+import { textEmphasisColor } from './property-descriptors/text-emphasis-color';
+import { textEmphasisPosition } from './property-descriptors/text-emphasis-position';
+import { textEmphasisStyle } from './property-descriptors/text-emphasis-style';
 import { textShadow } from './property-descriptors/text-shadow';
 import { textTransform } from './property-descriptors/text-transform';
 import { textUnderlineOffset } from './property-descriptors/text-underline-offset';
@@ -109,7 +113,9 @@ import { transform } from './property-descriptors/transform';
 import { transformOrigin } from './property-descriptors/transform-origin';
 import { unicodeBidi } from './property-descriptors/unicode-bidi';
 import { VISIBILITY, visibility } from './property-descriptors/visibility';
+import { CSSBoxReflect, webkitBoxReflect } from './property-descriptors/webkit-box-reflect';
 import { webkitLineClamp } from './property-descriptors/webkit-line-clamp';
+import { webkitTextFillColor } from './property-descriptors/webkit-text-fill-color';
 import { webkitTextStrokeColor } from './property-descriptors/webkit-text-stroke-color';
 import { webkitTextStrokeWidth } from './property-descriptors/webkit-text-stroke-width';
 import { wordBreak } from './property-descriptors/word-break';
@@ -198,6 +204,7 @@ export class CSSParsedDeclaration {
     fontVariant: ReturnType<typeof fontVariant.parse>;
     fontWeight: ReturnType<typeof fontWeight.parse>;
     imageRendering: ReturnType<typeof imageRendering.parse>;
+    isolation: ISOLATION;
     letterSpacing: ReturnType<typeof letterSpacing.parse>;
     lineBreak: ReturnType<typeof lineBreak.parse>;
     lineHeight: CSSValue;
@@ -240,6 +247,9 @@ export class CSSParsedDeclaration {
     textDecorationLine: ReturnType<typeof textDecorationLine.parse>;
     textDecorationStyle: ReturnType<typeof textDecorationStyle.parse>;
     textDecorationThickness: ReturnType<typeof textDecorationThickness.parse>;
+    textEmphasisColor: Color;
+    textEmphasisPosition: ReturnType<typeof textEmphasisPosition.parse>;
+    textEmphasisStyle: string;
     textShadow: ReturnType<typeof textShadow.parse>;
     textTransform: ReturnType<typeof textTransform.parse>;
     textUnderlineOffset: ReturnType<typeof textUnderlineOffset.parse>;
@@ -249,6 +259,8 @@ export class CSSParsedDeclaration {
     unicodeBidi: ReturnType<typeof unicodeBidi.parse>;
     visibility: ReturnType<typeof visibility.parse>;
     webkitLineClamp: ReturnType<typeof webkitLineClamp.parse>;
+    webkitBoxReflect: CSSBoxReflect | null;
+    webkitTextFillColor: Color;
     webkitTextStrokeColor: Color;
     webkitTextStrokeWidth: ReturnType<typeof webkitTextStrokeWidth.parse>;
     wordBreak: ReturnType<typeof wordBreak.parse>;
@@ -307,6 +319,7 @@ export class CSSParsedDeclaration {
         this.fontVariant = parse(context, fontVariant, declaration.fontVariant);
         this.fontWeight = parse(context, fontWeight, declaration.fontWeight);
         this.imageRendering = parse(context, imageRendering, declaration.imageRendering);
+        this.isolation = parse(context, isolation, declaration.isolation);
         this.letterSpacing = parse(context, letterSpacing, declaration.letterSpacing);
         this.lineBreak = parse(context, lineBreak, declaration.lineBreak);
         this.lineHeight = parse(context, lineHeight, declaration.lineHeight);
@@ -386,6 +399,9 @@ export class CSSParsedDeclaration {
         );
         this.textDecorationStyle = parse(context, textDecorationStyle, declaration.textDecorationStyle);
         this.textDecorationThickness = parse(context, textDecorationThickness, declaration.textDecorationThickness);
+        this.textEmphasisColor = parse(context, textEmphasisColor, declaration.textEmphasisColor);
+        this.textEmphasisStyle = parse(context, textEmphasisStyle, declaration.textEmphasisStyle);
+        this.textEmphasisPosition = parse(context, textEmphasisPosition, declaration.textEmphasisPosition);
         this.textShadow = parse(context, textShadow, declaration.textShadow);
         this.textTransform = parse(context, textTransform, declaration.textTransform);
         this.textUnderlineOffset = parse(context, textUnderlineOffset, declaration.textUnderlineOffset);
@@ -395,6 +411,21 @@ export class CSSParsedDeclaration {
         this.unicodeBidi = parse(context, unicodeBidi, declaration.unicodeBidi);
         this.visibility = parse(context, visibility, declaration.visibility);
         this.webkitLineClamp = parse(context, webkitLineClamp, declaration.webkitLineClamp);
+        this.webkitBoxReflect = parse(
+            context,
+            webkitBoxReflect,
+            // Firefox does not expose webkitBoxReflect as a JS property on CSSStyleDeclaration,
+            // but it may be readable via getPropertyValue (for inline styles).
+            // We also try the camelCase JS property as a fallback for Chromium.
+            (declaration as CSSStyleDeclaration & { webkitBoxReflect?: string }).webkitBoxReflect ||
+                declaration.getPropertyValue('-webkit-box-reflect') ||
+                undefined,
+        );
+        this.webkitTextFillColor = parse(
+            context,
+            webkitTextFillColor,
+            (declaration as CSSStyleDeclaration & { webkitTextFillColor?: string }).webkitTextFillColor,
+        );
         this.webkitTextStrokeColor = parse(context, webkitTextStrokeColor, declaration.webkitTextStrokeColor);
         this.webkitTextStrokeWidth = parse(context, webkitTextStrokeWidth, declaration.webkitTextStrokeWidth);
         this.wordBreak = parse(context, wordBreak, declaration.wordBreak);
@@ -529,6 +560,10 @@ export class CSSParsedDeclaration {
         return this.maskImage.length > 0;
     }
 
+    isIsolated(): boolean {
+        return this.isolation === ISOLATION.ISOLATE;
+    }
+
     isPositioned(): boolean {
         return this.position !== POSITION.STATIC;
     }
@@ -574,7 +609,7 @@ export class CSSParsedCounterDeclaration {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const parse = (context: Context, descriptor: CSSPropertyDescriptor<any>, style?: string | null) => {
+export const parse = (context: Context, descriptor: CSSPropertyDescriptor<any>, style?: string | null) => {
     const value =
         style !== null && typeof style !== 'undefined' && style !== '' ? style.toString() : descriptor.initialValue;
 

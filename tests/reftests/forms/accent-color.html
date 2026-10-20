@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS accent-color on checkbox and radio</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row { margin-bottom: 28px; }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #222;
+        }
+        .item {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: top;
+            margin-right: 24px;
+            gap: 6px;
+        }
+        .label { font-size: 11px; color: #555; }
+        input[type="checkbox"],
+        input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ───────────────────────── checkbox ───────────────────────── -->
+<div class="row">
+    <div class="row-title">checkbox — accent-color</div>
+
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #e74c3c;">
+        <span class="label">red (#e74c3c)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #2ecc71;">
+        <span class="label">green (#2ecc71)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #3498db;">
+        <span class="label">blue (#3498db)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #f39c12;">
+        <span class="label">orange (#f39c12)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #9b59b6;">
+        <span class="label">purple (#9b59b6)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked>
+        <span class="label">default (no accent)</span>
+    </div>
+    <div class="item">
+        <input type="checkbox">
+        <span class="label">unchecked (no mark)</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── radio ───────────────────────── -->
+<div class="row">
+    <div class="row-title">radio — accent-color</div>
+
+    <div class="item">
+        <input type="radio" checked style="accent-color: #e74c3c;">
+        <span class="label">red</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: #2ecc71;">
+        <span class="label">green</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: #3498db;">
+        <span class="label">blue</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: #f39c12;">
+        <span class="label">orange</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked>
+        <span class="label">default (no accent)</span>
+    </div>
+    <div class="item">
+        <input type="radio">
+        <span class="label">unchecked (no mark)</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── size variants ───────────────────────── -->
+<div class="row">
+    <div class="row-title">accent-color — size variants</div>
+
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #e74c3c; width:14px; height:14px;">
+        <span class="label">14 × 14</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #e74c3c; width:20px; height:20px;">
+        <span class="label">20 × 20</span>
+    </div>
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: #e74c3c; width:32px; height:32px;">
+        <span class="label">32 × 32</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: #3498db; width:14px; height:14px;">
+        <span class="label">radio 14</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: #3498db; width:32px; height:32px;">
+        <span class="label">radio 32</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── accent-color: auto fallback ───────────────────────── -->
+<div class="row">
+    <div class="row-title">accent-color: auto (browser default)</div>
+
+    <div class="item">
+        <input type="checkbox" checked style="accent-color: auto;">
+        <span class="label">checkbox auto</span>
+    </div>
+    <div class="item">
+        <input type="radio" checked style="accent-color: auto;">
+        <span class="label">radio auto</span>
+    </div>
+</div>
+
+</body>
+</html>

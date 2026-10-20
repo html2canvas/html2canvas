@@ -29,7 +29,7 @@ import {
 import { FontMetrics } from '../font-metrics';
 import { Renderer } from '../renderer';
 import { ElementPaint, parseStackingContexts, StackingContext } from '../stacking-context';
-import { renderMaskImage, renderNodeBackgroundAndBorders } from './canvas-background-renderer';
+import { renderBoxReflect, renderMaskImage, renderNodeBackgroundAndBorders } from './canvas-background-renderer';
 import {
     isTextInputElement,
     renderCheckbox,
@@ -241,10 +241,16 @@ export class CanvasRenderer extends Renderer {
             const rootOpacity = stack.element.effects.find(isOpacityEffect) as OpacityEffect | undefined;
             const needsMask = styles.isMasked();
 
-            if (offscreenFilters || rootOpacity || needsMask) {
+            if (offscreenFilters || rootOpacity || needsMask || styles.isIsolated()) {
                 await this._renderStackOffscreen(stack, offscreenFilters, rootOpacity, needsMask);
             } else {
                 await this.renderStackContent(stack);
+            }
+
+            // box-reflect: capture after the full element (content + children) is on the canvas.
+            // Called here so state.canvas is always the main canvas and active effects are cleared.
+            if (stack.element.container.styles.webkitBoxReflect !== null) {
+                await renderBoxReflect(this.state, stack.element);
             }
         }
         this._reportElementProgress();
@@ -464,6 +470,9 @@ export class CanvasRenderer extends Renderer {
         if (paint.container.styles.isVisible() && !this._isCulled(paint)) {
             await this.renderNodeBackgroundAndBorders(paint);
             await this.renderNodeContent(paint);
+            if (paint.container.styles.webkitBoxReflect !== null) {
+                await renderBoxReflect(this.state, paint);
+            }
         }
         this._reportElementProgress();
     }

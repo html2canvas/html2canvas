@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS clip-path rect() and xywh()</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row { margin-bottom: 28px; }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #222;
+        }
+        .item {
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            margin-right: 18px;
+        }
+        .label { font-size: 11px; margin-top: 6px; color: #555; }
+        .box {
+            width: 120px;
+            height: 120px;
+            background: #3498db;
+            display: inline-block;
+        }
+        .box-grad {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #e74c3c 0%, #f39c12 50%, #2ecc71 100%);
+            display: inline-block;
+        }
+        .box-text {
+            width: 120px;
+            height: 120px;
+            background: #9b59b6;
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ───────────────────────── rect() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">rect() — distances from each edge</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: rect(0px 120px 120px 0px);"></div>
+        <div class="label">rect(0 120px 120px 0) — full</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(10px 110px 110px 10px);"></div>
+        <div class="label">rect(10px 110px 110px 10px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(20px 100px 80px 20px);"></div>
+        <div class="label">rect(20px 100px 80px 20px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(30% 80% 70% 20%);"></div>
+        <div class="label">rect(30% 80% 70% 20%)</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: rect(15px 105px 105px 15px);"></div>
+        <div class="label">gradient + rect inset</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: rect(10px 110px 110px 10px);">clipped</div>
+        <div class="label">with text</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── rect() auto ───────────────────────── -->
+<div class="row">
+    <div class="row-title">rect() with auto keyword</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: rect(auto auto auto auto);"></div>
+        <div class="label">rect(auto auto auto auto) — full</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(20px auto auto 20px);"></div>
+        <div class="label">rect(20px auto auto 20px)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(auto 90px 90px auto);"></div>
+        <div class="label">rect(auto 90px 90px auto)</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── rect() round ───────────────────────── -->
+<div class="row">
+    <div class="row-title">rect() with round (rounded corners)</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: rect(10px 110px 110px 10px round 12px);"></div>
+        <div class="label">round 12px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(10px 110px 110px 10px round 50%);"></div>
+        <div class="label">round 50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(5px 115px 115px 5px round 8px 24px);"></div>
+        <div class="label">round 8px 24px</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: rect(10px 110px 110px 10px round 20px);"></div>
+        <div class="label">gradient + round 20px</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── xywh() ───────────────────────── -->
+<div class="row">
+    <div class="row-title">xywh() — origin + dimensions</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: xywh(0px 0px 120px 120px);"></div>
+        <div class="label">xywh(0 0 120 120) — full</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(10px 10px 100px 100px);"></div>
+        <div class="label">xywh(10 10 100 100)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(20px 30px 80px 60px);"></div>
+        <div class="label">xywh(20 30 80 60)</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(10% 10% 80% 80%);"></div>
+        <div class="label">xywh(10% 10% 80% 80%)</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: xywh(15px 15px 90px 90px);"></div>
+        <div class="label">gradient + xywh</div>
+    </div>
+    <div class="item">
+        <div class="box-text" style="clip-path: xywh(10px 10px 100px 100px);">clipped</div>
+        <div class="label">with text</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── xywh() round ───────────────────────── -->
+<div class="row">
+    <div class="row-title">xywh() with round (rounded corners)</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: xywh(10px 10px 100px 100px round 12px);"></div>
+        <div class="label">round 12px</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(10px 10px 100px 100px round 50%);"></div>
+        <div class="label">round 50%</div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(5px 5px 110px 110px round 8px 24px);"></div>
+        <div class="label">round 8px 24px</div>
+    </div>
+    <div class="item">
+        <div class="box-grad" style="clip-path: xywh(10px 10px 100px 100px round 20px);"></div>
+        <div class="label">gradient + round 20px</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── rect() vs inset() equivalence ───────────────────────── -->
+<div class="row">
+    <div class="row-title">rect() ≡ inset() equivalence (should look identical)</div>
+
+    <div class="item">
+        <div class="box" style="clip-path: inset(10px 20px 30px 15px);"></div>
+        <div class="label">inset(10 20 30 15)<br><em>reference</em></div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: rect(10px 100px 90px 15px);"></div>
+        <div class="label">rect(10 100 90 15)<br><em>should match</em></div>
+    </div>
+    <div class="item">
+        <div class="box" style="clip-path: xywh(15px 10px 85px 80px);"></div>
+        <div class="label">xywh(15 10 85 80)<br><em>should match</em></div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -8,7 +8,12 @@ import { getQuote } from '../css/property-descriptors/quotes';
 import { isIdentToken, nonFunctionArgSeparator } from '../css/syntax/parser';
 import { TokenType } from '../css/syntax/tokenizer';
 import { CounterState, createCounterText } from '../css/types/functions/counter';
-import { DATA_ATTR_FIRST_LINE, DATA_ATTR_MARKER, DATA_ATTR_PLACEHOLDER } from './clone-attributes';
+import {
+    DATA_ATTR_BOX_REFLECT,
+    DATA_ATTR_FIRST_LINE,
+    DATA_ATTR_MARKER,
+    DATA_ATTR_PLACEHOLDER,
+} from './clone-attributes';
 import {
     isBodyElement,
     isCanvasElement,
@@ -557,6 +562,14 @@ export class DocumentCloner {
                     if (Object.keys(delta).length > 0) {
                         (clone as HTMLElement).setAttribute(DATA_ATTR_MARKER, JSON.stringify(delta));
                     }
+                }
+
+                // -webkit-box-reflect: Firefox does not expose this property via getComputedStyle.
+                // Read it from the inline style or by scanning the document's stylesheets,
+                // then store it as a data attribute so CSSParsedDeclaration can read it in the clone.
+                const reflectValue = _getBoxReflectValue(node as HTMLElement, style);
+                if (reflectValue) {
+                    (clone as HTMLElement).setAttribute(DATA_ATTR_BOX_REFLECT, reflectValue);
                 }
             }
 
@@ -1301,3 +1314,84 @@ const addBase = (targetELement: HTMLElement, referenceDocument: Document) => {
     const headEle = targetELement.getElementsByTagName('head').item(0);
     headEle?.insertBefore(baseNode, headEle?.firstChild ?? null);
 };
+
+/**
+ * Read the `-webkit-box-reflect` value for an element.
+ *
+ * On Chromium, `getComputedStyle` exposes `webkitBoxReflect` as a JS property.
+ * On Firefox, the property is unknown to the CSS engine, so:
+ *  1. Check inline style (element.style).
+ *  2. Scan stylesheets for matching rules and extract the value from raw cssText,
+ *     since Firefox does not parse -webkit-box-reflect into CSSStyleRule.style.
+ *
+ * Returns the raw CSS string value, or empty string if not found.
+ */
+function _getBoxReflectValue(element: HTMLElement, computedStyle: CSSStyleDeclaration): string {
+    // Already available via getComputedStyle (Chromium)
+    const fromComputed =
+        (computedStyle as CSSStyleDeclaration & { webkitBoxReflect?: string }).webkitBoxReflect ||
+        computedStyle.getPropertyValue('-webkit-box-reflect');
+    if (fromComputed && fromComputed !== 'none') return fromComputed;
+
+    // Fallback: inline style (works if set via element.style)
+    const fromInline = element.style.getPropertyValue('-webkit-box-reflect');
+    if (fromInline && fromInline !== 'none') return fromInline;
+
+    // Fallback: inline style — read from the raw HTML `style` attribute before
+    // Firefox strips the unknown property from the parsed CSSStyleDeclaration.
+    const rawStyle = element.getAttribute('style') ?? '';
+    const inlineMatch = /-webkit-box-reflect\s*:\s*([^;}\n]+)/i.exec(rawStyle);
+    if (inlineMatch) {
+        const val = inlineMatch[1].trim();
+        if (val && val !== 'none') return val;
+    }
+
+    // Fallback: scan stylesheets in the element's document.
+    // Firefox does not parse -webkit-box-reflect into CSSStyleRule.style,
+    // so we extract the value by matching the property in raw cssText.
+    const doc = element.ownerDocument;
+    if (!doc) return '';
+
+    // Regex to extract: -webkit-box-reflect: <value>;
+    // Value ends at ';' or end-of-block, allowing nested parens for gradients.
+    const RE = /-webkit-box-reflect\s*:\s*([^;}\n]+)/i;
+
+    try {
+        for (let i = 0; i < doc.styleSheets.length; i++) {
+            const sheet = doc.styleSheets[i];
+            let rules: CSSRuleList | null = null;
+            try {
+                rules = sheet.cssRules;
+            } catch {
+                continue; // Cross-origin stylesheet
+            }
+            if (!rules) continue;
+
+            for (let r = 0; r < rules.length; r++) {
+                const rule = rules[r];
+                if (!(rule instanceof CSSStyleRule)) continue;
+
+                // Check if this rule matches the element
+                try {
+                    if (!element.matches(rule.selectorText)) continue;
+                } catch {
+                    continue;
+                }
+
+                // Try parsed style first (works on Chromium)
+                const parsed = rule.style.getPropertyValue('-webkit-box-reflect');
+                if (parsed && parsed !== 'none') return parsed;
+
+                // Fallback: extract from raw cssText (works on Firefox)
+                const match = RE.exec(rule.cssText);
+                if (match) {
+                    const val = match[1].trim();
+                    if (val && val !== 'none') return val;
+                }
+            }
+        }
+    } catch {
+        // Stylesheet access denied — ignore
+    }
+    return '';
+}

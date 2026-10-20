@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+  <head>
+    <title>CSS -webkit-box-reflect</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        padding: 20px;
+        background: #f0f0f0;
+      }
+      .row {
+        margin-bottom: 60px;
+      }
+      .row-title {
+        font-weight: bold;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: #222;
+      }
+      .item {
+        display: inline-block;
+        text-align: center;
+        vertical-align: top;
+        margin-right: 40px;
+      }
+      .label {
+        font-size: 11px;
+        margin-top: 4px;
+        color: #555;
+      }
+
+      /* Base element to reflect */
+      .box {
+        width: 100px;
+        height: 80px;
+        background: linear-gradient(135deg, #3498db 0%, #e74c3c 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: bold;
+        font-size: 13px;
+      }
+      .box-solid {
+        width: 100px;
+        height: 80px;
+        background: #2ecc71;
+        border: 3px solid #27ae60;
+      }
+      .box-text {
+        width: 120px;
+        height: 40px;
+        background: #9b59b6;
+        color: #fff;
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ───────────────────────── directions ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">-webkit-box-reflect — directions (no offset, no mask)</div>
+
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 0px">A</div>
+        <div class="label">below 0px</div>
+      </div>
+
+      <div class="item">
+        <div class="box" style="-webkit-box-reflect: above 0px">A</div>
+        <div class="label">above 0px<br />(reflected above)</div>
+      </div>
+
+      <div class="item" style="padding-right: 120px">
+        <div class="box" style="-webkit-box-reflect: right 0px">A</div>
+        <div class="label">right 0px</div>
+      </div>
+
+      <div class="item" style="padding-left: 120px">
+        <div class="box" style="-webkit-box-reflect: left 0px">A</div>
+        <div class="label">left 0px</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── offset ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">-webkit-box-reflect below — with offset</div>
+
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 0px">0px offset</div>
+        <div class="label">below 0px</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 8px">8px offset</div>
+        <div class="label">below 8px</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 20px">20px offset</div>
+        <div class="label">below 20px</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 10%">10% offset</div>
+        <div class="label">below 10%</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── gradient mask ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">-webkit-box-reflect with gradient mask (fade-out)</div>
+
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.8))">
+          gradient
+        </div>
+        <div class="label">below + linear-gradient fade</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div
+          class="box"
+          style="-webkit-box-reflect: below 4px linear-gradient(transparent 0%, rgba(0, 0, 0, 0.5) 100%)"
+        >
+          dark fade
+        </div>
+        <div class="label">below + darker gradient</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 0px linear-gradient(transparent 30%, white 100%)">short</div>
+        <div class="label">starts transparent at 30%</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div
+          class="box"
+          style="-webkit-box-reflect: right 4px linear-gradient(to right, transparent, rgba(255, 255, 255, 0.9))"
+        >
+          right fade
+        </div>
+        <div class="label">right + horizontal gradient</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── different element types ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">-webkit-box-reflect — different element types</div>
+
+      <div class="item" style="margin-bottom: 100px">
+        <div
+          class="box-solid"
+          style="-webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.7))"
+        ></div>
+        <div class="label">solid bg + border</div>
+      </div>
+      <div class="item" style="margin-bottom: 60px">
+        <div class="box-text" style="-webkit-box-reflect: below 4px linear-gradient(transparent, white)">TEXT</div>
+        <div class="label">text element</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div
+          style="
+            width: 100px;
+            height: 80px;
+            background: conic-gradient(#e74c3c, #3498db, #2ecc71, #e74c3c);
+            -webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.8));
+          "
+        ></div>
+        <div class="label">conic gradient</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── no reflect (none) ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">-webkit-box-reflect: none (no reflection)</div>
+
+      <div class="item">
+        <div class="box" style="-webkit-box-reflect: none">none</div>
+        <div class="label">-webkit-box-reflect: none</div>
+      </div>
+      <div class="item">
+        <div class="box">no property</div>
+        <div class="label">no -webkit-box-reflect</div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── inline style (Firefox compatible) ───────────────────────── -->
+    <div class="row">
+      <div class="row-title">Inline style (works on all browsers incl. Firefox)</div>
+
+      <div class="item" style="margin-bottom: 100px">
+        <div class="box" style="-webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.8))">
+          inline
+        </div>
+        <div class="label">inline style — all browsers</div>
+      </div>
+      <div class="item" style="margin-bottom: 100px">
+        <div
+          class="box"
+          style="-webkit-box-reflect: right 4px linear-gradient(to right, transparent, rgba(255, 255, 255, 0.8))"
+        >
+          inline right
+        </div>
+        <div class="label">inline right — all browsers</div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,6 +1,8 @@
 ---
 title: 'FAQ'
 description: 'Explore Frequently Asked Questions regarding html2canvas'
+previousUrl: './whats-new'
+previousTitle: "What's New"
 ---
 
 ## Why aren't my images rendered?
