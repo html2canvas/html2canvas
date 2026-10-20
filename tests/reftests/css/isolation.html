@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS isolation property</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: Roboto, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row { margin-bottom: 36px; }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #222;
+        }
+        .item {
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            margin-right: 24px;
+        }
+        .label { font-size: 11px; margin-top: 8px; color: #555; }
+
+        /* Shared checkerboard background to make blending visible */
+        .stage {
+            width: 160px;
+            height: 160px;
+            background:
+                repeating-conic-gradient(#aaa 0% 25%, #fff 0% 50%) 0 0 / 20px 20px;
+            position: relative;
+            display: inline-block;
+        }
+        /* Red base layer behind the blend group */
+        .backdrop {
+            position: absolute;
+            inset: 20px;
+            background: #e74c3c;
+        }
+        /* The blended child — always mix-blend-mode: multiply */
+        .blended {
+            position: absolute;
+            inset: 30px;
+            background: #3498db;
+            mix-blend-mode: multiply;
+        }
+        /* Isolation wrapper */
+        .isolated {
+            position: absolute;
+            inset: 0;
+            isolation: isolate;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ───────────────────────── isolation: auto vs isolate ───────────────────────── -->
+<div class="row">
+    <div class="row-title">isolation: auto vs isolate — mix-blend-mode: multiply child</div>
+
+    <div class="item">
+        <!-- isolation: auto — child blends through to the checkerboard -->
+        <div class="stage">
+            <div class="backdrop"></div>
+            <div style="position:absolute; inset:0; isolation:auto;">
+                <div class="blended"></div>
+            </div>
+        </div>
+        <div class="label">isolation: auto<br>(blends through to background)</div>
+    </div>
+
+    <div class="item">
+        <!-- isolation: isolate — child only blends within the group -->
+        <div class="stage">
+            <div class="backdrop"></div>
+            <div style="position:absolute; inset:0; isolation:isolate;">
+                <div class="blended"></div>
+            </div>
+        </div>
+        <div class="label">isolation: isolate<br>(blends only within group)</div>
+    </div>
+
+    <div class="item">
+        <!-- No isolation, no blending — reference -->
+        <div class="stage">
+            <div class="backdrop"></div>
+            <div style="position:absolute; inset:30px; background:#3498db;"></div>
+        </div>
+        <div class="label">no blend, no isolation<br>(reference)</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── nested isolation ───────────────────────── -->
+<div class="row">
+    <div class="row-title">Nested isolation — inner isolate scopes inner blending</div>
+
+    <div class="item">
+        <div class="stage">
+            <!-- Outer: no isolation -->
+            <div style="position:absolute; inset:10px; background:#e74c3c;"></div>
+            <!-- Inner isolated group -->
+            <div style="position:absolute; inset:20px; isolation:isolate;">
+                <div style="position:absolute; inset:0; background:#f39c12;"></div>
+                <div style="position:absolute; inset:15px; background:#2ecc71; mix-blend-mode:multiply;"></div>
+            </div>
+        </div>
+        <div class="label">inner isolation: isolate<br>outer: auto</div>
+    </div>
+
+    <div class="item">
+        <div class="stage">
+            <div style="position:absolute; inset:10px; background:#e74c3c;"></div>
+            <div style="position:absolute; inset:20px; isolation:auto;">
+                <div style="position:absolute; inset:0; background:#f39c12;"></div>
+                <div style="position:absolute; inset:15px; background:#2ecc71; mix-blend-mode:multiply;"></div>
+            </div>
+        </div>
+        <div class="label">inner isolation: auto<br>(bleeds through)</div>
+    </div>
+</div>
+
+<!-- ───────────────────────── isolation with opacity ───────────────────────── -->
+<div class="row">
+    <div class="row-title">isolation: isolate + opacity creates stacking context</div>
+
+    <div class="item">
+        <div class="stage">
+            <div style="position:absolute; inset:20px; background:#9b59b6; isolation:isolate; opacity:0.8;">
+                <div style="position:absolute; inset:15px; background:#f1c40f; mix-blend-mode:screen;"></div>
+            </div>
+        </div>
+        <div class="label">isolate + opacity 0.8<br>screen blend inside</div>
+    </div>
+
+    <div class="item">
+        <div class="stage">
+            <div style="position:absolute; inset:20px; background:#9b59b6; isolation:auto; opacity:0.8;">
+                <div style="position:absolute; inset:15px; background:#f1c40f; mix-blend-mode:screen;"></div>
+            </div>
+        </div>
+        <div class="label">auto + opacity 0.8<br>(different result)</div>
+    </div>
+</div>
+
+</body>
+</html>
