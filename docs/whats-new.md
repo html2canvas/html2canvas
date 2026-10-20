@@ -3,6 +3,8 @@ title: "What's New"
 description: 'Release notes for @html2canvas/html2canvas since the fork from v1.4.1'
 previousUrl: './proxy'
 previousTitle: 'Proxy'
+nextUrl: './faq'
+nextTitle: 'FAQ'
 ---
 
 This page summarises every release since the fork from the original **html2canvas** project at

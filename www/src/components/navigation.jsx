@@ -8,6 +8,7 @@ const makeLinks = base => [
     { href: `${base}/performance`, text: 'Performance' },
     { href: `${base}/examples`, text: 'Examples' },
     { href: `${base}/proxy`, text: 'Proxy' },
+    { href: `${base}/whats-new`, text: "What's New" },
     { href: `${base}/faq`, text: 'FAQ' },
 ];
 
