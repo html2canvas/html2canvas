@@ -1,8 +1,8 @@
 import { Context } from '../../core/context';
 import { IPropertyListDescriptor, PropertyDescriptorParsingType } from '../IPropertyDescriptor';
-import { CSSValue, isIdentWithValue, CSSFunction } from '../syntax/parser';
+import { CSSFunction, CSSValue, isIdentWithValue } from '../syntax/parser';
 import { TokenType } from '../syntax/tokenizer';
-import { isLengthPercentage, LengthPercentage, FIFTY_PERCENT, ZERO_LENGTH } from '../types/length-percentage';
+import { FIFTY_PERCENT, isLengthPercentage, LengthPercentage, ZERO_LENGTH } from '../types/length-percentage';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -15,6 +15,8 @@ export const enum ClipPathType {
     ELLIPSE = 3,
     POLYGON = 4,
     PATH = 5,
+    RECT = 6,
+    XYWH = 7,
 }
 
 export interface NoneClipPath {
@@ -75,8 +77,48 @@ export interface PathClipPath {
     d: string;
 }
 
+/**
+ * rect( <top> <right> <bottom> <left> [ round <border-radius> ] )
+ *
+ * Each value is the distance from the corresponding edge of the reference box
+ * (same sign convention as `inset()` but named by edge rather than side).
+ * Equivalent to `inset()` geometrically — the builder can reuse buildInsetPath.
+ */
+export interface RectClipPath {
+    type: ClipPathType.RECT;
+    top: LengthPercentage;
+    right: LengthPercentage;
+    bottom: LengthPercentage;
+    left: LengthPercentage;
+    /** One entry per corner: [TL, TR, BR, BL], each a [horizontal, vertical] pair. */
+    radii: [LengthPercentage, LengthPercentage][];
+}
+
+/**
+ * xywh( <x> <y> <width> <height> [ round <border-radius> ] )
+ *
+ * Defines the clip rectangle by its top-left origin (x, y) and dimensions (w, h),
+ * all relative to the top-left corner of the reference box.
+ */
+export interface XYWHClipPath {
+    type: ClipPathType.XYWH;
+    x: LengthPercentage;
+    y: LengthPercentage;
+    width: LengthPercentage;
+    height: LengthPercentage;
+    /** One entry per corner: [TL, TR, BR, BL], each a [horizontal, vertical] pair. */
+    radii: [LengthPercentage, LengthPercentage][];
+}
+
 export type CSSClipPath =
-    NoneClipPath | InsetClipPath | CircleClipPath | EllipseClipPath | PolygonClipPath | PathClipPath;
+    | NoneClipPath
+    | InsetClipPath
+    | CircleClipPath
+    | EllipseClipPath
+    | PolygonClipPath
+    | PathClipPath
+    | RectClipPath
+    | XYWHClipPath;
 
 export const NONE_CLIP_PATH: NoneClipPath = { type: ClipPathType.NONE };
 
@@ -129,6 +171,10 @@ const parseClipPathFunction = (fn: CSSFunction): CSSClipPath => {
             return parsePolygon(fn.values);
         case 'path':
             return parsePath(fn.values);
+        case 'rect':
+            return parseRect(fn.values);
+        case 'xywh':
+            return parseXywh(fn.values);
         default:
             return NONE_CLIP_PATH;
     }
@@ -329,4 +375,75 @@ const parsePath = (values: CSSValue[]): PathClipPath | NoneClipPath => {
         }
     }
     return NONE_CLIP_PATH;
+};
+
+// ---------------------------------------------------------------------------
+// rect()
+// ---------------------------------------------------------------------------
+
+/**
+ * rect( <top> <right> <bottom> <left> [ round <border-radius> ] )
+ *
+ * Distances from the respective edges of the reference box.
+ * Geometrically identical to inset() — reuses expandSides and parseInsetRadii.
+ * The `auto` keyword is allowed per spec (treated as 0 here for simplicity,
+ * which matches the initial/default behaviour).
+ */
+const parseRect = (values: CSSValue[]): RectClipPath | NoneClipPath => {
+    const tokens = values.filter(t => t.type !== TokenType.WHITESPACE_TOKEN);
+
+    const lengths: LengthPercentage[] = [];
+    let roundIndex = -1;
+
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (isLengthPercentage(t)) {
+            lengths.push(t);
+        } else if (t.type === TokenType.IDENT_TOKEN && (t as { value: string }).value.toLowerCase() === 'auto') {
+            // `auto` resolves to the corresponding edge — treat as 0
+            lengths.push(ZERO_LENGTH);
+        } else if (t.type === TokenType.IDENT_TOKEN && (t as { value: string }).value.toLowerCase() === 'round') {
+            roundIndex = i + 1;
+            break;
+        }
+    }
+
+    const [top, right, bottom, left] = expandSides(lengths);
+    const radii = roundIndex >= 0 ? parseInsetRadii(tokens.slice(roundIndex)) : [];
+
+    return { type: ClipPathType.RECT, top, right, bottom, left, radii };
+};
+
+// ---------------------------------------------------------------------------
+// xywh()
+// ---------------------------------------------------------------------------
+
+/**
+ * xywh( <x> <y> <width> <height> [ round <border-radius> ] )
+ *
+ * Origin (x, y) from the top-left corner of the reference box, plus
+ * explicit width and height.
+ */
+const parseXywh = (values: CSSValue[]): XYWHClipPath | NoneClipPath => {
+    const tokens = values.filter(t => t.type !== TokenType.WHITESPACE_TOKEN);
+
+    const lengths: LengthPercentage[] = [];
+    let roundIndex = -1;
+
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (isLengthPercentage(t)) {
+            lengths.push(t);
+        } else if (t.type === TokenType.IDENT_TOKEN && (t as { value: string }).value.toLowerCase() === 'round') {
+            roundIndex = i + 1;
+            break;
+        }
+    }
+
+    if (lengths.length < 4) return NONE_CLIP_PATH;
+
+    const [x, y, width, height] = lengths;
+    const radii = roundIndex >= 0 ? parseInsetRadii(tokens.slice(roundIndex)) : [];
+
+    return { type: ClipPathType.XYWH, x, y, width, height, radii };
 };

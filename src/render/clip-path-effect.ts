@@ -10,15 +10,18 @@
 
 import { Bounds } from '../css/layout/bounds';
 import {
+    CircleClipPath,
     ClipPathType,
     CSSClipPath,
-    InsetClipPath,
-    CircleClipPath,
     EllipseClipPath,
-    PolygonClipPath,
+    InsetClipPath,
     PathClipPath,
+    PolygonClipPath,
+    RectClipPath,
+    XYWHClipPath,
 } from '../css/property-descriptors/clip-path';
-import { getAbsoluteValue } from '../css/types/length-percentage';
+import { TokenType } from '../css/syntax/tokenizer';
+import { getAbsoluteValue, LengthPercentage } from '../css/types/length-percentage';
 import { BezierCurve } from './bezier-curve';
 import { Path } from './path';
 import { Vector } from './vector';
@@ -69,6 +72,10 @@ export const buildClipPath = (clipPath: CSSClipPath, bounds: Bounds): ClipPathRe
             };
         case ClipPathType.PATH:
             return buildPath2D(clipPath, bounds);
+        case ClipPathType.RECT:
+            return { kind: 'path', paths: buildRectPath(clipPath, bounds) };
+        case ClipPathType.XYWH:
+            return { kind: 'path', paths: buildXywhPath(clipPath, bounds) };
     }
 };
 
@@ -316,4 +323,74 @@ const buildPath2D = (clip: PathClipPath, bounds: Bounds): ClipPathPath2DResult |
     } catch {
         return null;
     }
+};
+
+// ---------------------------------------------------------------------------
+// rect()
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a clip path for `rect(top right bottom left [ round … ])`.
+ *
+ * The four values are distances from their respective edges of the reference
+ * box, identical in semantics to `inset()`. We convert to inset-style
+ * coordinates and delegate to the shared corner-Bézier logic already used by
+ * `buildInsetPath`.
+ */
+const buildRectPath = (clip: RectClipPath, bounds: Bounds): Path[] => {
+    // rect() and inset() share the same geometry: each value is the distance
+    // inward from the corresponding edge. Delegate directly to buildInsetPath
+    // by casting to InsetClipPath shape (same fields, different .type).
+    return buildInsetPath(
+        {
+            type: ClipPathType.INSET,
+            top: clip.top,
+            right: clip.right,
+            bottom: clip.bottom,
+            left: clip.left,
+            radii: clip.radii,
+        },
+        bounds,
+    );
+};
+
+// ---------------------------------------------------------------------------
+// xywh()
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a clip path for `xywh(x y width height [ round … ])`.
+ *
+ * The origin (x, y) is relative to the top-left of the reference box, and
+ * (width, height) define the clip rectangle's size.
+ *
+ * We convert to inset-style distances so we can reuse `buildInsetPath`:
+ *   top    = y
+ *   left   = x
+ *   right  = boxWidth  - (x + width)
+ *   bottom = boxHeight - (y + height)
+ */
+const buildXywhPath = (clip: XYWHClipPath, bounds: Bounds): Path[] => {
+    const { width: bWidth, height: bHeight } = bounds;
+
+    const xVal = getAbsoluteValue(clip.x, bWidth);
+    const yVal = getAbsoluteValue(clip.y, bHeight);
+    const wVal = getAbsoluteValue(clip.width, bWidth);
+    const hVal = getAbsoluteValue(clip.height, bHeight);
+
+    /** Create an absolute-pixel LengthPercentage token. */
+    const px = (n: number): LengthPercentage =>
+        ({ type: TokenType.NUMBER_TOKEN, flags: 0, number: n }) as unknown as LengthPercentage;
+
+    return buildInsetPath(
+        {
+            type: ClipPathType.INSET,
+            top: clip.y,
+            left: clip.x,
+            right: px(Math.max(0, bWidth - xVal - wVal)),
+            bottom: px(Math.max(0, bHeight - yVal - hVal)),
+            radii: clip.radii,
+        },
+        bounds,
+    );
 };
