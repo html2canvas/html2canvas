@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSS text-emphasis</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script type="text/javascript" src="../../test.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Serif', 'Songti SC', serif;
+            padding: 20px;
+            background: #f0f0f0;
+            font-size: 20px;
+        }
+        .row { margin-bottom: 32px; }
+        .row-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-family: Roboto, sans-serif;
+            color: #222;
+        }
+        .item {
+            display: inline-block;
+            text-align: center;
+            vertical-align: top;
+            margin-right: 32px;
+            margin-bottom: 8px;
+        }
+        .label {
+            display: block;
+            font-size: 11px;
+            font-family: Roboto, sans-serif;
+            margin-top: 8px;
+            color: #555;
+        }
+        /* Ensure enough line-height for marks above/below */
+        .text { line-height: 2.5; }
+    </style>
+</head>
+<body>
+
+<!-- ───────────────────────── filled shapes ───────────────────────── -->
+<div class="row">
+    <div class="row-title">text-emphasis-style — filled shapes (over)</div>
+
+    <div class="item">
+        <span class="text" style="text-emphasis: dot; text-emphasis-position: over right;">日本語</span>
+        <span class="label">dot (•)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: circle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">circle (•)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: double-circle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">double-circle (◉)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: triangle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">triangle (▲)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: sesame; text-emphasis-position: over right;">日本語</span>
+        <span class="label">sesame (﹅)</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── open shapes ───────────────────────── -->
+<div class="row">
+    <div class="row-title">text-emphasis-style — open shapes (over)</div>
+
+    <div class="item">
+        <span class="text" style="text-emphasis-style: open dot; text-emphasis-position: over right;">日本語</span>
+        <span class="label">open dot (◦)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis-style: open circle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">open circle (◦)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis-style: open double-circle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">open double-circle (◎)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis-style: open triangle; text-emphasis-position: over right;">日本語</span>
+        <span class="label">open triangle (△)</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis-style: open sesame; text-emphasis-position: over right;">日本語</span>
+        <span class="label">open sesame (﹆)</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── position under ───────────────────────── -->
+<div class="row">
+    <div class="row-title">text-emphasis-position: under</div>
+
+    <div class="item">
+        <span class="text" style="text-emphasis: dot; text-emphasis-position: under right;">日本語</span>
+        <span class="label">dot under</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: circle; text-emphasis-position: under right;">日本語</span>
+        <span class="label">circle under</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: sesame; text-emphasis-position: under right;">日本語</span>
+        <span class="label">sesame under</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── custom color ───────────────────────── -->
+<div class="row">
+    <div class="row-title">text-emphasis-color</div>
+
+    <div class="item">
+        <span class="text" style="text-emphasis: dot; text-emphasis-color: #e74c3c; text-emphasis-position: over right;">日本語</span>
+        <span class="label">red dot</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: sesame; text-emphasis-color: #3498db; text-emphasis-position: over right;">日本語</span>
+        <span class="label">blue sesame</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: triangle; text-emphasis-color: #2ecc71; text-emphasis-position: over right;">日本語</span>
+        <span class="label">green triangle</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis: circle; text-emphasis-color: currentColor; text-emphasis-position: over right; color: #9b59b6;">日本語</span>
+        <span class="label">currentColor</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── custom string ───────────────────────── -->
+<div class="row">
+    <div class="row-title">text-emphasis-style: &lt;string&gt;</div>
+
+    <div class="item">
+        <span class="text" style="text-emphasis-style: '✿'; text-emphasis-position: over right;">日本語</span>
+        <span class="label">'✿'</span>
+    </div>
+    <div class="item">
+        <span class="text" style="text-emphasis-style: '❤'; text-emphasis-position: over right;">日本語</span>
+        <span class="label">'❤'</span>
+    </div>
+</div>
+
+<!-- ───────────────────────── Latin text ───────────────────────── -->
+<div class="row">
+    <div class="row-title">Latin text with emphasis</div>
+
+    <div class="item" style="font-family: sans-serif;">
+        <span class="text" style="text-emphasis: dot; text-emphasis-position: over right; font-family: sans-serif;">Hello</span>
+        <span class="label">dot over Latin</span>
+    </div>
+    <div class="item" style="font-family: sans-serif;">
+        <span class="text" style="text-emphasis: circle; text-emphasis-color: #e74c3c; text-emphasis-position: under right; font-family: sans-serif;">World</span>
+        <span class="label">red circle under Latin</span>
+    </div>
+</div>
+
+</body>
+</html>
