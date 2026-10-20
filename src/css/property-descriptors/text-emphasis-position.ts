@@ -18,8 +18,8 @@ import { TokenType } from '../syntax/tokenizer';
 export const enum TEXT_EMPHASIS_POSITION {
     UNDER = 0,
     OVER = 1,
-    LEFT = 0,
-    RIGHT = 2,
+    LEFT = 2,
+    RIGHT = 3,
 }
 
 export const textEmphasisPosition: IPropertyListDescriptor<number> = {
