@@ -7,6 +7,7 @@ import { prefixLinearGradient } from './functions/-prefix-linear-gradient';
 import { prefixRadialGradient } from './functions/-prefix-radial-gradient';
 import { webkitGradient } from './functions/-webkit-gradient';
 import { conicGradient } from './functions/conic-gradient';
+import { imageSet } from './functions/image-set';
 import { linearGradient } from './functions/linear-gradient';
 import { radialGradient } from './functions/radial-gradient';
 import { repeatingConicGradient } from './functions/repeating-conic-gradient';
@@ -167,4 +168,6 @@ const SUPPORTED_IMAGE_FUNCTIONS: Record<string, (context: Context, args: CSSValu
     'repeating-radial-gradient': repeatingRadialGradient,
     'conic-gradient': conicGradient,
     'repeating-conic-gradient': repeatingConicGradient,
+    'image-set': imageSet,
+    '-webkit-image-set': imageSet,
 };
