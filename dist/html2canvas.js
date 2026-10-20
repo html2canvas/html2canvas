@@ -12143,7 +12143,7 @@
                     case 'under':
                         /* UNDER = 0, no-op */ break;
                     case 'right':
-                        flags |= 2 /* TEXT_EMPHASIS_POSITION.RIGHT */;
+                        flags |= 3 /* TEXT_EMPHASIS_POSITION.RIGHT */;
                         break;
                 }
             }

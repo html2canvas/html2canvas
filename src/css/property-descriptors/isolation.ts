@@ -13,7 +13,7 @@ import { IPropertyIdentValueDescriptor, PropertyDescriptorParsingType } from '..
  * canvas with the default source-over operation.
  */
 export const enum ISOLATION {
-    AUTO    = 0,
+    AUTO = 0,
     ISOLATE = 1,
 }
 

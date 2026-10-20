@@ -25,12 +25,7 @@ import { SelectElementContainer } from '../../dom/elements/select-element-contai
 import { TextareaElementContainer } from '../../dom/elements/textarea-element-container';
 import { ReplacedElementContainer } from '../../dom/replaced-elements';
 import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
-import {
-    CHECKBOX,
-    InputElementContainer,
-    RADIO,
-    RANGE
-} from '../../dom/replaced-elements/input-element-container';
+import { CHECKBOX, InputElementContainer, RADIO, RANGE } from '../../dom/replaced-elements/input-element-container';
 import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
 import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
 import { SVGElementContainer } from '../../dom/replaced-elements/svg-element-container';
