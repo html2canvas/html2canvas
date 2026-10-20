@@ -27,10 +27,9 @@ import { ReplacedElementContainer } from '../../dom/replaced-elements';
 import { ImageElementContainer } from '../../dom/replaced-elements/image-element-container';
 import {
     CHECKBOX,
-    INPUT_COLOR,
     InputElementContainer,
     RADIO,
-    RANGE,
+    RANGE
 } from '../../dom/replaced-elements/input-element-container';
 import { METER_STATE, MeterElementContainer } from '../../dom/replaced-elements/meter-element-container';
 import { ProgressElementContainer } from '../../dom/replaced-elements/progress-element-container';
@@ -118,7 +117,7 @@ export function renderCheckbox(state: CanvasRenderState, container: InputElement
         new Vector(bounds.left + size * 0.84, bounds.top + size * 0.34085),
         new Vector(bounds.left + size * 0.39363, bounds.top + size * 0.79),
     ]);
-    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fillStyle = asString(container.accentColor);
     state.ctx.fill();
     state.ctx.restore();
 }
@@ -130,7 +129,7 @@ export function renderRadio(state: CanvasRenderState, container: InputElementCon
     state.ctx.save();
     state.ctx.beginPath();
     state.ctx.arc(bounds.left + size / 2, bounds.top + size / 2, size / 4, 0, Math.PI * 2, true);
-    state.ctx.fillStyle = asString(INPUT_COLOR);
+    state.ctx.fillStyle = asString(container.accentColor);
     state.ctx.fill();
     state.ctx.restore();
 }

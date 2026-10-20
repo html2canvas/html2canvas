@@ -3,7 +3,9 @@ import { Bounds } from '../../css/layout/bounds';
 import { BACKGROUND_CLIP } from '../../css/property-descriptors/background-clip';
 import { BACKGROUND_ORIGIN } from '../../css/property-descriptors/background-origin';
 import { BORDER_STYLE } from '../../css/property-descriptors/border-style';
+import { Parser } from '../../css/syntax/parser';
 import { TokenType } from '../../css/syntax/tokenizer';
+import { Color, color as colorParser } from '../../css/types/color';
 import { LengthPercentageTuple } from '../../css/types/length-percentage';
 import { DATA_ATTR_PLACEHOLDER } from '../clone-attributes';
 import { ElementContainer } from '../element-container';
@@ -46,6 +48,23 @@ export const PASSWORD = 'password';
 export const RANGE = 'range';
 export const INPUT_COLOR = 0x2a2a2aff;
 
+/** Default accent colour used when `accent-color` is `auto` or unavailable. */
+const DEFAULT_ACCENT_COLOR = 0x0075ffff; // browser-like blue
+
+/**
+ * Parse `accent-color` from `getComputedStyle`.
+ * Returns `DEFAULT_ACCENT_COLOR` when the value is `auto`, empty, or unparseable.
+ */
+function parseAccentColor(context: Context, computedStyle: CSSStyleDeclaration): Color {
+    const raw = (computedStyle as CSSStyleDeclaration & { accentColor?: string }).accentColor;
+    if (!raw || raw === 'auto') return DEFAULT_ACCENT_COLOR;
+    try {
+        return colorParser.parse(context, Parser.parseValue(raw));
+    } catch {
+        return DEFAULT_ACCENT_COLOR;
+    }
+}
+
 export class InputElementContainer extends ElementContainer {
     readonly type: string;
     readonly checked: boolean;
@@ -57,6 +76,8 @@ export class InputElementContainer extends ElementContainer {
     readonly isPlaceholder: boolean;
     /** Serialised ::placeholder styles (JSON delta), or null if default. */
     readonly placeholderStyles: Record<string, string> | null;
+    /** Resolved `accent-color` for checkbox/radio glyphs (defaults to browser blue). */
+    readonly accentColor: Color;
 
     constructor(context: Context, input: HTMLInputElement) {
         super(context, input);
@@ -69,8 +90,12 @@ export class InputElementContainer extends ElementContainer {
         this.min = parseFloat(input.min) || 0;
         this.max = parseFloat(input.max) || 100;
         this.valueAsNumber = isNaN(input.valueAsNumber) ? (this.min + this.max) / 2 : input.valueAsNumber;
+        // Default — overridden below for checkbox/radio
+        this.accentColor = DEFAULT_ACCENT_COLOR;
 
         if (this.type === CHECKBOX || this.type === RADIO) {
+            const computedStyle = (input.ownerDocument?.defaultView ?? window).getComputedStyle(input);
+            this.accentColor = parseAccentColor(context, computedStyle);
             this.styles.backgroundColor = 0xdededeff;
             this.styles.borderTopColor =
                 this.styles.borderRightColor =
