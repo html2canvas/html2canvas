@@ -131,6 +131,7 @@
     "test:visual:docker:update": "docker run --rm --user $(id -u):$(id -g) -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble bash -c 'npm ci && npm run build && npx playwright test --update-snapshots'",
     "test:visual:docker:update:firefox": "docker run --rm --user $(id -u):$(id -g) -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble bash -c 'npm ci && npm run build && npx playwright test --project=firefox --update-snapshots'",
     "test:visual:docker:update:webkit": "docker run --rm --user $(id -u):$(id -g) -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.62.1-noble bash -c 'npm ci && npm run build && npx playwright test --project=webkit --update-snapshots'",
+    "build:compare": "ts-node --project tests/tsconfig.json tests/visual/build-compare-manifest.ts",
     "test:visual:report": "npx playwright show-report",
     "karma": "karma start",
     "watch": "rollup -c rollup.config.js --watch",

@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Regression — Browser Comparison</title>
+    <style>
+      :root {
+        --bg: #1a1a1a;
+        --surface: #242424;
+        --surface2: #2e2e2e;
+        --border: #3a3a3a;
+        --text: #e8e8e8;
+        --text-dim: #888;
+        --accent: #4a9eff;
+        --pass: #3dba6a;
+        --fail: #e8504a;
+        --warn: #f0a030;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      /* ── Header ── */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      header h1 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        flex: 1;
+      }
+
+      input[type='search'] {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 5px 10px;
+        font-size: 12px;
+        width: 220px;
+        outline: none;
+      }
+      input[type='search']:focus {
+        border-color: var(--accent);
+      }
+
+      select {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 5px 8px;
+        font-size: 12px;
+        outline: none;
+        cursor: pointer;
+      }
+
+      .toggle-group {
+        display: flex;
+        gap: 4px;
+      }
+      .toggle-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-dim);
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .toggle-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      .stats {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+
+      /* ── Layout ── */
+      .container {
+        display: flex;
+        height: calc(100vh - 49px);
+      }
+
+      /* ── Sidebar ── */
+      aside {
+        width: 220px;
+        min-width: 180px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        overflow-y: auto;
+        flex-shrink: 0;
+      }
+
+      .group-label {
+        padding: 8px 12px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-dim);
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 1;
+      }
+
+      .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background 0.1s;
+        user-select: none;
+      }
+      .sidebar-item:hover {
+        background: var(--surface2);
+      }
+      .sidebar-item.active {
+        background: var(--surface2);
+        border-left-color: var(--accent);
+      }
+
+      .sidebar-item .name {
+        font-size: 11px;
+        color: var(--text);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .dot.pass {
+        background: var(--pass);
+      }
+      .dot.fail {
+        background: var(--fail);
+      }
+      .dot.missing {
+        background: var(--text-dim);
+      }
+
+      /* ── Main panel ── */
+      main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+
+      .test-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: var(--text);
+      }
+
+      /* ── View modes ── */
+
+      /* Side-by-side */
+      .side-by-side {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      .browser-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .browser-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: capitalize;
+      }
+
+      .browser-icon {
+        font-size: 14px;
+      }
+
+      .browser-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: #fff;
+        image-rendering: pixelated;
+      }
+
+      .browser-card .missing-img {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 120px;
+        color: var(--text-dim);
+        font-size: 12px;
+        background: var(--surface2);
+      }
+
+      /* Diff view */
+      .diff-view {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .diff-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .diff-card-title {
+        padding: 8px 12px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      /* Overlay / slider */
+      .overlay-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .overlay-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .overlay-controls label {
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+
+      .overlay-controls select {
+        font-size: 11px;
+      }
+
+      .slider-wrapper {
+        position: relative;
+        display: block;
+        max-width: 800px;
+        background: #fff;
+        border-radius: 6px;
+        overflow: hidden;
+        cursor: col-resize;
+        user-select: none;
+      }
+
+      /* Base image — drives the wrapper height */
+      .slider-wrapper #img-a {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* Top image — absolutely stacked, same dimensions as base */
+      .slider-img-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        clip-path: inset(0 50% 0 0);
+      }
+
+      .slider-handle {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 2px;
+        height: 100%;
+        background: var(--accent);
+        pointer-events: none;
+        transform: translateX(-50%);
+      }
+      .slider-handle::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 3px solid #fff;
+      }
+
+      /* Empty state */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 60vh;
+        color: var(--text-dim);
+        gap: 8px;
+      }
+      .empty-state .icon {
+        font-size: 48px;
+      }
+
+      /* ── Sidebar loader ── */
+      .sidebar-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 32px 16px;
+        color: var(--text-dim);
+        font-size: 11px;
+      }
+
+      .sidebar-loader .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+
+      .sidebar-loader .loader-progress {
+        font-variant-numeric: tabular-nums;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Filter chips */
+      .filter-chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .chip {
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        background: transparent;
+        transition: all 0.1s;
+      }
+      .chip.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🎨 Visual Comparison</h1>
+      <div class="header-controls">
+        <input type="search" id="search" placeholder="Search tests…" autocomplete="off" />
+
+        <select id="filter-status">
+          <option value="all">All tests</option>
+          <option value="diff">Differences only</option>
+          <option value="pass">Identical only</option>
+          <option value="missing">Missing snapshots</option>
+        </select>
+
+        <div class="toggle-group" id="view-toggle">
+          <button class="toggle-btn active" data-view="side-by-side">Side by side</button>
+          <button class="toggle-btn" data-view="overlay">Overlay / Slider</button>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <div class="container">
+      <aside>
+        <div class="filter-chips" id="category-chips"></div>
+        <div id="sidebar"></div>
+      </aside>
+      <main id="main">
+        <div class="empty-state">
+          <div class="icon">🖼️</div>
+          <div>Select a test from the sidebar</div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------------------
+      // Config
+      // ---------------------------------------------------------------------------
+      const BROWSERS = ['chromium', 'firefox', 'webkit'];
+      const BROWSER_ICONS = { chromium: '🟡', firefox: '🦊', webkit: '🧭' };
+      const SNAP_DIR = 'reftests.spec.ts-snapshots';
+      const PLATFORM = 'linux';
+
+      // ---------------------------------------------------------------------------
+      // Discover snapshots
+      // ---------------------------------------------------------------------------
+
+      /**
+       * List all test names by scanning <img> src probe.
+       * We build the list from the chromium snapshots (always present as baseline),
+       * then check firefox/webkit availability.
+       */
+
+      // We embed the snapshot list at build-time via a script tag generated by the
+      // server — fallback: scan via fetch directory listing or hardcoded list.
+      // Since this is a static file, we derive test names from the SNAPSHOTS constant
+      // injected below. If not available we fetch the directory listing.
+
+      async function discoverTests() {
+        // Try to load snapshot list from the directory
+        // We use a trick: attempt to load each known pattern.
+        // Since we can't list files from a static HTML page, we rely on an
+        // embedded manifest or a small API endpoint.
+        // Fallback: generate list from known naming convention by probing images.
+
+        // Try fetching a manifest file first (generated by npm script)
+        try {
+          const resp = await fetch('snapshot-manifest.json');
+          if (resp.ok) {
+            return await resp.json();
+          }
+        } catch {}
+
+        // Fallback: use a hardcoded list embedded at build time.
+        // Run `npm run build:compare` to regenerate this file with the current snapshots.
+        return window.__SNAPSHOT_TESTS__ || [];
+      }
+
+      // ---------------------------------------------------------------------------
+      // Image diff (pixel comparison via canvas)
+      // ---------------------------------------------------------------------------
+
+      async function loadImageBitmap(src) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null); // missing = null
+          img.src = src;
+        });
+      }
+
+      async function computeDiff(srcA, srcB) {
+        const [imgA, imgB] = await Promise.all([loadImageBitmap(srcA), loadImageBitmap(srcB)]);
+        if (!imgA || !imgB) return null; // can't compare
+
+        const w = Math.max(imgA.naturalWidth, imgB.naturalWidth);
+        const h = Math.max(imgA.naturalHeight, imgB.naturalHeight);
+
+        const cvs = document.createElement('canvas');
+        cvs.width = w;
+        cvs.height = h;
+        const ctx = cvs.getContext('2d');
+
+        ctx.drawImage(imgA, 0, 0);
+        const dataA = ctx.getImageData(0, 0, w, h).data;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(imgB, 0, 0);
+        const dataB = ctx.getImageData(0, 0, w, h).data;
+
+        let diff = 0;
+        for (let i = 0; i < dataA.length; i += 4) {
+          const dr = Math.abs(dataA[i] - dataB[i]);
+          const dg = Math.abs(dataA[i + 1] - dataB[i + 1]);
+          const db = Math.abs(dataA[i + 2] - dataB[i + 2]);
+          if (dr + dg + db > 15) diff++;
+        }
+        return diff / (w * h);
+      }
+
+      // ---------------------------------------------------------------------------
+      // State
+      // ---------------------------------------------------------------------------
+      let tests = []; // [{name, browsers: {chromium, firefox, webkit}, status}]
+      let activeTest = null;
+      let viewMode = 'side-by-side';
+      let searchQ = '';
+      let filterStatus = 'all';
+      let filterCategory = 'all';
+
+      function snapPath(name, browser) {
+        return `${SNAP_DIR}/${name}-${browser}-${PLATFORM}.png`;
+      }
+
+      // ---------------------------------------------------------------------------
+      // Build test list
+      // ---------------------------------------------------------------------------
+      async function buildTestList(names) {
+        const results = [];
+        for (const name of names) {
+          const browsers = {};
+          let hasMissing = false;
+          for (const b of BROWSERS) {
+            const src = snapPath(name, b);
+            // probe via Image
+            const exists = await new Promise(res => {
+              const img = new Image();
+              img.onload = () => res(true);
+              img.onerror = () => res(false);
+              img.src = src;
+            });
+            browsers[b] = exists ? src : null;
+            if (!exists) hasMissing = true;
+          }
+
+          // Compute diff between chromium and others
+          let hasDiff = false;
+          if (browsers.chromium) {
+            for (const b of ['firefox', 'webkit']) {
+              if (browsers[b]) {
+                const ratio = await computeDiff(browsers.chromium, browsers[b]);
+                if (ratio !== null && ratio > 0.005) {
+                  hasDiff = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          results.push({
+            name,
+            category: name.split('-')[0],
+            browsers,
+            status: hasMissing ? 'missing' : hasDiff ? 'diff' : 'pass',
+          });
+        }
+        return results;
+      }
+
+      // ---------------------------------------------------------------------------
+      // Render sidebar
+      // ---------------------------------------------------------------------------
+      function renderSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const chips = document.getElementById('category-chips');
+        const stats = document.getElementById('stats');
+
+        // Filter
+        const visible = tests.filter(t => {
+          if (searchQ && !t.name.toLowerCase().includes(searchQ)) return false;
+          if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+          if (filterCategory !== 'all' && t.category !== filterCategory) return false;
+          return true;
+        });
+
+        // Stats
+        const nDiff = visible.filter(t => t.status === 'diff').length;
+        const nMissing = visible.filter(t => t.status === 'missing').length;
+        stats.textContent = `${visible.length} tests · ${nDiff} diff · ${nMissing} missing`;
+
+        // Category chips
+        const cats = ['all', ...new Set(tests.map(t => t.category))].sort((a, b) =>
+          a === 'all' ? -1 : a.localeCompare(b),
+        );
+        chips.innerHTML = cats
+          .map(c => `<button class="chip${filterCategory === c ? ' active' : ''}" data-cat="${c}">${c}</button>`)
+          .join('');
+        chips.querySelectorAll('.chip').forEach(btn => {
+          btn.addEventListener('click', () => {
+            filterCategory = btn.dataset.cat;
+            renderSidebar();
+          });
+        });
+
+        // Group by category
+        const groups = {};
+        for (const t of visible) {
+          (groups[t.category] = groups[t.category] || []).push(t);
+        }
+
+        sidebar.innerHTML = '';
+        for (const [cat, items] of Object.entries(groups)) {
+          const label = document.createElement('div');
+          label.className = 'group-label';
+          label.textContent = cat;
+          sidebar.appendChild(label);
+          for (const t of items) {
+            const el = document.createElement('div');
+            el.className = 'sidebar-item' + (activeTest === t.name ? ' active' : '');
+            el.innerHTML = `<span class="dot ${t.status}"></span><span class="name">${t.name.replace(/^[^-]+-/, '')}</span>`;
+            el.addEventListener('click', () => {
+              activeTest = t.name;
+              renderMain();
+              renderSidebar();
+            });
+            sidebar.appendChild(el);
+          }
+        }
+      }
+
+      // ---------------------------------------------------------------------------
+      // Render main panel
+      // ---------------------------------------------------------------------------
+      function renderMain() {
+        const main = document.getElementById('main');
+        if (!activeTest) {
+          main.innerHTML = `<div class="empty-state"><div class="icon">🖼️</div><div>Select a test from the sidebar</div></div>`;
+          return;
+        }
+        const test = tests.find(t => t.name === activeTest);
+        if (!test) return;
+
+        if (viewMode === 'side-by-side') renderSideBySide(main, test);
+        else renderOverlay(main, test);
+      }
+
+      function browserCard(browser, src) {
+        const icon = BROWSER_ICONS[browser] || '🌐';
+        const content = src
+          ? `<img src="${src}" alt="${browser}" loading="lazy">`
+          : `<div class="missing-img">No snapshot</div>`;
+        return `
+        <div class="browser-card">
+            <div class="browser-card-header">
+                <span class="browser-icon">${icon}</span> ${browser}
+            </div>
+            ${content}
+        </div>`;
+      }
+
+      function renderSideBySide(main, test) {
+        main.innerHTML = `
+        <div class="test-title">${test.name}</div>
+        <div class="side-by-side">
+            ${BROWSERS.map(b => browserCard(b, test.browsers[b])).join('')}
+        </div>`;
+      }
+
+      function renderOverlay(main, test) {
+        const available = BROWSERS.filter(b => test.browsers[b]);
+        if (available.length < 2) {
+          main.innerHTML = `<div class="test-title">${test.name}</div>
+            <div class="empty-state"><div class="icon">⚠️</div><div>Need at least 2 browsers for overlay</div></div>`;
+          return;
+        }
+
+        let browserA = available[0];
+        let browserB = available[1];
+
+        function build() {
+          const srcA = test.browsers[browserA];
+          const srcB = test.browsers[browserB];
+          main.innerHTML = `
+            <div class="test-title">${test.name}</div>
+            <div class="overlay-container">
+              <div class="overlay-controls">
+                <label>A (left ←):</label>
+                <select id="ovl-a">${available.map(b => `<option value="${b}"${b === browserA ? ' selected' : ''}>${b}</option>`).join('')}</select>
+                <label>B (right →):</label>
+                <select id="ovl-b">${available.map(b => `<option value="${b}"${b === browserB ? ' selected' : ''}>${b}</option>`).join('')}</select>
+                <span style="font-size:11px;color:var(--text-dim)">← drag to compare →</span>
+              </div>
+              <div class="slider-wrapper" id="slider">
+                <img src="${srcB}" alt="${browserB}" id="img-a">
+                <img src="${srcA}" alt="${browserA}" id="img-b" class="slider-img-top">
+                <div class="slider-handle" id="slider-handle"></div>
+              </div>
+            </div>`;
+
+          main.querySelector('#ovl-a').addEventListener('change', e => {
+            browserA = e.target.value;
+            build();
+          });
+          main.querySelector('#ovl-b').addEventListener('change', e => {
+            browserB = e.target.value;
+            build();
+          });
+
+          const wrapper = main.querySelector('#slider');
+          const imgTop = main.querySelector('#img-b');
+          const handle = main.querySelector('#slider-handle');
+
+          function setPos(clientX) {
+            const rect = wrapper.getBoundingClientRect();
+            if (rect.width === 0) return;
+            const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const pctR = ((1 - pct) * 100).toFixed(2);
+            imgTop.style.clipPath = `inset(0 ${pctR}% 0 0)`;
+            handle.style.left = (pct * 100).toFixed(2) + '%';
+          }
+
+          // Init at 50% after base image loads (so getBoundingClientRect has real size)
+          const imgBase = main.querySelector('#img-a');
+          const initSlider = () => {
+            const r = wrapper.getBoundingClientRect();
+            setPos(r.left + r.width / 2);
+          };
+          if (imgBase.complete) initSlider();
+          else imgBase.addEventListener('load', initSlider, { once: true });
+
+          // Drag with AbortController so listeners don't accumulate across rebuilds
+          const ac = new AbortController();
+          const sig = ac.signal;
+          let dragging = false;
+
+          wrapper.addEventListener(
+            'mousedown',
+            e => {
+              dragging = true;
+              e.preventDefault();
+              setPos(e.clientX);
+            },
+            { signal: sig },
+          );
+          wrapper.addEventListener(
+            'touchstart',
+            e => {
+              dragging = true;
+              setPos(e.touches[0].clientX);
+            },
+            { passive: true, signal: sig },
+          );
+          window.addEventListener(
+            'mousemove',
+            e => {
+              if (dragging) setPos(e.clientX);
+            },
+            { signal: sig },
+          );
+          window.addEventListener(
+            'touchmove',
+            e => {
+              if (dragging) setPos(e.touches[0].clientX);
+            },
+            { passive: true, signal: sig },
+          );
+          window.addEventListener(
+            'mouseup',
+            () => {
+              dragging = false;
+            },
+            { signal: sig },
+          );
+          window.addEventListener(
+            'touchend',
+            () => {
+              dragging = false;
+            },
+            { signal: sig },
+          );
+
+          // Abort listeners when the wrapper is removed from the DOM
+          new MutationObserver(() => {
+            if (!main.contains(wrapper)) {
+              ac.abort();
+            }
+          }).observe(main, { childList: true });
+        }
+
+        build();
+      }
+
+      // ---------------------------------------------------------------------------
+      // Controls
+      // ---------------------------------------------------------------------------
+      document.getElementById('search').addEventListener('input', e => {
+        searchQ = e.target.value.toLowerCase();
+        renderSidebar();
+      });
+
+      document.getElementById('filter-status').addEventListener('change', e => {
+        filterStatus = e.target.value;
+        renderSidebar();
+      });
+
+      document.querySelectorAll('#view-toggle .toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#view-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          viewMode = btn.dataset.view;
+          renderMain();
+        });
+      });
+
+      // ---------------------------------------------------------------------------
+      // Sidebar loader helpers
+      // ---------------------------------------------------------------------------
+      function showSidebarLoader(current, total) {
+        const sidebar = document.getElementById('sidebar');
+        const label = total > 0 ? `${current} / ${total}` : '';
+        sidebar.innerHTML = `
+          <div class="sidebar-loader">
+            <div class="spinner"></div>
+            <div class="loader-progress">${label}</div>
+          </div>`;
+        // Hide chips during loading to avoid partial flash
+        document.getElementById('category-chips').innerHTML = '';
+        document.getElementById('stats').textContent = '';
+      }
+
+      // Update only the status dot of a single item already in the sidebar
+      // without re-rendering the whole list (avoids flicker).
+      function updateTestDot(test) {
+        const sidebar = document.getElementById('sidebar');
+        const items = sidebar.querySelectorAll('.sidebar-item');
+        for (const el of items) {
+          const nameEl = el.querySelector('.name');
+          // The name shown is the part after the first dash group
+          if (nameEl && nameEl.textContent === test.name.replace(/^[^-]+-/, '')) {
+            const dot = el.querySelector('.dot');
+            if (dot) {
+              dot.className = `dot ${test.status}`;
+            }
+            break;
+          }
+        }
+      }
+
+      // ---------------------------------------------------------------------------
+      // Bootstrap
+      // ---------------------------------------------------------------------------
+      async function main() {
+        // Phase 1 — show spinner while fetching the manifest
+        showSidebarLoader(0, 0);
+
+        const names = await discoverTests();
+
+        if (names.length === 0) {
+          document.getElementById('main').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">⚠️</div>
+                <div>No snapshots found.</div>
+                <div style="font-size:11px;margin-top:4px">Run <code>npm run build:compare</code> to generate the manifest.</div>
+            </div>`;
+          document.getElementById('sidebar').innerHTML = '';
+          return;
+        }
+
+        // Phase 2 — show spinner with count while probing images & computing diffs
+        showSidebarLoader(0, names.length);
+
+        // Build test list — all statuses start as 'pass' (placeholder)
+        tests = names.map(name => ({
+          name,
+          category: name.split('-')[0],
+          browsers: Object.fromEntries(BROWSERS.map(b => [b, snapPath(name, b)])),
+          status: 'pass',
+        }));
+
+        // Async diff computation — render the sidebar only ONCE after the first
+        // pass is done, then patch individual dots to avoid repeated full redraws.
+        let sidebarRendered = false;
+
+        for (let i = 0; i < tests.length; i++) {
+          const test = tests[i];
+
+          // Update progress counter while still showing the loader
+          if (!sidebarRendered) {
+            showSidebarLoader(i + 1, tests.length);
+          }
+
+          let hasMissing = false;
+          let hasDiff = false;
+
+          for (const b of BROWSERS) {
+            const exists = await new Promise(res => {
+              const img = new Image();
+              img.onload = () => res(true);
+              img.onerror = () => res(false);
+              img.src = test.browsers[b];
+            });
+            if (!exists) {
+              test.browsers[b] = null;
+              hasMissing = true;
+            }
+          }
+
+          if (!hasMissing && test.browsers.chromium) {
+            for (const b of ['firefox', 'webkit']) {
+              if (test.browsers[b]) {
+                const ratio = await computeDiff(test.browsers.chromium, test.browsers[b]);
+                if (ratio !== null && ratio > 0.005) {
+                  hasDiff = true;
+                  break;
+                }
+              }
+            }
+          }
+
+          test.status = hasMissing ? 'missing' : hasDiff ? 'diff' : 'pass';
+
+          if (!sidebarRendered) {
+            // Keep showing the loader until all tests are processed
+            if (i === tests.length - 1) {
+              // All done — render the full sidebar once
+              sidebarRendered = true;
+              renderSidebar();
+            }
+          } else {
+            // Patch only the dot of the current item
+            updateTestDot(test);
+          }
+        }
+      }
+
+      main();
+    </script>
+  </body>
+</html>
